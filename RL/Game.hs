@@ -1,10 +1,9 @@
-module RL.Game ( Game(..), GameState, Message, Mob, Player ) where
+module RL.Game ( Game(..), Message, Mob, Player ) where
 
 import RL.Map
 import RL.Mob
 
 import System.Random
-import Control.Monad.State
 
 -- global game
 
@@ -15,8 +14,6 @@ data Game = Game {
     seed :: Maybe StdGen,
     messages :: [Message]
 }
-
-type GameState = StateT Game IO
 
 type Message = String
 

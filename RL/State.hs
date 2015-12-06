@@ -1,4 +1,4 @@
-module RL.State ( getMap, getMobs, getMobsWithPlayer, getMessages, getPlayer, getSeed, getMobAt, getTileAt, setSeed, setPlayer ) where
+module RL.State ( GameState, getMap, getMobs, getMobsWithPlayer, getMessages, getPlayer, getSeed, getMobAt, getTileAt, setSeed, setPlayer ) where
 
 import RL.Game
 import RL.IO
@@ -16,6 +16,9 @@ import System.Random
 -- helper getter/setter function for state manipulation
 --
 -- TODO look into lenses
+
+-- main state monad - all functions with state act within this monad
+type GameState = StateT Game IO
 
 getMap :: GameState Map
 getMap = level <$> get

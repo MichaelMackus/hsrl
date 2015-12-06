@@ -1,6 +1,7 @@
 module RL.IO ( io, debug ) where
 
 import RL.Game
+import RL.State
 
 import Control.Monad.IO.Class (liftIO)
 import UI.HSCurses.Curses
