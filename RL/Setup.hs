@@ -63,12 +63,10 @@ setupGame = do
             cursSet CursorInvisible
             echo False
         defaultSeed >>= setSeed     -- seed the RNG
-        m   <- getMap
-        ms  <- setupMobs            -- setup random mobs
-        p   <- setupPlayer          -- setup player start
-        g   <- getSeed
-        msg <- getMessages
-        put $ Game { level = m, player = p, mobs = ms, seed = Just g, messages = msg }
+        ms   <- setupMobs           -- setup random mobs
+        p    <- setupPlayer         -- setup player start
+        game <- get
+        put $ game { player = p, mobs = ms }
     where
         defaultSeed = io $ mkStdGen <$> roundTime -- sensible default
             where roundTime = round `fmap` getPOSIXTime
@@ -84,7 +82,6 @@ setupMobs = mapM mapMob defaultMobs
 -- default player
 setupPlayer :: GameState Player
 setupPlayer = do
-    p <- getPlayer
+    p     <- getPlayer
     start <- randomBlankPoint
-    return Mob { symbol = symbol p, at = start, hp = hp p }
-
+    return p { at = start }

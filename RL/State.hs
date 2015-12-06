@@ -1,12 +1,10 @@
 module RL.State ( GameState, getMap, getMobs, getMobsWithPlayer, getMessages, getPlayer, getSeed, getMobAt, getTileAt, setSeed, setPlayer ) where
 
 import RL.Game
-import RL.IO
 import RL.Map
 import RL.Mob
 
 -- core
-import Control.Applicative
 import Control.Monad.State
 import Data.Maybe
 import System.Random
@@ -21,53 +19,47 @@ import System.Random
 type GameState = StateT Game IO
 
 getMap :: GameState Map
-getMap = level <$> get
+getMap = fmap level get
 
 getPlayer :: GameState Player
-getPlayer = player <$> get
+getPlayer = fmap player get
 
 setPlayer :: Player -> GameState ()
 setPlayer p = do
-    m    <- getMap
-    ms   <- getMobs
-    g    <- getSeed
-    msgs <- getMessages
-    put $ Game { level = m, player = p, mobs = ms, seed = Just g, messages = msgs }
+    game <- get
+    put $ game { player = p }
 
 getMobs :: GameState [Mob]
-getMobs = mobs <$> get
+getMobs = fmap mobs get
 
 getSeed :: GameState StdGen
 getSeed = do
-         s <- seed <$> get
-         maybe fallback return s  -- todo error/exception
+        s <- fmap seed get
+        maybe fallback return s  -- todo error/exception
     where
-        fallback  = io seedError >> return fallback'
-        fallback' = mkStdGen 0
-        seedError = error "Invalid seed"
+        fallback  = return $ mkStdGen 0
 
 setSeed :: StdGen -> GameState ()
 setSeed g = do
-    m    <- getMap
-    ms   <- getMobs
-    p    <- getPlayer
-    msgs <- getMessages
-    put $ Game { level = m, player = p, mobs = ms, seed = Just g, messages = msgs }
+    game <- get
+    put $ game { seed = Just g }
 
 getMobsWithPlayer :: GameState [Mob]
-getMobsWithPlayer = do g <- get
-                       return (player g : mobs g)
+getMobsWithPlayer = do
+    game <- get
+    return (player game : mobs game)
 
 getMobAt :: Point -> GameState (Maybe Mob)
-getMobAt p = (getMobAt' . mobs) <$> get
+getMobAt p = fmap (getMobAt' . mobs) get
     where getMobAt' = listToMaybe . getMobsAt
           getMobsAt = filter ((p ==) . at)
 
 getTileAt :: Point -> GameState (Maybe Tile)
-getTileAt p = do g <- get
-                 return $ filterMap (enumerateMap $ level g)
+getTileAt p = do
+        game <- get
+        return $ filterMap (enumerateMap $ level game)
     where filterMap          = listToMaybe . map snd . filter filterTile
           filterTile (p', t) = p == p'
 
 getMessages :: GameState [Message]
-getMessages = messages <$> get
+getMessages = fmap messages get

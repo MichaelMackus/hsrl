@@ -6,7 +6,6 @@ import RL.Map
 import RL.Mob
 import RL.State
 
-import Control.Applicative
 import Control.Monad.State
 import UI.HSCurses.Curses
 
@@ -42,15 +41,12 @@ drawCharAt (x, y) = mvAddCh' y x
     where mvAddCh' y x c = mvWAddStr stdScr y x [c]
 
 sendMessages :: [Message] -> GameState [Message]
-sendMessages msgs = (++ msgs) <$> getMessages
+sendMessages msgs = fmap (++ msgs) getMessages
 
 clearMessages :: GameState ()
 clearMessages = do
-    p    <- getPlayer
-    m    <- getMap
-    ms   <- getMobs
-    g    <- getSeed
-    put $ Game { level = m, player = p, mobs = ms, seed = Just g, messages = [] }
+    game <- get
+    put $ game { messages = [] }
 
 drawMessages :: [Message] -> GameState ()
 drawMessages = mapM_ drawMessage . enumerate

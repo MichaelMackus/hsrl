@@ -43,7 +43,7 @@ doAction = do
 isPlaying :: Action -> GameState Bool
 isPlaying Quit      = return False         -- not playing
 isPlaying otherwise = not <$> winCondition -- keep playing if we haven't won
-    where winCondition = null <$> getMobs
+    where winCondition = fmap null getMobs
 
 -- move dir in map
 moveDir :: Dir -> GameState ()
@@ -64,8 +64,8 @@ movePlayer off    = do
         target <- getMobAt newloc
         maybe (moveToTile newloc) attack target
     where
-        getloc        = addoff <$> getPlayer
-        addoff        = addOffset off . at
+        getloc = fmap addoff getPlayer
+        addoff = addOffset off . at
 
 -- move player to a given tile offset
 moveToTile :: Point -> GameState ()
@@ -78,14 +78,14 @@ moveToTile xy = do
 -- basic attack function, TODO refactor with MobManager & AI
 attack :: Mob -> GameState ()
 attack target = do
-        m    <- getMap
         p    <- getPlayer
-        ms   <- getMobs
         dmg  <- dmgd p
-        g    <- getSeed
+        ms   <- fmap (hurtMobs dmg) getMobs
         msgs <- sendMessages ["dmg: " ++ show dmg, "hp: " ++ show (hp p)]
-        put $ Game { level = m, player = p, mobs = filterMobs $ map (hurtMob dmg) ms, seed = Just g, messages = msgs }
+        game <- get
+        put $ game { mobs = ms, messages = msgs }
     where
+        hurtMobs dmg   = filterMobs . map (hurtMob dmg)
         hurtMob  dmg m = if matchMob m then hurtMob' dmg m else m
         hurtMob' dmg m = Mob { symbol = symbol target, at = at target, hp = (hp target) - dmg }
         matchMob     m = symbol target == symbol m
