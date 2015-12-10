@@ -1,8 +1,7 @@
 module RL.Action (Action, Dir, doAction, isPlaying) where
 
-import RL.Draw
 import RL.Game
-import RL.IO
+import RL.IO -- TODO remove dependnecy on IO
 import RL.Map
 import RL.Mob
 import RL.Random
@@ -81,9 +80,9 @@ attack target = do
         p    <- getPlayer
         dmg  <- dmgd p
         ms   <- fmap (hurtMobs dmg) getMobs
-        msgs <- sendMessages ["dmg: " ++ show dmg, "hp: " ++ show (hp p)]
         game <- get
-        put $ game { mobs = ms, messages = msgs }
+        sendMessage $ "Player hit! " ++ (show dmg) ++ " damage"
+        put $ game { mobs = ms }
     where
         hurtMobs dmg   = filterMobs . map (hurtMob dmg)
         hurtMob  dmg m = if matchMob m then hurtMob' dmg m else m

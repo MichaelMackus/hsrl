@@ -1,10 +1,9 @@
-module RL.State ( GameState, getMap, getMobs, getMobsWithPlayer, getMessages, getPlayer, getSeed, getMobAt, getTileAt, setSeed, setPlayer ) where
+module RL.State ( getMap, getMobs, getMobsWithPlayer, getMessages, sendMessage, getPlayer, getSeed, getMobAt, getTileAt, setSeed, setPlayer ) where
 
 import RL.Game
 import RL.Map
 import RL.Mob
 
--- core
 import Control.Monad.State
 import Data.Maybe
 import System.Random
@@ -15,8 +14,11 @@ import System.Random
 --
 -- TODO look into lenses
 
--- main state monad - all functions with state act within this monad
-type GameState = StateT Game IO
+getLevel :: GameState Level
+getLevel = do
+    m  <- getMap
+    ms <- getMobsWithPlayer
+    return $ Level (enumerateMap m) ms
 
 getMap :: GameState Map
 getMap = fmap level get
@@ -63,3 +65,6 @@ getTileAt p = do
 
 getMessages :: GameState [Message]
 getMessages = fmap messages get
+
+sendMessage :: Message -> GameState [Message]
+sendMessage msg = fmap (msg :) getMessages
