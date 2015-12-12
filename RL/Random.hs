@@ -1,39 +1,37 @@
-module RL.Random (d, randomBlankPoint) where
+module RL.Random (Dice, d, roll, randomBlankPoint) where
 
+import RL.Dice
 import RL.Game
-import RL.IO
 import RL.Map
-import RL.Mob
 import RL.State
 
-import Control.Monad.State
-import Data.Time.Clock.POSIX
+import Control.Monad
 import System.Random
 
--- random number IO
-
--- main random function, used like: 2 `d` 4 or 1 `d` 20
-d :: Int -> Int -> GameState Int
-d n ns = do
-        g <- getSeed
-        let (r, g') = randomInt g
-        setSeed g'                -- advance seed
+-- main roll function 
+--
+-- generates random int and increments seed
+roll :: Dice -> GameState Int
+roll (D n ns) = do 
+        (r, g') <- fmap doRoll getSeed
+        setSeed g'
         return r
     where
-        randomInt g = randomR (minInt, maxInt) g
-        minInt      = n
-        maxInt      = ns * n
+        doRoll = randomR (minInt, maxInt)
+        minInt = n
+        maxInt = ns * n
 
--- helper functions
-
-randomPoint :: GameState Point
-randomPoint = liftM2 (,) (1 `d` maxColumns) (1 `d` maxRows)
-
+-- generates random map point
 randomBlankPoint :: GameState Point
 randomBlankPoint =  do
-    p <- randomPoint
-    t <- getTileAt p
-    if isPassable t then
-        return p
-    else
-        randomBlankPoint
+        p <- randomPoint
+        t <- getTileAt p
+        if isPassable t then
+            return p
+        else
+            randomBlankPoint
+    where
+        randomPoint = liftM2 (,) (roll randomCol) (roll randomRow)
+        randomCol   = 1 `d` maxColumns
+        randomRow   = 1 `d` maxRows
+

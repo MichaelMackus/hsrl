@@ -17,11 +17,14 @@ import System.Random
 
 defaultGame :: Game
 defaultGame = Game {
-    level = defaultMap,
-    player = defaultPlayer,
-    mobs = [],
+    level = Level {
+        tiles  = defaultMap,
+        player = defaultPlayer,
+        mobs   = []
+    },
     messages = [],
-    seed = Nothing
+    clients  = [],
+    seed     = Nothing
 }
 
 defaultMap :: Map
@@ -58,15 +61,11 @@ goblin        = defaultMob { symbol = 'g', hp = 2 }
 -- default game setup
 setupGame :: GameState ()
 setupGame = do
-        io $ do                     -- setup basic tty
-            initCurses
-            cursSet CursorInvisible
-            echo False
-        defaultSeed >>= setSeed     -- seed the RNG
-        ms   <- setupMobs           -- setup random mobs
-        p    <- setupPlayer         -- setup player start
-        game <- get
-        put $ game { player = p, mobs = ms }
+        defaultSeed >>= setSeed -- seed the RNG
+        ms <- setupMobs         -- setup random mobs
+        p  <- setupPlayer       -- setup player start
+        setPlayer p
+        setMobs ms
     where
         defaultSeed = io $ mkStdGen <$> roundTime -- sensible default
             where roundTime = round `fmap` getPOSIXTime
@@ -85,3 +84,5 @@ setupPlayer = do
     p     <- getPlayer
     start <- randomBlankPoint
     return p { at = start }
+
+-- helper functions TODO move these somewhere

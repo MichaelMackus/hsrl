@@ -1,30 +1,31 @@
-module RL.Renderer (Renderer, render, killRenderer, mkRenderer) where
+module RL.Renderer (render, killRenderer, mkRenderer) where
 
+import RL.Game
+import RL.IO
 import RL.Map
 import RL.Mob
+import RL.State
 
 import Control.Monad.Reader
 import Graphics.Vty
 
--- renderer monad       layers env
---
--- TODO Manages a list of renderable Image layers.
--- type Renderer = StateT [Image] Display
-type Renderer = Display
-
--- reader monad        VTY terminal environment
-type Display = ReaderT Vty IO
-
 -- render dungeon level
-render :: Map -> Renderer ()
-render lvl = do
-        -- let pic = picForLayers layers
-        let pic = picForImage $ levelToImg lvl
-        vty <- ask
-        liftIO $ update vty pic
-        -- todo refresh ??
-    -- where layers = [ levelToImg lvl,
-    --                  mobsToImg  ms ]
+render :: GameState ()
+render = do
+    lvl  <- getLevel
+    msgs <- getMessages
+    disp <- ask
+
+    io $ do
+        let layers = mobsToLayers (mobs lvl) ++ [levelToImg lvl] -- todo messages
+        update disp $ picForLayers layers
+        refresh disp
+
+-- shut down
+killRenderer :: GameState ()
+killRenderer = do
+    vty <- ask
+    liftIO $ shutdown vty
 
 -- -- render message panel
 -- renderMsgs :: [Message] -> Renderer ()
@@ -39,14 +40,14 @@ mkRenderer = do
     cfg <- standardIOConfig
     mkVty cfg
 
--- shut down
-killRenderer :: Renderer ()
-killRenderer = do
-    vty <- ask
-    liftIO $ shutdown vty
+levelToImg :: Level -> Image
+levelToImg = mapToImg . tiles
+    where
+        toImg = string defAttr
+        toStr = map fromTile
 
-levelToImg :: Map -> Image
-levelToImg = vertCat . map toImg . map toStr
+mapToImg :: Map -> Image
+mapToImg = vertCat . map toImg . map toStr
     where
         toImg = string defAttr
         toStr = map fromTile
@@ -58,8 +59,8 @@ levelToImg = vertCat . map toImg . map toStr
 --         toImg'    (i, m) = translateY (0, i + 15) $ string defAttr m
 --         enumerate        = zip [0..]
 
-mobsToImg :: [Mob] -> Image
-mobsToImg = vertCat . map mobToImg
+mobsToLayers :: [Mob] -> [Image]
+mobsToLayers = map mobToImg
 
 -- takes a mob and creates an (offset) Image
 mobToImg :: Mob -> Image
@@ -67,16 +68,3 @@ mobToImg m = offsetMobImg (at m) $ mobImg m
     where
         mobImg              = char defAttr . symbol
         offsetMobImg (x, y) = translate x y
-
-setupRenderer :: IO ()
-setupRenderer = do
-    cfg <- standardIOConfig
-    vty <- mkVty cfg
-    let line0 = string (defAttr ` withForeColor ` green) "first line"
-        line1 = string (defAttr ` withBackColor ` blue) "second line"
-        img = line0 <-> line1
-        pic = picForImage img
-    update vty pic
-    e <- nextEvent vty
-    shutdown vty
-    print ("Last event was: " ++ show e)

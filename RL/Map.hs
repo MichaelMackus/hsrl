@@ -1,18 +1,21 @@
-module RL.Map ( Tile(..), Map(..), Level(..), EnumeratedMap, tile, enumerateMap, maxRows, maxColumns, isPassable, fromTile ) where
+module RL.Map ( Level(..), Tile(..), Map(..), Point(..), MapIterator, tile, iterateMap, maxRows, maxColumns, isPassable, fromTile ) where
 
 import RL.Mob
+
+-- represents a level in the dungeon
+data Level = Level {
+    tiles :: Map,
+    player :: Player,
+    mobs :: [Mob]
+    -- todo items
+}
 
 -- map
 
 data Tile = Wall | Floor
 type Map = [[Tile]]
 
-data Level = Level {
-    tiles :: EnumeratedMap,
-    lmobs :: [Mob] -- todo remove from game
-}
-
-type EnumeratedMap = [(Point, Tile)]
+type MapIterator = [(Point, Tile)]
 
 -- TODO calculate
 maxRows    = 44 :: Int
@@ -32,7 +35,7 @@ isPassable otherwise    = False
 
 
 -- helper function
-enumerateMap :: Map -> EnumeratedMap
-enumerateMap = concat . map enumerateRow . enumerate
+iterateMap :: Map -> MapIterator
+iterateMap = concat . map enumerateRow . enumerate
     where enumerateRow  (y, r) = map (\(x, t) -> ((x, y), t)) $ enumerate r
           enumerate            = zip [0..]

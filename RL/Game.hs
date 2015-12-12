@@ -1,23 +1,28 @@
-module RL.Game ( Game(..), Message, Mob, Player, GameState ) where
+module RL.Game (Game(..), Client(..), Message, GameState) where
 
 import RL.Mob
 import RL.Map
-import RL.Renderer
 
 import Control.Monad.State
+import Control.Monad.Reader
+import Graphics.Vty
 import System.Random
 
--- global game structure
+-- global game state
+type GameState = StateT Game Display
+
+type Display = ReaderT Vty IO
+
+-- global game
 data Game = Game {
-    -- todo  Level
-    level :: Map,
-    player :: Player,
-    mobs :: [Mob],
-    seed :: Maybe StdGen,
-    messages :: [Message]
+    level    :: Level,       -- current dungeon layout/mobs
+    clients  :: [Client],    -- player and AI client(s)
+    messages :: [Message],   -- things that happened so far
+    seed     :: Maybe StdGen -- randomization
 }
 
-type Message = String
+-- represents AI or player client
+data Client = AIClient | UIClient
 
--- main state monad - all functions with state act within this monad
-type GameState = StateT Game Renderer
+-- simple string event
+type Message = String
