@@ -10,9 +10,7 @@ data Level = Level {
     -- todo items
 }
 
--- map
-
-data Tile = Wall | Floor
+data Tile = TWall | Wall | Floor
 type Map = [[Tile]]
 
 type MapIterator = [(Point, Tile)]
@@ -23,10 +21,12 @@ maxColumns = 8  :: Int
 
 tile :: Char -> Tile
 tile '|' = Wall
+tile '-' = TWall
 tile otherwise = Floor
 
 fromTile :: Tile -> Char
 fromTile Wall  = '|'
+fromTile TWall = '-'
 fromTile otherwise = '.'
 
 isPassable :: Maybe Tile -> Bool

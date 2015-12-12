@@ -1,31 +1,35 @@
-module RL.Renderer (render, killRenderer, mkRenderer) where
+module RL.Renderer (Renderer, Display, Sprite, Renderable(..), render, killRenderer, mkRenderer) where
 
-import RL.Game
-import RL.IO
-import RL.Map
-import RL.Mob
-import RL.State
-
-import Control.Monad.Reader
 import Graphics.Vty
 
--- render dungeon level
-render :: GameState ()
-render = do
-    lvl  <- getLevel
-    msgs <- getMessages
-    disp <- ask
+import Control.Monad.Reader
 
-    io $ do
-        let layers = mobsToLayers (mobs lvl) ++ [levelToImg lvl] -- todo messages
-        update disp $ picForLayers layers
-        refresh disp
+type Renderer = ReaderT Display IO
+
+type Display  = Vty
+type Sprite   = (Point, String)
+type Point    = (Int, Int) -- cheap cop out, todo move Point declaration
+
+class Renderable r where
+    getSprite  :: r -> Sprite
+    getSprite  = head . getSprites
+
+    getSprites :: r -> [Sprite]
+    getSprites r = getSprite r : []
+
+-- main render function
+render :: Renderable r => r -> Display -> IO ()
+render r disp = do
+    let layers = map getImage $ getSprites r
+    update disp $ picForLayers layers
 
 -- shut down
-killRenderer :: GameState ()
-killRenderer = do
-    vty <- ask
-    liftIO $ shutdown vty
+killRenderer :: Display -> IO ()
+killRenderer = shutdown
+
+getImage :: Sprite -> Image
+getImage ((0, 0), str) = string defAttr str
+getImage ((x, y), str) = translate x y $ getImage ((0, 0), str)
 
 -- -- render message panel
 -- renderMsgs :: [Message] -> Renderer ()
@@ -40,31 +44,9 @@ mkRenderer = do
     cfg <- standardIOConfig
     mkVty cfg
 
-levelToImg :: Level -> Image
-levelToImg = mapToImg . tiles
-    where
-        toImg = string defAttr
-        toStr = map fromTile
-
-mapToImg :: Map -> Image
-mapToImg = vertCat . map toImg . map toStr
-    where
-        toImg = string defAttr
-        toStr = map fromTile
-
 -- msgToImg :: [Message] -> Image
 -- msgToImg = take 5 $ map toImg
 --     where
 --         toImg            = toImg' . enumerate
 --         toImg'    (i, m) = translateY (0, i + 15) $ string defAttr m
 --         enumerate        = zip [0..]
-
-mobsToLayers :: [Mob] -> [Image]
-mobsToLayers = map mobToImg
-
--- takes a mob and creates an (offset) Image
-mobToImg :: Mob -> Image
-mobToImg m = offsetMobImg (at m) $ mobImg m
-    where
-        mobImg              = char defAttr . symbol
-        offsetMobImg (x, y) = translate x y

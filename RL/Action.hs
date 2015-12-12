@@ -10,7 +10,6 @@ import RL.State
 import Data.Maybe
 import Control.Applicative
 import Control.Monad.State
-import UI.HSCurses.Curses
 
 -- player actions
 

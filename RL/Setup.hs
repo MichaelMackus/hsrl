@@ -10,7 +10,6 @@ import RL.State
 import Control.Applicative
 import Control.Monad.State
 import Data.Time.Clock.POSIX
-import UI.HSCurses.Curses
 import System.Random
 
 -- defaults
