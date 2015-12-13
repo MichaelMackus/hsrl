@@ -1,32 +1,16 @@
-module RL.State (
-    getLevel,
-    getMessages,
-    getMap,
-    getMobs,
-    setMobs,
-    getMobsWithPlayer,
-    sendMessage,
-    getPlayer,
-    setPlayer,
-    getMobAt,
-    getTileAt,
-    getSeed,
-    setSeed,
-) where
-
-import RL.Game
-import RL.Map
-import RL.Mob
-
-import Control.Monad.State
-import Data.Maybe
-import System.Random
+module RL.State where
 
 -- state manipulation
 --
 -- helper getter/setter function for state manipulation
 --
 -- TODO look into lenses
+
+import RL.Game
+
+import Control.Monad.State
+import Data.Maybe
+import System.Random
 
 getLevel :: GameState Level
 getLevel = gets level
@@ -59,6 +43,11 @@ setMobs ms = do
     lvl <- getLevel
     setLevel $ lvl { mobs = filterMobs ms }
 
+isGameWon :: GameState Bool
+isGameWon = do
+    ms <- filterMobs <$> getMobs
+    return $ null ms
+
 getSeed :: GameState StdGen
 getSeed = do
         s <- gets seed
@@ -87,6 +76,18 @@ getTileAt p = do
         return $ filterMap (iterateMap map)
     where filterMap          = listToMaybe . map snd . filter filterTile
           filterTile (p', t) = p == p'
+
+-- max map rows
+maxRow :: GameState Int
+maxRow = do
+    m <- getMap
+    return (length $ m !! 0)
+
+-- max map columns
+maxColumn :: GameState Int
+maxColumn = do
+    m <- getMap
+    return (length m)
 
 sendMessage :: Message -> GameState ()
 sendMessage msg = do

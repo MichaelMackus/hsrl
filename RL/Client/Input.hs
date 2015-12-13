@@ -1,15 +1,19 @@
-module RL.Input (UserInput(..), user, isPlaying) where
+module RL.Client.Input (
+    UserInput(..),
+    user,
+    isPlaying,
+
+    module RL.Client,
+    module RL.IO
+) where
 
 -- player input
 --
 -- see movePlayer & attack for movement/attack logic
 
-import RL.IO
 import RL.Game
-import RL.Mob
-import RL.Map
-import RL.State
-import RL.Random
+import RL.Client
+import RL.IO
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -17,14 +21,7 @@ import Graphics.Vty
 
 -- user client             last action
 data UserInput = UserInput Action
-
--- default user input client
 user = UserInput None
-
--- is user playing?
-isPlaying :: UserInput -> Bool
-isPlaying (UserInput Quit)      = False
-isPlaying (UserInput otherwise) = True
 
 -- user input
 instance Client UserInput where
@@ -35,8 +32,13 @@ instance Client UserInput where
 
         return $ UserInput a
 
+-- is user playing?
+isPlaying :: UserInput -> Bool
+isPlaying (UserInput Quit)      = False
+isPlaying (UserInput otherwise) = True
+
 -- specific actions that can have inputs on the keyboard
-data Action = Quit | Move Dir | None                          deriving (Eq)
+data Action = Move Dir | Restart | Quit | None                deriving (Eq)
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 
 -- gets game Action from user input
@@ -86,7 +88,6 @@ attack target = do
 -- Char input to Action
 -- todo expose via config
 charToAction :: Char -> Action
-charToAction 'q'       = Quit
 charToAction 'k'       = Move North
 charToAction 'j'       = Move South
 charToAction 'h'       = Move West
@@ -95,6 +96,8 @@ charToAction 'u'       = Move NE
 charToAction 'y'       = Move NW
 charToAction 'b'       = Move SW
 charToAction 'n'       = Move SE
+charToAction 'r'       = Restart
+charToAction 'q'       = Quit
 charToAction otherwise = None
 
 -- move player to a given tile offset

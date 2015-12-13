@@ -1,4 +1,13 @@
-module RL.Mob (Mob(..), Player(..), Point(..), filterMobs, moveMob, moveMobTo, addOffset ) where
+module RL.Mob (
+    Mob(..),
+    Player(..),
+    Point,
+    filterMobs,
+    moveMob,
+    moveMobTo,
+    addOffset,
+    withMobIds
+) where
 
 import RL.Dice
 
@@ -7,15 +16,15 @@ type HP = Int
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
+    mobId  :: Int,
     symbol :: Char,
     at     :: Point,
     hp     :: HP,
     dmgd   :: Dice
 }
 
--- todo use mob identifier
 instance Eq Mob where
-    m == m' = symbol m == symbol m'
+    m == m' = mobId m == mobId m'
 
 type Point = (Int, Int) -- represents an x, y coordinate on the map
 type Player = Mob       -- our player is just an alias for mob
@@ -36,3 +45,10 @@ moveMobTo xy m = m { at = xy }
 -- this adds a (+x, +y) offset to (x, y) map coordinate
 addOffset :: Point -> Point -> Point
 addOffset (offx, offy) (x, y) = (offx + x, offy + y)
+
+-- initializes mob IDs
+withMobIds :: [Mob] -> [Mob]
+withMobIds = map withMobId . enumerateId
+    where
+        withMobId   (id, m) = if mobId m == 0 then m { mobId = id } else m
+        enumerateId         = zip [0..]

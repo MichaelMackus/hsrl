@@ -3,10 +3,6 @@ module RL.Setup (defaultGame, setupGame) where
 import RL.Dice
 import RL.Game
 import RL.IO
-import RL.Map
-import RL.Mob
-import RL.Random
-import RL.State
 
 import Control.Applicative
 import Control.Monad.State
@@ -41,6 +37,7 @@ defaultMap = toMap [
           toRow = map tile
 
 defaultMob = Mob {
+    mobId  = 0,
     hp     = 10,
     symbol = undefined,
     at     = (-1, -1),
@@ -50,39 +47,38 @@ defaultMob = Mob {
 -- define some mobs
 defaultPlayer = defaultMob { symbol = '@' }
 orc           = defaultMob { symbol = 'o', hp = 7 }
-kobold        = defaultMob { symbol = 'k', hp = 4 }
-goblin        = defaultMob { symbol = 'g', hp = 2 }
-
-
--- default state setup
---
--- TODO cleanup
+kobold        = defaultMob { symbol = 'k', hp = 4, dmgd = 1 `d` 3 }
+goblin        = defaultMob { symbol = 'g', hp = 2, dmgd = 1 `d` 2 }
 
 -- default game setup
 setupGame :: GameState ()
 setupGame = do
-        defaultSeed >>= setSeed -- seed the RNG
-        ms <- setupMobs         -- setup random mobs
-        p  <- setupPlayer       -- setup player start
-        setPlayer p
-        setMobs ms
+    setupRNG                -- seed the RNG
+    setupMobs               -- setup random mobs
+    setupPlayer             -- setup player start
+
+-- seed the RNG
+setupRNG :: GameState ()
+setupRNG = do
+        s <- defaultSeed
+        setSeed s
     where
-        defaultSeed = io $ mkStdGen <$> roundTime -- sensible default
-            where roundTime = round `fmap` getPOSIXTime
+        defaultSeed = io $ mkStdGen <$> roundTime       -- sensible default
+            where roundTime = round `fmap` getPOSIXTime -- based on sys time
 
 -- default mobs setup
-setupMobs :: GameState [Mob]
-setupMobs = mapM mapMob defaultMobs
+setupMobs :: GameState ()
+setupMobs = do
+        ms <- mapM mapMob $ withMobIds defaultMobs
+        setMobs ms
     where
         mapMob        m = randomBlankPoint >>= moveMobTo' m
         moveMobTo'  m p = return $ moveMobTo p m
-        defaultMobs     = [kobold, orc, goblin]
+        defaultMobs     = [kobold, orc, goblin, goblin]
 
 -- default player
-setupPlayer :: GameState Player
+setupPlayer :: GameState ()
 setupPlayer = do
     p     <- getPlayer
     start <- randomBlankPoint
-    return p { at = start }
-
--- helper functions TODO move these somewhere
+    setPlayer $ p { at = start }

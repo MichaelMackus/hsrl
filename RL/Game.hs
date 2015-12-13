@@ -1,4 +1,18 @@
-module RL.Game (GameState, Game(..), Message, Client(..)) where
+module RL.Game (
+    GameState,
+    Game(..),
+    Message,
+    module RL.Map,  -- export map
+    module RL.Mob   -- export mobs
+) where
+
+-- represents the global Game and GameState types
+--
+-- GameState is a basic State transformer over the global Game object, and the
+-- Renderer reader (which renders to the display).
+--
+-- The Game contains a Level (which represents the dungeon layout & mobs),
+-- messages (things that have happened), and random seed (for RNG).
 
 import RL.Mob
 import RL.Map
@@ -20,35 +34,3 @@ data Game = Game {
 
 -- simple string event
 type Message = String
-
--- represents a client that does something to the state
--- (see: RL.Input and RL.AI)
-class Client c where
-    -- 1 turn tick, modifies   state & Client
-    tick :: Client c => c -> GameState c
-
--- game is renderable
-instance Renderable Game where
-    getSprites g = getSprites (level g) ++ getMsgSprites (messages g)
-
--- dungeon is renderable
-instance Renderable Level where
-    getSprites lvl = getMobSprite (player lvl) : map getMobSprite (mobs lvl) ++ getMapSprites (tiles lvl)
-
--- helper functions since map/mob isn't renderable without context
-
-getMobSprite :: Mob -> Sprite
-getMobSprite m = (at m, symbol m : [])
-
-getMapSprites :: Map -> [Sprite]
-getMapSprites m = map getMapSprites' $ enumerate m
-    where
-        getMapSprites' (y, ts) = ((0, y), map fromTile ts)
-        enumerate              = zip [0..]
-
-getMsgSprites :: [Message] -> [Sprite]
-getMsgSprites = take 5 . map toSprite . enumerate
-    where
-        toSprite (i, m) = ((0, i + 15), m)
-        enumerate       = zip [0..]
-

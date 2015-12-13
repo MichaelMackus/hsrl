@@ -1,4 +1,20 @@
-module RL.Renderer (Renderer, Display, Sprite, Renderable(..), render, killRenderer, mkRenderer) where
+module RL.Renderer (
+    Renderer,
+    Display,
+    Sprite,
+    Renderable(..),
+    render,
+    killRenderer,
+    mkRenderer
+) where
+
+-- Basic VTY (virtual terminal) renderer.
+--
+-- The master "render" function takes a Renderable thing and the Display to
+-- output onto.
+--
+-- The Renderable thing returns Sprites through "getSprites" which are strings
+-- somewhere on the screen.
 
 import Graphics.Vty
 
@@ -7,8 +23,8 @@ import Control.Monad.Reader
 type Renderer = ReaderT Display IO
 
 type Display  = Vty
-type Sprite   = (Point, String)
-type Point    = (Int, Int) -- cheap cop out, todo move Point declaration
+type Sprite   = (Point, String) -- string somewhere on the screen
+type Point    = (Int, Int)      -- cheap cop out, todo move Point declaration
 
 class Renderable r where
     getSprites :: r -> [Sprite]

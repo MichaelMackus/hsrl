@@ -1,4 +1,15 @@
-module RL.Map ( Level(..), Tile(..), Map(..), Point(..), MapIterator, tile, iterateMap, maxRows, maxColumns, isPassable, fromTile ) where
+module RL.Map (
+    Level(..),
+    Tile(..),
+    Map,
+    MapIterator,
+    tile,
+    iterateMap,
+    isPassable,
+    fromTile,
+
+    module RL.Mob
+) where
 
 import RL.Mob
 
@@ -14,10 +25,6 @@ data Tile = TWall | Wall | Floor
 type Map = [[Tile]]
 
 type MapIterator = [(Point, Tile)]
-
--- TODO calculate
-maxRows    = 44 :: Int
-maxColumns = 8  :: Int
 
 tile :: Char -> Tile
 tile '|' = Wall
