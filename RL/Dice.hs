@@ -1,5 +1,9 @@
 module RL.Dice (Dice(..), d) where
 
+-- helper module to construct a Dice object
+--
+-- the Dice then gets rolled in RL.Random (roll) sometime in the future
+
 import System.Random
 
 data Dice  = D Int Sides

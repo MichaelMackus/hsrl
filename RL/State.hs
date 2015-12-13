@@ -1,7 +1,6 @@
 module RL.State (
     getLevel,
     getMessages,
-    getClients,
     getMap,
     getMobs,
     setMobs,
@@ -40,9 +39,6 @@ setLevel lvl = do
 getMessages :: GameState [Message]
 getMessages = gets messages
 
-getClients :: GameState [Client]
-getClients = gets clients
-
 getMap :: GameState Map
 getMap = gets $ tiles . level
 
@@ -61,7 +57,7 @@ getMobs = fmap mobs getLevel
 setMobs :: [Mob] -> GameState ()
 setMobs ms = do
     lvl <- getLevel
-    setLevel $ lvl { mobs = ms }
+    setLevel $ lvl { mobs = filterMobs ms }
 
 getSeed :: GameState StdGen
 getSeed = do

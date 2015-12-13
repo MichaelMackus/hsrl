@@ -8,11 +8,11 @@ import RL.State
 import Control.Monad
 import System.Random
 
--- main roll function 
+-- main roll function
 --
 -- generates random int and increments seed
 roll :: Dice -> GameState Int
-roll (D n ns) = do 
+roll (D n ns) = do
         (r, g') <- fmap doRoll getSeed
         setSeed g'
         return r

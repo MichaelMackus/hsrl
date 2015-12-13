@@ -11,11 +11,7 @@ type Sprite   = (Point, String)
 type Point    = (Int, Int) -- cheap cop out, todo move Point declaration
 
 class Renderable r where
-    getSprite  :: r -> Sprite
-    getSprite  = head . getSprites
-
     getSprites :: r -> [Sprite]
-    getSprites r = getSprite r : []
 
 -- main render function
 render :: Renderable r => r -> Display -> IO ()
@@ -43,10 +39,3 @@ mkRenderer :: IO Vty
 mkRenderer = do
     cfg <- standardIOConfig
     mkVty cfg
-
--- msgToImg :: [Message] -> Image
--- msgToImg = take 5 $ map toImg
---     where
---         toImg            = toImg' . enumerate
---         toImg'    (i, m) = translateY (0, i + 15) $ string defAttr m
---         enumerate        = zip [0..]

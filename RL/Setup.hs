@@ -1,5 +1,6 @@
 module RL.Setup (defaultGame, setupGame) where
 
+import RL.Dice
 import RL.Game
 import RL.IO
 import RL.Map
@@ -22,7 +23,6 @@ defaultGame = Game {
         mobs   = []
     },
     messages = [],
-    clients  = [],
     seed     = Nothing
 }
 
@@ -43,7 +43,8 @@ defaultMap = toMap [
 defaultMob = Mob {
     hp     = 10,
     symbol = undefined,
-    at     = (-1, -1)
+    at     = (-1, -1),
+    dmgd   = 1 `d` 4
 }
 
 -- define some mobs

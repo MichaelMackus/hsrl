@@ -1,5 +1,7 @@
 module RL.Mob (Mob(..), Player(..), Point(..), filterMobs, moveMob, moveMobTo, addOffset ) where
 
+import RL.Dice
+
 -- player/mobs
 type HP = Int
 
@@ -7,8 +9,13 @@ type HP = Int
 data Mob = Mob {
     symbol :: Char,
     at     :: Point,
-    hp     :: HP
+    hp     :: HP,
+    dmgd   :: Dice
 }
+
+-- todo use mob identifier
+instance Eq Mob where
+    m == m' = symbol m == symbol m'
 
 type Point = (Int, Int) -- represents an x, y coordinate on the map
 type Player = Mob       -- our player is just an alias for mob
@@ -20,11 +27,11 @@ filterMobs = filter $ (> 0) . hp
 
 -- move a mob by offset
 moveMob :: Point -> Mob -> Mob
-moveMob off m = Mob { symbol = symbol m, at = addOffset off (at m), hp = hp m }
+moveMob off m = m { at = addOffset off (at m) }
 
 -- move a mob to exact point
 moveMobTo :: Point -> Mob -> Mob
-moveMobTo xy m = Mob { symbol = symbol m, at = xy, hp = hp m }
+moveMobTo xy m = m { at = xy }
 
 -- this adds a (+x, +y) offset to (x, y) map coordinate
 addOffset :: Point -> Point -> Point

@@ -1,7 +1,6 @@
 module RL.IO (io) where
 
 import RL.Game
-import RL.State
 
 import Control.Monad.IO.Class (liftIO)
 
