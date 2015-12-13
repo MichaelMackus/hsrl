@@ -23,8 +23,8 @@ setLevel lvl = do
 getMessages :: GameState [Message]
 getMessages = gets messages
 
-getMap :: GameState Map
-getMap = gets $ tiles . level
+getTiles :: GameState Tiles
+getTiles = gets $ tiles . level
 
 getPlayer :: GameState Player
 getPlayer = gets $ player . level
@@ -72,21 +72,21 @@ getMobAt p = fmap getMobAt' getMobs
 
 getTileAt :: Point -> GameState (Maybe Tile)
 getTileAt p = do
-        map <- getMap
-        return $ filterMap (iterateMap map)
-    where filterMap          = listToMaybe . map snd . filter filterTile
+        map <- getTiles
+        return $ filterTiles (iterateTiles map)
+    where filterTiles          = listToMaybe . map snd . filter filterTile
           filterTile (p', t) = p == p'
 
 -- max map rows
 maxRow :: GameState Int
 maxRow = do
-    m <- getMap
+    m <- getTiles
     return (length $ m !! 0)
 
 -- max map columns
 maxColumn :: GameState Int
 maxColumn = do
-    m <- getMap
+    m <- getTiles
     return (length m)
 
 sendMessage :: Message -> GameState ()

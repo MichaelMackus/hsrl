@@ -43,14 +43,6 @@ getImage :: Sprite -> Image
 getImage ((0, 0), str) = string defAttr str
 getImage ((x, y), str) = translate x y $ getImage ((0, 0), str)
 
--- -- render message panel
--- renderMsgs :: [Message] -> Renderer ()
--- renderMsgs ms = do
---     let msgImg = map ms msgToImg
---         pic    = picForLayers msgImg
---     vty <- ask
---     update vty pic
-
 mkRenderer :: IO Vty
 mkRenderer = do
     cfg <- standardIOConfig

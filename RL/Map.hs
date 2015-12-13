@@ -1,10 +1,10 @@
 module RL.Map (
     Level(..),
     Tile(..),
-    Map,
-    MapIterator,
+    Tiles,
+    TilesIterator,
     tile,
-    iterateMap,
+    iterateTiles,
     isPassable,
     fromTile,
 
@@ -15,16 +15,16 @@ import RL.Mob
 
 -- represents a level in the dungeon
 data Level = Level {
-    tiles :: Map,
+    tiles :: Tiles,
     player :: Player,
     mobs :: [Mob]
     -- todo items
 }
 
 data Tile = TWall | Wall | Floor
-type Map = [[Tile]]
+type Tiles = [[Tile]]
 
-type MapIterator = [(Point, Tile)]
+type TilesIterator = [(Point, Tile)]
 
 tile :: Char -> Tile
 tile '|' = Wall
@@ -42,7 +42,7 @@ isPassable otherwise    = False
 
 
 -- helper function
-iterateMap :: Map -> MapIterator
-iterateMap = concat . map enumerateRow . enumerate
+iterateTiles :: Tiles -> TilesIterator
+iterateTiles = concat . map enumerateRow . enumerate
     where enumerateRow  (y, r) = map (\(x, t) -> ((x, y), t)) $ enumerate r
           enumerate            = zip [0..]

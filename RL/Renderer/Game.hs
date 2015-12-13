@@ -20,7 +20,7 @@ instance Renderable Level where
 getMobSprite :: Mob -> Sprite
 getMobSprite m = (at m, symbol m : [])
 
-getMapSprites :: Map -> [Sprite]
+getMapSprites :: Tiles -> [Sprite]
 getMapSprites m = map getMapSprites' $ enumerate m
     where
         getMapSprites' (y, ts) = ((0, y), map fromTile ts)

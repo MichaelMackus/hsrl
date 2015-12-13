@@ -1,8 +1,8 @@
 import RL.Client.AI
 import RL.Client.Input
 import RL.Game
-import RL.Renderer.Game
 import RL.Setup
+import RL.Renderer.Game
 
 import Control.Monad.State
 import Control.Monad.Reader
@@ -25,13 +25,5 @@ draw = do
     game <- get        -- game state
     disp <- ask        -- disp reader
     io $ render game disp
-
-shutdown :: r -> GameState r
-shutdown r = do
-    disp <- ask
-    msgs <- getMessages
-    io $ killRenderer disp                         -- shutdown display
-    unless (null msgs) (io $ putStrLn (head msgs)) -- last game message
-    return r                                       -- unmodified result
 
 main = runGame defaultGame gameLoop
