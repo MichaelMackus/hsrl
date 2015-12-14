@@ -117,7 +117,7 @@ setupMobs = do
         ms <- mapM mapMob $ withMobIds defaultMobs
         setMobs ms
     where
-        mapMob        m = randomBlankPoint >>= moveMobTo' m
+        mapMob        m = randomEmptyPoint >>= moveMobTo' m
         moveMobTo'  m p = return $ moveMobTo p m
         defaultMobs     = [kobold, orc, goblin, goblin]
 
@@ -125,5 +125,18 @@ setupMobs = do
 setupPlayer :: GameState ()
 setupPlayer = do
     p     <- getPlayer
-    start <- randomBlankPoint
+    start <- randomEmptyPoint
     setPlayer $ p { at = start }
+
+-- generates random map point
+randomEmptyPoint :: GameState Point
+randomEmptyPoint =  do
+    cols <- maxColumn
+    rows <- maxRow
+    p    <- randomPoint cols rows
+    t    <- getTileAt p
+    if isPassable t then
+        return p
+    else
+        randomEmptyPoint
+

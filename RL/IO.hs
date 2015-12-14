@@ -32,18 +32,6 @@ roll (D n ns) = do
         minInt = n
         maxInt = ns * n
 
--- generates random map point
-randomBlankPoint :: GameState Point
-randomBlankPoint =  do
-    cols <- maxColumn
-    rows <- maxRow
-    p    <- randomPoint cols rows
-    t    <- getTileAt p
-    if isPassable t then
-        return p
-    else
-        randomBlankPoint
-
 -- generates random point
 -- between     maxX   maxY
 randomPoint :: Int -> Int -> GameState Point

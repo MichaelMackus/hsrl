@@ -21,7 +21,7 @@ data Level = Level {
     -- todo items
 }
 
-data Tile = TWall | Wall | Floor
+data Tile = TWall | Wall | Floor | None
 type Tiles = [[Tile]]
 
 type TilesIterator = [(Point, Tile)]
@@ -29,12 +29,14 @@ type TilesIterator = [(Point, Tile)]
 tile :: Char -> Tile
 tile '|' = Wall
 tile '-' = TWall
-tile otherwise = Floor
+tile '.' = Floor
+tile otherwise = None
 
 fromTile :: Tile -> Char
 fromTile Wall  = '|'
 fromTile TWall = '-'
-fromTile otherwise = '.'
+fromTile Floor = '.'
+fromTile otherwise = ' '
 
 isPassable :: Maybe Tile -> Bool
 isPassable (Just Floor) = True
