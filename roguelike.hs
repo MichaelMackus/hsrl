@@ -2,6 +2,7 @@ import RL.Client.AI
 import RL.Client.Input
 import RL.Game
 import RL.Setup
+import RL.Setup.Dungeon
 import RL.Renderer.Game
 
 import Control.Monad.State

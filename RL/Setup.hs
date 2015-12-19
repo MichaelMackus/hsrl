@@ -28,15 +28,15 @@ import System.Random
 -- For example: "runGame defaultGame (roll $ 1 `d` 20)" will generate a random
 -- IO Int from 1-20 (albeit rather inefficiently ;))
 runGame :: Game -> GameState r -> IO r
-runGame g gs = do
-        vty    <- mkRenderer               -- initialize VTY renderer
-        (r, s) <- runReaderT gameState vty -- run the Renderer
+runGame g s = do
+        vty     <- mkRenderer               -- initialize VTY renderer
+        (r, s') <- runReaderT gameState vty -- run the Renderer
         return r
     where
         -- run game                       initial Game
         gameState  = runStateT gameState' g
         -- wrap        (pre)   gameLoop  (post)
-        gameState' = setupGame >> gs >>= shutdown
+        gameState' = setupGame >> s >>= shutdown
 
 -- default game setup
 setupGame :: GameState ()
@@ -75,6 +75,7 @@ defaultGame = Game {
 defaultTiles :: Tiles
 defaultTiles = toTiles [
         "--------------------------------------------",
+        "|..........................................|",
         "|..........................................|",
         "|..........................................|",
         "|..........................................|",

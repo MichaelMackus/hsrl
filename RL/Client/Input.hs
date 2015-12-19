@@ -21,7 +21,7 @@ import Graphics.Vty
 
 -- user client             last action
 data UserInput = UserInput Action
-user = UserInput None
+user           = UserInput None
 
 -- user input
 instance Client UserInput where
