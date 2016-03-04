@@ -40,29 +40,27 @@ generateDungeon = runReader . evalRandT generator
 -- setup the randomized dungeon
 generateTiles :: DState TilesIterator
 generateTiles = do
-    c  <- ask
-    cs <- cells (maxCells c)
-    put (cs, [])
-    toTiles cs
+    generateCells =<< asks maxCells
+    cs' <- gets fst
+    toTiles cs'
 
 
 -- represents a box of tiles
 data Cell = C Point Tiles deriving (Show)
 
 --       max    random cells
-cells :: Int -> DState [Cell]
-cells max = replicateM max openCell
+generateCells :: Int -> DState ()
+generateCells max = replicateM_ max openCell
 
 -- generate blank cell
-openCell :: DState Cell
+openCell :: DState ()
 openCell = do
         (cs, pass) <- get
         c          <- cell
 
-        let touchingCells = filter (not . isTouching c) cs
+        let touchingCells = filter (isTouching c) cs
         if null touchingCells then
-            -- put (cs ++ c, []) -- FIXME
-            return c
+            put (c : cs, pass)
         else
             openCell
     where
