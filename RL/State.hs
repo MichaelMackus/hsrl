@@ -8,6 +8,7 @@ module RL.State where
 
 import RL.Game
 
+import Control.Applicative
 import Control.Monad.State
 import Data.Maybe
 import System.Random

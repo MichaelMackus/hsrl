@@ -1,22 +1,40 @@
-module RL.Setup.Dungeon where
+module RL.Setup.Dungeon (generateDungeon, DConfig(..), DLayout) where
 
--- Basic random dungeon generator
+-- Basic random dungeon generator.
 --
--- TODO encapsulate in own state machine, only needs Map/Level and Random
+-- Encapsulated in own state machine, only needs Config and Random
 
 import RL.Dice
 import RL.Game
 import RL.IO
+import RL.Map
 
 import Control.Applicative
+import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Random
 
-type DungeonState = State Dungeon
-type Dungeon      = ([Cell], [Passage])
+type DState     = StateT DLayout DGenerator
+type DGenerator = RandT StdGen (Reader DConfig)
+
+type DLayout = ([Cell], [Passage])
+data DConfig = DConfig {
+    dwidth  :: Int,
+    dheight :: Int
+}
+
+-- generate a randomized dungeon
+generateDungeon :: StdGen -> DConfig -> (Tiles, DLayout)
+generateDungeon = runReader . evalRandT generator
+    where
+        generator :: DGenerator (Tiles, DLayout)
+        generator = runStateT generateTiles initialL
+        initialL  = ([], [])
 
 -- setup the randomized dungeon
-setupDungeon :: DungeonState ()
-setupDungeon = return ()
+generateTiles :: DState Tiles
+generateTiles = return []
+
 
 -- represents a box of tiles
 data Cell = C Point Tiles deriving (Show)

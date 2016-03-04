@@ -29,14 +29,14 @@ import System.Random
 -- IO Int from 1-20 (albeit rather inefficiently ;))
 runGame :: Game -> GameState r -> IO r
 runGame g s = do
-        vty     <- mkRenderer               -- initialize VTY renderer
-        (r, s') <- runReaderT gameState vty -- run the Renderer
+        vty     <- mkRenderer                 -- initialize VTY renderer
+        (r, s') <- runReaderT stateRunner vty -- run the Renderer
         return r
     where
         -- run game                       initial Game
-        gameState  = runStateT gameState' g
+        stateRunner  = runStateT stateRunner' g
         -- wrap        (pre)   gameLoop  (post)
-        gameState' = setupGame >> s >>= shutdown
+        stateRunner' = setupGame >> s >>= shutdown
 
 -- default game setup
 setupGame :: GameState ()

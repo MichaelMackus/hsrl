@@ -28,7 +28,7 @@ roll (D n ns) = do
         setSeed g'
         return r
     where
-        doRoll = randomR (minInt, maxInt)
+        doRoll = randInt (minInt, maxInt)
         minInt = n
         maxInt = ns * n
 
@@ -36,3 +36,7 @@ roll (D n ns) = do
 -- between     maxX   maxY
 randomPoint :: Int -> Int -> GameState Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
+
+-- helper function
+randInt :: (Int, Int) -> StdGen -> (Int, StdGen)
+randInt minToMax = randomR minToMax

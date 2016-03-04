@@ -9,15 +9,18 @@ rendering/input. Will eventually move to
 [LambdaHack](http://hackage.haskell.org/package/LambdaHack), but I'm currently
 enjoying the basics of the VTY library.
 
-# Run
-
-**Dependencies**:
+# Dependencies
 
 * GHC (`brew install ghc` or `apt-get install ghc`)
-* VTY (`cabal install vty`)
+* Execute the following in a terminal (requires cabal `apt-get install cabal-install`):
 
-Then, compile with `ghc -threaded roguelike.hs`. An executable should be created
-(`roguelike` on unix).
+    cabal install monadrandom
+    cabal install vty
+
+
+# Run
+
+Compile with `ghc -threaded roguelike.hs`. An executable `roguelike` should be created.
 
 # TODOs:
 
