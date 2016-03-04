@@ -51,7 +51,7 @@ data Cell = C Point Tiles deriving (Show)
 
 --       max    random cells
 cells :: Int -> DState [Cell]
-cells max = take max <$> repeat <$> openCell
+cells max = replicateM max openCell
 
 -- generate blank cell
 openCell :: DState Cell
