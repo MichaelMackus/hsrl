@@ -1,3 +1,4 @@
 roguelike
 *.o
 *.hi
+.stack-work

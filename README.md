@@ -11,8 +11,15 @@ enjoying the basics of the VTY library.
 
 # Dependencies
 
+**Stack:**
+
+The preferred way to install is with stack. `cd` into the directory, and
+do a `stack build`.
+
+**Manual Install:**
+
 * GHC (`brew install ghc` or `apt-get install ghc`)
-* Execute the following in a terminal (requires cabal `apt-get install cabal-install`):
+* Execute the following in a terminal (requires `apt-get install cabal-install`)
 
     cabal install monadrandom
     cabal install vty
@@ -20,7 +27,7 @@ enjoying the basics of the VTY library.
 
 # Run
 
-Compile with `ghc -threaded roguelike.hs`. An executable `roguelike` should be created.
+Compile with `ghc -threaded roguelike.hs` or `stack build`. An executable `roguelike` should be created.
 
 # TODOs:
 
