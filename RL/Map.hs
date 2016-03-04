@@ -21,7 +21,7 @@ data Level = Level {
     -- todo items
 }
 
-data Tile = TWall | Wall | Floor | Rock deriving (Show)
+data Tile = TWall | Wall | Floor | Rock deriving (Show, Eq)
 type Tiles = [[Tile]]
 
 type TilesIterator = [(Point, Tile)]
@@ -48,3 +48,6 @@ iterateTiles :: Tiles -> TilesIterator
 iterateTiles = concat . map enumerateRow . enumerate
     where enumerateRow  (y, r) = map (\(x, t) -> ((x, y), t)) $ enumerate r
           enumerate            = zip [0..]
+
+-- toTiles :: TilesIterator -> Tiles
+-- toTiles it = k

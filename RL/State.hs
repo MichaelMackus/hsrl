@@ -75,7 +75,7 @@ getTileAt :: Point -> GameState (Maybe Tile)
 getTileAt p = do
         map <- getTiles
         return $ filterTiles (iterateTiles map)
-    where filterTiles          = listToMaybe . map snd . filter filterTile
+    where filterTiles        = listToMaybe . map snd . filter filterTile
           filterTile (p', t) = p == p'
 
 -- max map rows
