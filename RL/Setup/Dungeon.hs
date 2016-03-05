@@ -7,6 +7,7 @@ module RL.Setup.Dungeon where
 import RL.Dice
 import RL.IO
 import RL.Map
+import RL.Util
 
 import Data.Maybe
 import Control.Applicative
@@ -25,7 +26,7 @@ data DConfig = DConfig {
 }
 
 -- generate dungeon, via IO seeded RNG
-generateIO :: DConfig -> IO TilesIterator
+generateIO :: DConfig -> IO Tiles
 generateIO = evalRandIO . liftRand . generateDungeon
 
 -- generate a randomized dungeon
@@ -35,52 +36,54 @@ generateIO = evalRandIO . liftRand . generateDungeon
 --  `liftRand generateDungeon config` 
 --
 -- From any `Rand StdGen a` context.
-generateDungeon :: DConfig -> StdGen -> (TilesIterator, StdGen)
+generateDungeon :: DConfig -> StdGen -> (Tiles, StdGen)
 generateDungeon c g = runReader (runRandT generator g) c
 
 -- dungeon generator
-generator :: DGenerator TilesIterator
+generator :: DGenerator Tiles
 generator = evalStateT generateTiles initialL
     where initialL  = ([], [])
 
 -- setup the randomized dungeon
-generateTiles :: DState TilesIterator
+generateTiles :: DState Tiles
 generateTiles = do
-    generateCells =<< asks maxCells
-    cs' <- gets fst
-    toTiles cs'
+    max <- asks maxCells
+    replicateM_ max openCell
+    getDTiles
 
 
 -- represents a box of tiles
 data Cell = C Point Tiles deriving (Show)
 
---       max    random cells
-generateCells :: Int -> DState ()
-generateCells max = replicateM_ max openCell
-
 -- generate blank cell
-openCell :: DState ()
+openCell :: DState Cell
 openCell = do
         (cs, pass) <- get
         c          <- cell
 
         let touchingCells = filter (isTouching c) cs
         if null touchingCells then
-            put (c : cs, pass)
+            put (c : cs, pass) >> return c
         else
             openCell
     where
         isTouching c c2 = cpoint c2 == cpoint c
 
-toTiles :: [Cell] -> DState TilesIterator
-toTiles cs = do
-        c <- ask
-        -- TODO un-iterate
-        return (map getTile $ blankTiles c)
+getDTiles :: DState Tiles
+getDTiles = do
+    conf <- ask
+    cs   <- gets fst
+
+    return $ toTiles cs
+
+toTiles :: [Cell] -> Tiles
+toTiles cs = unenumerate2 . map updateTile . enumerate2 $ blankTiles
     where
-        getTile i@(p, t) = maybe i ((,) p) $ tileAt p cs
-        blankTiles     c = iterateTiles $ take (dheight c) (repeat . take (dwidth c) $ repeat Rock)
-        -- uniterate     ts = snd . unzip
+        updateTile (p, t) = (p, maybe t id $ tileAt p cs)
+        blankTiles        = take height (repeat . take width $ repeat Rock)
+        width             = fst . cpoint $ last cs
+        height            = snd . cpoint $ last cs
+
 
 tileAt :: Point -> [Cell] -> Maybe Tile
 tileAt p = listToMaybe . mapMaybe maybeTileIn
@@ -88,7 +91,7 @@ tileAt p = listToMaybe . mapMaybe maybeTileIn
         maybeTileIn :: Cell -> Maybe Tile
         maybeTileIn = lookup p . iterateCTiles
         iterateCTiles :: Cell -> TilesIterator
-        iterateCTiles  c          = map (addPoint c) $ iterateTiles (ctiles c)
+        iterateCTiles  c          = map (addPoint c) $ enumerate2 (ctiles c)
         addPoint       c (p', t)  = (addPoint' (cpoint c) p', t)
         addPoint' (x, y) (x', y') = (x + x', y + y')
 

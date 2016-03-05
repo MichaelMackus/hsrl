@@ -12,6 +12,7 @@ import RL.Dice
 import RL.Game
 import RL.IO
 import RL.Renderer
+import RL.Setup.Dungeon
 
 import Control.Applicative
 import Control.Monad.Reader
@@ -43,9 +44,18 @@ setupGame :: GameState ()
 setupGame = do
     setupRNG                -- seed the RNG
     -- todo
-    -- setupDungeon            -- setup random dungeon
+    setupDungeon            -- setup random dungeon
     setupMobs               -- setup random mobs
     setupPlayer             -- setup player start
+
+setupDungeon :: GameState ()
+setupDungeon = do
+    lvl <- getLevel
+    mx  <- maxColumn
+    my  <- maxRow
+    ts  <- io $ generateIO (DConfig mx my 1)
+
+    setLevel $ lvl { tiles = ts } 
 
 -- shutdown the game
 --

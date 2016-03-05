@@ -7,6 +7,7 @@ module RL.State where
 -- TODO look into lenses
 
 import RL.Game
+import RL.Util
 
 import Control.Applicative
 import Control.Monad.State
@@ -74,9 +75,10 @@ getMobAt p = fmap getMobAt' getMobs
 getTileAt :: Point -> GameState (Maybe Tile)
 getTileAt p = do
         map <- getTiles
-        return $ filterTiles (iterateTiles map)
-    where filterTiles        = listToMaybe . map snd . filter filterTile
-          filterTile (p', t) = p == p'
+        return $ filterTiles (enumerate2 map)
+    where filterTiles         = listToMaybe . map itToTile . filter filterTile
+          filterTile  (p', t) = p == p'
+          itToTile    (_,  t) = t
 
 -- max map rows
 maxRow :: GameState Int
