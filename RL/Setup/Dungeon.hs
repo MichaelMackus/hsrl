@@ -5,7 +5,6 @@ module RL.Setup.Dungeon where
 -- Encapsulated in own state machine, only needs Config and Random
 
 import RL.Dice
-import RL.Game
 import RL.IO
 import RL.Map
 
@@ -25,17 +24,24 @@ data DConfig = DConfig {
     maxCells :: Int
 }
 
--- generate a randomized dungeon
-generateIODungeon :: DConfig -> IO (TilesIterator, DLayout)
-generateIODungeon c = newStdGen >>= (\g -> return $ generateDungeon g c)
+-- generate dungeon, via IO seeded RNG
+generateIO :: DConfig -> IO TilesIterator
+generateIO = evalRandIO . liftRand . generateDungeon
 
 -- generate a randomized dungeon
-generateDungeon :: StdGen -> DConfig -> (TilesIterator, DLayout)
-generateDungeon = runReader . evalRandT generator
-    where
-        generator :: DGenerator (TilesIterator, DLayout)
-        generator = runStateT generateTiles initialL
-        initialL  = ([], [])
+--
+-- Format is same as randomR, so you can do:
+--
+--  `liftRand generateDungeon config` 
+--
+-- From any `Rand StdGen a` context.
+generateDungeon :: DConfig -> StdGen -> (TilesIterator, StdGen)
+generateDungeon c g = runReader (runRandT generator g) c
+
+-- dungeon generator
+generator :: DGenerator TilesIterator
+generator = evalStateT generateTiles initialL
+    where initialL  = ([], [])
 
 -- setup the randomized dungeon
 generateTiles :: DState TilesIterator
