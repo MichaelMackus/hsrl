@@ -16,7 +16,7 @@ unenumerate it = snd $ unzip it
 unenumerate2 :: [((Int, Int), a)] -> [[a]]
 unenumerate2 [] = error "unenumerate2 requires a list"
 unenumerate2 it = splitEvery maxX . snd $ unzip it
-    where maxX = fst . fst $ last it
+    where maxX = (+1) . fst . fst $ last it
 
 splitEvery :: Int -> [a] -> [[a]]
 splitEvery _ [] = []
