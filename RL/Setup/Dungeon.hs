@@ -74,15 +74,13 @@ getDTiles = do
     conf <- ask
     cs   <- gets fst
 
-    return $ toTiles cs
+    return $ toTiles conf cs
 
-toTiles :: [Cell] -> Tiles
-toTiles cs = unenumerate2 . map updateTile . enumerate2 $ blankTiles
+toTiles :: DConfig -> [Cell] -> Tiles
+toTiles conf cs = unenumerate2 . map updateTile . enumerate2 $ blankTiles
     where
         updateTile (p, t) = (p, maybe t id $ tileAt p cs)
-        blankTiles        = take height (repeat . take width $ repeat Rock)
-        width             = fst . cpoint $ last cs
-        height            = snd . cpoint $ last cs
+        blankTiles        = take (dwidth conf) (repeat . take (dwidth conf) $ repeat Rock)
 
 
 tileAt :: Point -> [Cell] -> Maybe Tile
