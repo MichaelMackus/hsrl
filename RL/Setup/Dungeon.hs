@@ -33,7 +33,7 @@ generateIO = evalRandIO . liftRand . generateDungeon
 --
 -- Format is same as randomR, so you can do:
 --
---  `liftRand generateDungeon config` 
+--  `liftRand generateDungeon config`
 --
 -- From any `Rand StdGen a` context.
 generateDungeon :: DConfig -> StdGen -> (Tiles, StdGen)
@@ -62,8 +62,9 @@ openCell = do
         c          <- cell
 
         let touchingCells = filter (isTouching c) cs
-        if null touchingCells then
-            put (c : cs, pass) >> return c
+        if null touchingCells then do
+            put (c : cs, pass)
+            return c
         else
             openCell
     where
