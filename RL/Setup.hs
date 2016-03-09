@@ -53,7 +53,7 @@ setupDungeon = do
     lvl <- getLevel
     mx  <- maxColumn
     my  <- maxRow
-    ts  <- io $ generateIO (DConfig mx my 1)
+    ts  <- io $ generateIO (DConfig mx my 3)
 
     setLevel $ lvl { tiles = ts } 
 

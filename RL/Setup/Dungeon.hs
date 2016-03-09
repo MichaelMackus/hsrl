@@ -61,14 +61,27 @@ openCell = do
         (cs, pass) <- get
         c          <- cell
 
-        let touchingCells = filter (isTouching c) cs
+        let touchingCells = filter (isIntersecting c) cs
         if null touchingCells then do
             put (c : cs, pass)
             return c
         else
             openCell
+
+isIntersecting :: Cell -> Cell -> Bool
+isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
+                            || (rightX c >= leftX c2 && rightX c <= rightX c2))
+                            || ((leftX c2 >= leftX c && leftX c2 <= rightX c)
+                            || (rightX c2 >= leftX c && rightX c2 <= rightX c)))
+                        && (((topY c >= topY c2 && topY c <= botY c2)
+                            || (botY c >= topY c2 && botY c <= botY c2))
+                            || (topY c2 >= topY c && topY c2 <= botY c)
+                            || (botY c2 >= topY c && botY c2 <= botY c))
     where
-        isTouching c c2 = cpoint c2 == cpoint c
+        leftX  c = fst $ cpoint c
+        rightX c = cwidth c + leftX c
+        topY   c = snd $ cpoint c
+        botY   c = cheight c + topY c
 
 getDTiles :: DState Tiles
 getDTiles = do
@@ -178,6 +191,14 @@ ctiles (C _ ts) = ts
 --      cell to dim
 cdim :: Cell -> Dimension
 cdim (C _ c) = (length $ c !! 0, length c)
+
+--      cell to width
+cwidth :: Cell -> Int
+cwidth = fst . cdim
+
+--      cell to height
+cheight :: Cell -> Int
+cheight = snd . cdim
 
 --      cell to point
 cpoint :: Cell -> Point
