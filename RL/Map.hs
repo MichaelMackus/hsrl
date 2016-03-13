@@ -12,6 +12,7 @@ module RL.Map (
 ) where
 
 import RL.Mob
+import RL.Util
 
 -- represents a level in the dungeon
 data Level = Level {
@@ -45,9 +46,7 @@ isPassable otherwise    = False
 
 -- helper function
 iterateTiles :: Tiles -> TilesIterator
-iterateTiles = concat . map enumerateRow . enumerate
-    where enumerateRow  (y, r) = map (\(x, t) -> ((x, y), t)) $ enumerate r
-          enumerate            = zip [0..]
+iterateTiles = enumerate2
 
 -- toTiles :: TilesIterator -> Tiles
 -- toTiles it = k

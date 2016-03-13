@@ -6,6 +6,7 @@ module RL.Renderer.Game (
 
 import RL.Game
 import RL.Renderer
+import RL.Util
 
 -- game is renderable
 instance Renderable Game where
@@ -21,13 +22,12 @@ getMobSprite :: Mob -> Sprite
 getMobSprite m = (at m, symbol m : [])
 
 getMapSprites :: Tiles -> [Sprite]
-getMapSprites m = map getMapSprites' $ enumerate m
+getMapSprites = map getRowSprite . enumerate
     where
-        getMapSprites' (y, ts) = ((0, y), map fromTile ts)
-        enumerate              = zip [0..]
+        getRowSprite ((y), ts) = ((0, y), map fromTile ts)
 
 getMsgSprites :: [Message] -> [Sprite]
-getMsgSprites = take 5 . map toSprite . enumerate
+getMsgSprites = take 10 . map toSprite . enumerate
     where
         toSprite (i, m) = ((0, i + 15), m)
         enumerate       = zip [0..]

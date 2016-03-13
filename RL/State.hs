@@ -84,13 +84,13 @@ getTileAt p = do
 maxRow :: GameState Int
 maxRow = do
     m <- getTiles
-    return (length $ m !! 0)
+    return (length m)
 
 -- max map columns
 maxColumn :: GameState Int
 maxColumn = do
     m <- getTiles
-    return (length m)
+    return (length $ m !! 0)
 
 sendMessage :: Message -> GameState ()
 sendMessage msg = do

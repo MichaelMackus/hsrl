@@ -51,9 +51,24 @@ setupGame = do
 setupDungeon :: GameState ()
 setupDungeon = do
     lvl <- getLevel
-    mx  <- maxColumn
-    my  <- maxRow
-    ts  <- io $ generateIO (DConfig mx my 3)
+    -- mx  <- maxColumn
+    -- my  <- maxRow
+
+    let config = DConfig mx my maxCs
+        maxCs  = 5
+        mx     = 80
+        my     = 10
+
+    (ts, st) <- io $ generateIO config
+
+    let cs  = dcells st
+        cnt = dcount st
+        my  = length ts
+        mx  = length (ts !! 0)
+
+    -- debug
+    sendMessage $ "Cells generated: " ++ show (length cs) ++ " in " ++ show cnt ++ " tries"
+    sendMessage $ "mx: " ++ show mx ++ ", my: " ++ show my
 
     setLevel $ lvl { tiles = ts } 
 

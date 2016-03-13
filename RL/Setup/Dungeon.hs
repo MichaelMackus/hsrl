@@ -15,10 +15,14 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Random
 
-type DState     = StateT DLayout DGenerator
+type Dungeon    = StateT DState DGenerator
 type DGenerator = RandT StdGen (Reader DConfig)
 
-type DLayout = ([Cell], [Passage])
+data DState  = DState {
+    dcells :: [Cell],
+    dcount :: Int
+}
+
 data DConfig = DConfig {
     dwidth   :: Int,
     dheight  :: Int,
@@ -26,7 +30,7 @@ data DConfig = DConfig {
 }
 
 -- generate dungeon, via IO seeded RNG
-generateIO :: DConfig -> IO Tiles
+generateIO :: DConfig -> IO (Tiles, DState)
 generateIO = evalRandIO . liftRand . generateDungeon
 
 -- generate a randomized dungeon
@@ -36,16 +40,16 @@ generateIO = evalRandIO . liftRand . generateDungeon
 --  `liftRand generateDungeon config`
 --
 -- From any `Rand StdGen a` context.
-generateDungeon :: DConfig -> StdGen -> (Tiles, StdGen)
+generateDungeon :: DConfig -> StdGen -> ((Tiles, DState), StdGen)
 generateDungeon c g = runReader (runRandT generator g) c
 
 -- dungeon generator
-generator :: DGenerator Tiles
-generator = evalStateT generateTiles initialL
-    where initialL  = ([], [])
+generator :: DGenerator (Tiles, DState)
+generator = runStateT generateTiles initialDng
+    where initialDng = DState { dcells = [], dcount = 0 }
 
 -- setup the randomized dungeon
-generateTiles :: DState Tiles
+generateTiles :: Dungeon Tiles
 generateTiles = do
     max <- asks maxCells
     replicateM_ max openCell
@@ -56,18 +60,22 @@ generateTiles = do
 data Cell = C Point Tiles deriving (Show)
 
 -- generate blank cell
-openCell :: DState Cell
+openCell :: Dungeon ()
 openCell = do
-        (cs, pass) <- get
-        c          <- cell
+        dng   <- get
+        c     <- cell
+        inDng <- inDungeon c
 
-        let touchingCells = filter (isIntersecting c) cs
-        if null touchingCells then do
-            put (c : cs, pass)
-            return c
+        let touchingCells = filter (isIntersecting c) $ dcells dng
+        if inDng && null touchingCells then
+            put $ dng { dcells = c : (dcells dng), dcount = 0 }
         else
-            openCell
+            -- increment counter, and only continue when < 3 consecutive tries
+            let dng'     = dng { dcount = dcount dng + 1 }
+                continue = dcount dng' < 3
+            in  when continue $ put dng' >> openCell
 
+-- tests if a cell intersects another cell (collision detection)
 isIntersecting :: Cell -> Cell -> Bool
 isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
                             || (rightX c >= leftX c2 && rightX c <= rightX c2))
@@ -78,23 +86,30 @@ isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
                             || (topY c2 >= topY c && topY c2 <= botY c)
                             || (botY c2 >= topY c && botY c2 <= botY c))
     where
-        leftX  c = fst $ cpoint c
-        rightX c = cwidth c + leftX c
-        topY   c = snd $ cpoint c
-        botY   c = cheight c + topY c
 
-getDTiles :: DState Tiles
+-- tests if a cell is within dungeon boundaries
+inDungeon :: Cell -> Dungeon Bool
+inDungeon c = do
+    conf <- ask
+
+    let mx = dwidth conf - 1
+        my = dheight conf - 1
+
+    return (leftX c >= 0 && rightX c <= mx && topY c >= 0 && botY c <= my)
+
+
+getDTiles :: Dungeon Tiles
 getDTiles = do
     conf <- ask
-    cs   <- gets fst
+    cs   <- gets dcells
 
     return $ toTiles conf cs
 
 toTiles :: DConfig -> [Cell] -> Tiles
-toTiles conf cs = unenumerate2 . map updateTile . enumerate2 $ blankTiles
+toTiles conf cs = unenumerate2 . map updateTile $ enumerate2 blankTiles
     where
         updateTile (p, t) = (p, maybe t id $ tileAt p cs)
-        blankTiles        = take (dwidth conf) (repeat . take (dwidth conf) $ repeat Rock)
+        blankTiles        = replicate (dheight conf - 1) (replicate (dwidth conf - 1) Rock)
 
 
 tileAt :: Point -> [Cell] -> Maybe Tile
@@ -104,13 +119,18 @@ tileAt p = listToMaybe . mapMaybe maybeTileIn
         maybeTileIn = lookup p . iterateCTiles
         iterateCTiles :: Cell -> TilesIterator
         iterateCTiles  c          = map (addPoint c) $ enumerate2 (ctiles c)
-        addPoint       c (p', t)  = (addPoint' (cpoint c) p', t)
-        addPoint' (x, y) (x', y') = (x + x', y + y')
+        addPoint       c (p, t)   = (addCPoint c p, t)
+
+
+addCPoint :: Cell -> Point -> Point
+addCPoint c (x, y) = (cx + x, cy + y)
+    where cx = fst $ cpoint c
+          cy = snd $ cpoint c
 
 
 -- generate random dungeon cell
 -- TODO convert rand function
-cell :: DState Cell
+cell :: Dungeon Cell
 cell = do
         dim   <- getDim
         start <- randomCellPoint dim
@@ -134,27 +154,14 @@ data Passage = Passage Point Dir Tiles
 data Dir     = North | East | South | West
 
 -- generates random map point for particular dimensions
-randomCellPoint :: Dimension -> DState Point
+randomCellPoint :: Dimension -> Dungeon Point
 randomCellPoint (w, h) = do
-        c <- ask
+    c <- ask
 
-        let cols = dwidth c
-            rows = dheight c
+    let cols = dwidth c
+        rows = dheight c
 
-        p <- randomDPoint rows cols
-
-        --          pad for walls
-        let maxP = (rows - 1, cols - 1)
-
-        if willFit p maxP then
-            return p
-        else
-            randomCellPoint (w, h)
-
-    where
-        willFit (x, y) (maxX, maxY) = (x > 1 && y > 1) &&
-                                      ((x + w) < maxX) &&
-                                      ((y + h) < maxY)
+    randomDPoint (cols - 1) (rows - 1)
 
 
 -- just a blank dungeon cell
@@ -162,17 +169,17 @@ genCell :: Point -> Dimension -> Cell
 genCell p (w, h) = C p buildCell
     where buildCell = replicate h (replicate w Floor)
 
--- helper function to roll within DState
+-- helper function to roll within Dungeon
 --
 -- TODO remove and refactor roll function with MonadRandom
-droll :: Dice -> DState Int
+droll :: Dice -> Dungeon Int
 droll (D n ns) = lift $ getRandomR (n, ns * n)
 
 -- generates random point
 -- between     maxX   maxY
 --
 -- TODO remove and refactor roll function with MonadRandom
-randomDPoint :: Int -> Int -> DState Point
+randomDPoint :: Int -> Int -> Dungeon Point
 randomDPoint x y = liftM2 (,) (droll $ 1 `d` x) (droll $ 1 `d` y)
 
 -- dungeon cell box (w x h)
@@ -204,3 +211,8 @@ cheight = snd . cdim
 cpoint :: Cell -> Point
 cpoint (C p _) = p
 
+-- cell points
+leftX  c = fst $ cpoint c
+rightX c = cwidth c + leftX c
+topY   c = snd $ cpoint c
+botY   c = cheight c + topY c
