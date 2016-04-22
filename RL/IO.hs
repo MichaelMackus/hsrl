@@ -1,19 +1,15 @@
-module RL.IO (
-    module RL.IO,
-    module RL.State
-) where
+module RL.IO where
 
 -- Helper module which contains useful functions within the GameState.
 --
 -- Also exports getters/setters in RL.State
 
-import RL.Dice
-import RL.Game
-import RL.State
-
 import Control.Monad          (liftM2)
 import Control.Monad.IO.Class (liftIO)
 import System.Random
+
+-- todo basic MonadRand instance for Dungeon Generation
+-- instance MonadRandom Dungeon where
 
 -- basic IO helper
 io :: IO a -> GameState a

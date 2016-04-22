@@ -4,8 +4,6 @@ module RL.Dice (Dice(..), d) where
 --
 -- the Dice then gets rolled in RL.IO (roll) sometime in the future
 
-import System.Random
-
 data Dice  = D Int Sides
 type Sides = Int
 

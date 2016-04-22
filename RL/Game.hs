@@ -1,36 +1,47 @@
-module RL.Game (
-    GameState,
-    Game(..),
-    Message,
-    module RL.Map,  -- export map
-    module RL.Mob   -- export mobs
-) where
+module RL.Game (Game, Env(..), runGame, withEnv) where
 
--- represents the global Game and GameState types
---
--- GameState is a basic State transformer over the global Game object, and the
--- Renderer reader (which renders to the display).
---
--- The Game contains a Level (which represents the dungeon layout & mobs),
--- messages (things that have happened), and random seed (for RNG).
-
-import RL.Mob
-import RL.Map
-import RL.Renderer
-
-import Control.Monad.State
-import Control.Monad.Reader
+import Control.Applicative
+import RL.Types
 import System.Random
 
--- global game state
-type GameState = StateT Game Renderer
+newtype Game s a = Game { runGame :: s -> (a, s) }
 
--- global game
-data Game = Game {
-    level    :: Level,       -- current dungeon layout/mobs
-    messages :: [Message],   -- things that happened so far
-    seed     :: Maybe StdGen -- randomization
+-- data Result = Won | Lost | Playing
+data Env = Env {
+    dungeon :: Dungeon,
+    rng     :: StdGen
 }
 
--- simple string event
-type Message = String
+withEnv :: (s -> Game s a) -> Game s a
+withEnv f = getEnv >>= f
+
+modifyEnv :: (s -> (a, s)) -> Game s a
+modifyEnv = Game
+
+getEnv :: Game s s
+getEnv = Game $ \s -> (s, s)
+
+
+-- attack :: Mob -> Game ()
+-- player :: Game Player
+-- moveTo :: Point -> Game ()
+
+instance Monad (Game s) where
+    g >>= f  = modifyEnv $ \e ->
+        let (r, e') = runGame g e
+        in runGame (f r) e'
+
+    return a = modifyEnv $ \e -> (a, e)
+
+-- instance Applicative (Game s) where
+--     pure  = return
+--     (<*>) = ap
+
+-- instance Applicative Game where
+    
+
+-- basic MonadRand instance for Dungeon Generation
+-- instance MonadRandom Dungeon where
+-- instance MonadRandom Game where
+--     getRandom :: m a
+

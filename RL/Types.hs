@@ -1,4 +1,6 @@
-module RL.Types where
+module RL.Types (module RL.Types, module RL.Dice) where
+
+import RL.Dice
 
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -9,20 +11,20 @@ type Tile    = Char
 type Point   = (Int, Int)
 
 -- Map constructor
-mkMap :: [[Tile]] -> Dungeon
-mkMap = M.fromList . enumerateMap
-
--- Quick Map generator
--- generateMap :: Dimension -> Dimension -> Dungeon
--- generateMap = iterMap fillSpace . mkMap blankDungeon
---     where fillSpace p = id
+mkDungeon :: [[Tile]] -> Dungeon
+mkDungeon = M.fromList . enumerateMap
 
 -- a dungeon Cell is a grid of things
 type Dimension = Int
 
+-- Quick Map generator
+generateDungeon :: Dimension -> Dimension -> Dungeon
+generateDungeon w h = iterMap fillSpace . mkDungeon $ blankMap w h
+    where fillSpace p = id
+
 -- Quick Cell generator
-blankDungeon :: Dimension -> Dimension -> [[Tile]]
-blankDungeon w h = [top] ++ space ++ [bot]
+blankMap :: Dimension -> Dimension -> [[Tile]]
+blankMap w h = [top] ++ space ++ [bot]
     where top   = replicate w '-'
           bot   = top
           space = replicate (h - 2) $ "|" ++ floor ++ "|"
