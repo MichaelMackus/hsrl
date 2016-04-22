@@ -19,4 +19,4 @@ executable hsrl
   extensions: DoAndIfThenElse
   ghc-options: -threaded
   -- other-modules:
-  build-depends:       base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, vty >=5.4, time >=1.5
+  build-depends:       base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, vty >=5.4, time >=1.5, containers >=0.5
