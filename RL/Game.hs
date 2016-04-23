@@ -1,47 +1,59 @@
-module RL.Game (Game, Env(..), runGame, withEnv) where
+module RL.Game (Game, Env(..), runGame, withEnv, mkEnv, withRng, iterDungeon) where
+
+import RL.Types
 
 import Control.Applicative
-import RL.Types
+import Control.Monad.State
 import System.Random
 
-newtype Game s a = Game { runGame :: s -> (a, s) }
+data Game a = Game (Env -> (a, Env))
 
--- data Result = Won | Lost | Playing
 data Env = Env {
     dungeon :: Dungeon,
     rng     :: StdGen
 }
 
-withEnv :: (s -> Game s a) -> Game s a
-withEnv f = getEnv >>= f
+runGame :: Game a -> Env -> (a, Env)
+runGame (Game pr) e = pr e
 
-modifyEnv :: (s -> (a, s)) -> Game s a
-modifyEnv = Game
+-- get/setters
+withEnv :: (Env -> Game a) -> Game a
+withEnv f = f =<< getEnv
 
-getEnv :: Game s s
-getEnv = Game $ \s -> (s, s)
+withRng :: (StdGen -> (a, StdGen)) -> Game a
+withRng f = withEnv $ \e -> do
+    g       <- rng <$> getEnv
+    let (r, g') = f g
+    setEnv $ e { rng = g' }
+    return r
 
+iterDungeon :: (Point -> Tile -> Tile) -> Game Dungeon
+iterDungeon f = pure . iterMap f . dungeon =<< getEnv
 
--- attack :: Mob -> Game ()
--- player :: Game Player
--- moveTo :: Point -> Game ()
+getEnv :: Game Env
+getEnv = Game $ \e -> (e, e)
 
-instance Monad (Game s) where
-    g >>= f  = modifyEnv $ \e ->
+setEnv :: Env -> Game ()
+setEnv e = Game $ \e' -> ((), e)
+
+-- plumbing
+
+mkEnv :: Env
+mkEnv = Env (generateDungeon 10 10) $ mkStdGen 0
+
+instance Monad Game where
+    g >>= k = Game $ \e ->
+        let (r, e')  = runGame g e
+        in  runGame (k r) e'
+    return  x       = Game $ \e -> (x, e)
+
+instance Functor Game where
+    fmap f g = Game $ \e ->
         let (r, e') = runGame g e
-        in runGame (f r) e'
+        in  (f r, e')
 
-    return a = modifyEnv $ \e -> (a, e)
-
--- instance Applicative (Game s) where
---     pure  = return
---     (<*>) = ap
-
--- instance Applicative Game where
-    
-
--- basic MonadRand instance for Dungeon Generation
--- instance MonadRandom Dungeon where
--- instance MonadRandom Game where
---     getRandom :: m a
-
+instance Applicative Game where
+    gf <*> g = Game $ \e ->
+        let (f, e') = runGame gf e
+        in  runGame (fmap f g) e'
+    pure x = return x

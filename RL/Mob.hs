@@ -1,15 +1,8 @@
-module RL.Mob (
-    Mob(..),
-    Player(..),
-    Point,
-    filterMobs,
-    moveMob,
-    moveMobTo,
-    addOffset,
-    withMobIds
-) where
+module RL.Mob where
 
 import RL.Dice
+import RL.Game
+import RL.Types
 
 -- player/mobs
 type HP = Int
@@ -23,11 +16,21 @@ data Mob = Mob {
     dmgd   :: Dice
 }
 
+type Player  = Mob
+data Event a = Won | Lost | Playing a
+
+-- attack :: Mob -> Dice -> Game Event
+-- attack m d = do
+
+-- player :: Game Player
+-- moveTo :: Point -> Game Event
+
+-- dungeon :: Game s Dungeon
+-- dungeon = runStateT
+
 instance Eq Mob where
     m == m' = mobId m == mobId m'
 
-type Point = (Int, Int) -- represents an x, y coordinate on the map
-type Player = Mob       -- our player is just an alias for mob
 
 -- helper functions for mob management
 

@@ -1,13 +1,10 @@
 module RL.Random where
 
+import RL.Game
 import RL.Types
 
--- Helper module which contains useful functions within the GameState.
---
--- Also exports getters/setters in RL.State
-
 import Control.Monad          (liftM2)
-import Control.Monad.Random   (MonadRandom)
+import Control.Monad.Random   (MonadRandom(..))
 import Control.Monad.Random.Class (getRandomR)
 import Control.Monad.IO.Class (liftIO)
 import System.Random
@@ -25,4 +22,8 @@ roll (D n ns) = getRandomR (minInt, maxInt)
 randomPoint :: MonadRandom m => Int -> Int -> m Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
 
-
+instance MonadRandom Game where
+    getRandom     = withRng random
+    getRandoms    = withRng $ \g -> (randoms g, g)
+    getRandomR    = withRng . randomR
+    getRandomRs r = withRng $ \g -> (randomRs r g, g)
