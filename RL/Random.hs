@@ -1,6 +1,5 @@
-module RL.Random where
+module RL.Random (MonadRandom(..), module RL.Random, module System.Random) where
 
-import RL.Game
 import RL.Types
 
 import Control.Monad          (liftM2)
@@ -22,8 +21,3 @@ roll (D n ns) = getRandomR (minInt, maxInt)
 randomPoint :: MonadRandom m => Int -> Int -> m Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
 
-instance MonadRandom Game where
-    getRandom     = withRng random
-    getRandoms    = withRng $ \g -> (randoms g, g)
-    getRandomR    = withRng . randomR
-    getRandomRs r = withRng $ \g -> (randomRs r g, g)
