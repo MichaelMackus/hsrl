@@ -20,4 +20,3 @@ roll (D n ns) = getRandomR (minInt, maxInt)
 -- between     maxX   maxY
 randomPoint :: MonadRandom m => Int -> Int -> m Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
-

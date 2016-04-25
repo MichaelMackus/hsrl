@@ -16,7 +16,7 @@ cabal-version:       >=1.8
 
 executable hsrl
   main-is: roguelike.hs
-  extensions: DoAndIfThenElse
+  extensions: DoAndIfThenElse, MultiParamTypeClasses
   ghc-options: -threaded
   -- other-modules:
   build-depends:       base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, vty >=5.4, time >=1.5, containers >=0.5

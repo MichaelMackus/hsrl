@@ -16,16 +16,14 @@ type Point   = (Int, Int)
 instance Show Dungeon where
     show = unlines . toTiles
 
+
 -- Map constructor
 mkDungeon :: [[Tile]] -> Dungeon
 mkDungeon = Dungeon . M.fromList . enumerateMap
 
--- a dungeon Cell is a grid of things
-type Dimension = Int
-
--- Quick Cell generator
-blankMap :: Dimension -> Dimension -> [[Tile]]
-blankMap w h = [top] ++ space ++ [bot]
+-- Quick Tile generator
+blankMap :: Dimension -> [[Tile]]
+blankMap (w,h) = [top] ++ space ++ [bot]
     where top   = replicate w '-'
           bot   = top
           space = replicate (h - 2) $ "|" ++ floor ++ "|"
@@ -38,6 +36,16 @@ blankMap w h = [top] ++ space ++ [bot]
 --        location   tile    tile
 iterMap :: (Point -> Tile -> Tile) -> Dungeon -> Dungeon
 iterMap f (Dungeon d) = Dungeon (M.mapWithKey f d)
+
+
+-- dungeon cell box (w x h)
+type Dimension = (Width, Height)
+type Width     = Int
+type Height    = Int
+
+-- used like: 2 `x` 4
+x :: Int -> Int -> Dimension
+x w h = (w, h)
 
 -- helper function for map construction
 enumerateMap :: [[Tile]] -> [(Point, Tile)]
