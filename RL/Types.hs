@@ -21,9 +21,14 @@ instance Show Dungeon where
 mkDungeon :: [[Tile]] -> Dungeon
 mkDungeon = Dungeon . M.fromList . enumerateMap
 
+-- blank map
+blankMap :: Int -> Int -> [[Tile]]
+blankMap w h = replicate (h - 2) $ " " ++ floor ++ " "
+    where floor = replicate (w - 2) ' '
+
 -- Quick Tile generator
-blankMap :: Dimension -> [[Tile]]
-blankMap (w,h) = [top] ++ space ++ [bot]
+blankBox :: Dimension -> [[Tile]]
+blankBox (w,h) = [top] ++ space ++ [bot]
     where top   = replicate w '-'
           bot   = top
           space = replicate (h - 2) $ "|" ++ floor ++ "|"

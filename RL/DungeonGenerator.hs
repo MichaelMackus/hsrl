@@ -12,11 +12,12 @@ import Control.Applicative
 import Control.Monad (ap, liftM)
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.Maybe (listToMaybe)
 
 data Generator s a = Generator ((GenConfig, GenState s) -> (a, GenState s))
 data GenState  s = GenState {
-    rng    :: StdGen, -- RNG
     gdata  :: [s],    -- container for data
+    rng    :: StdGen, -- RNG
     gcount :: Int     -- increment of generator (easy failover to prevent endless loop)
 }
 data GenConfig = GenConfig {
@@ -27,14 +28,30 @@ data GenConfig = GenConfig {
 -- delegates to runGenerator dgenerator
 generateDungeon :: GenConfig -> StdGen -> (Dungeon, StdGen)
 generateDungeon c g = let (r, s) = runGenerator dgenerator c initState in (r, rng s)
-    where initState = GenState g [] 0
+    where initState = GenState [] g 0
 
 -- Quick Map generator
 dgenerator :: Generator s Dungeon
 dgenerator = do
-    c <- ask
-    let blankDng = mkDungeon $ blankMap (dwidth c, dheight c)
-    return blankDng
+        c <- ask
+        s <- get
+        return (toDungeon c $ runGenerator' cgenerator c (proxy s))
+    where proxy s = s { gdata = [] }
+
+toDungeon :: GenConfig -> [Cell] -> Dungeon
+toDungeon conf cs = iterMap fillDng blankDng
+    where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
+          fillDng  p t = maybe t id $ getTileAt p cs
+
+getTileAt :: Point -> [Cell] -> Maybe Tile
+getTileAt (x, y) cs = do
+        c <- cell
+        Just '*'
+        -- Just (tileIn c)
+    where cell  = listToMaybe $ filter cAt cs
+          cAt c = let (cx, cy) = cpoint c
+                      (cw, ch) = (cx + cwidth c, cy + cheight c)
+                  in  (x >= cx && x < cw) || (y >= cy && y < ch)
 
 type CellGenerator = Generator Cell
 data Cell = C Point [[Tile]] deriving (Show)
@@ -48,11 +65,15 @@ cgenerator = do
         (cs, i)       = (gdata s, gcount s)
 
     if inDng && null touchingCells then
-        (put $ s { gdata = (c:cs), gcount = 0 }) >> return (c:cs)
-    else do
-        -- increment counter, and only continue when < 3 consecutive tries, TODO this can be abstracted into monad
+        (put $ s { gdata = (c:cs), gcount = 0 })
+    else
         put $ s { gdata = cs, gcount = i + 1 }
-        if (i + 1 < 3) then cgenerator else return cs
+
+    -- increment counter, and only continue when < 3 consecutive tries, TODO this can be abstracted into monad (maybe wrap bind in ContT?)
+    if (i + 1 < 5) then
+        cgenerator
+    else
+        gets gdata
 
 -- generate random dungeon cell
 cell :: CellGenerator Cell
@@ -79,8 +100,8 @@ randomCellPoint (w, h) = do
 
 -- just a blank dungeon cell
 genCell :: Point -> Dimension -> Cell
-genCell p dim = C p buildCell
-    where buildCell = blankMap dim
+genCell p (w, h) = C p buildCell
+    where buildCell = blankMap w h
 
 -- tests if a cell intersects another cell (collision detection)
 isIntersecting :: Cell -> Cell -> Bool
@@ -112,18 +133,41 @@ rightX c = cwidth c + leftX c
 topY   c = snd $ cpoint c
 botY   c = cheight c + topY c
 cpoint  (C p _ ) = p
-cwidth  (C _ ts) = head $ map length ts
+cwidth  (C _ ts) = length $ head ts
 cheight (C _ ts) = length ts
+ctiles  (C _ ts) = ts
 
 runGenerator :: Generator s a -> GenConfig -> GenState s -> (a, GenState s)
 runGenerator (Generator gen) c s = gen (c, s)
+-- TODO FIXME this doesn't work.. maybe wrap with Either here ?
+--runGenerator (Aborted   gd ) c s = (gd, s)
+
+runGenerator' :: Generator s a -> GenConfig -> GenState s -> a
+runGenerator' g c s = fst $ runGenerator g c s
+
+ioGenerator :: Generator s a -> GenConfig -> IO a
+ioGenerator g c = newStdGen >>= ioGenerator'
+    where ioGenerator' rng = return (runGenerator' g c $ mkGState rng)
+
+mkGConfig  = GenConfig 30 15
+mkGState g = GenState  [] g 0
 
 instance Monad (Generator s) where
     gen >>= f = Generator $ \(c, s) ->
-        let (r, s) = runGenerator gen c s
-        in runGenerator (f r) c s
+        -- TODO perhaps abortAt here
+        let (r, s') = runGenerator gen c s
+        in runGenerator (f r) c s'
 
     return = pure
+
+-- TODO this doesn't work since types don't line up
+-- only continue when < 3 consecutive tries
+-- abortAt :: Int -> Generator s a -> Generator s a
+-- abortAt max g = do
+--     i <- gets gcount
+--     d <- gets gdata
+--     if (i + 1 < max) then g else Aborted d
+
 
 instance MonadState (GenState s) (Generator s) where
     get    = Generator $ \(c, s) -> (s,  s)
@@ -136,16 +180,17 @@ instance MonadReader GenConfig (Generator s) where
         let c' = f c
         in runGenerator m c' s
 
+instance Roller (Generator s) where
+    withRng f = Generator $ \(c, s) ->
+        let (r, g) = f $ rng s
+        in  (r, s { rng = g })
+
 instance MonadRandom (Generator s) where
     getRandom     = withRng random
     getRandoms    = withRng $ \g -> (randoms g, g)
     getRandomR    = withRng . randomR
     getRandomRs r = withRng $ \g -> (randomRs r g, g)
 
-withRng :: (StdGen -> (a, StdGen)) -> Generator s a
-withRng f = Generator $ \(c, s) ->
-    let (r, g) = f $ rng s
-    in  (r, s { rng = g })
 
 instance Functor (Generator s) where
     fmap = liftM
