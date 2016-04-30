@@ -23,8 +23,8 @@ mkDungeon = Dungeon . M.fromList . enumerateMap
 
 -- blank map
 blankMap :: Int -> Int -> [[Tile]]
-blankMap w h = replicate (h - 2) $ " " ++ floor ++ " "
-    where floor = replicate (w - 2) ' '
+blankMap w h = replicate (h - 1) $ " " ++ floor ++ " "
+    where floor = replicate (w - 1) ' '
 
 -- Quick Tile generator
 blankBox :: Dimension -> [[Tile]]
@@ -66,5 +66,4 @@ toTiles (Dungeon d) = justTiles . mtiles . sortYs $ M.toList d
           mtiles    ts = L.groupBy (\t t' -> (compare (pointY t) (pointY t')) == EQ) ts
           justTiles ts = map (map snd) ts
           pointY    t  = snd (fst t)
-          dwidth    ts = pointY $ L.maximumBy compareTs ts
           compareTs    = (\((x, y), _) ((x', y'), _) -> compare y y' `mappend` compare x x')

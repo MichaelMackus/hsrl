@@ -21,8 +21,9 @@ data GenState  s = GenState {
     gcount :: Int     -- increment of generator (easy failover to prevent endless loop)
 }
 data GenConfig = GenConfig {
-    dwidth  :: Int,
-    dheight :: Int
+    dwidth   :: Int,
+    dheight  :: Int,
+    sparsity :: Int
 }
 
 -- delegates to runGenerator dgenerator
@@ -51,7 +52,7 @@ getTileAt (x, y) cs = do
     where cell  = listToMaybe $ filter cAt cs
           cAt c = let (cx, cy) = cpoint c
                       (cw, ch) = (cx + cwidth c, cy + cheight c)
-                  in  (x >= cx && x < cw) || (y >= cy && y < ch)
+                  in  (x >= cx && x < cw) && (y >= cy && y < ch)
 
 type CellGenerator = Generator Cell
 data Cell = C Point [[Tile]] deriving (Show)
@@ -61,7 +62,7 @@ cgenerator = do
     c       <- cell
     inDng   <- inDungeon c
     s       <- get
-    let touchingCells = filter (isIntersecting c) cs
+    let touchingCells = filter (isIntersectingPad 1 c) cs
         (cs, i)       = (gdata s, gcount s)
 
     if inDng && null touchingCells then
@@ -69,8 +70,11 @@ cgenerator = do
     else
         put $ s { gdata = cs, gcount = i + 1 }
 
-    -- increment counter, and only continue when < 3 consecutive tries, TODO this can be abstracted into monad (maybe wrap bind in ContT?)
-    if (i + 1 < 5) then
+    -- increment counter, and only continue when < n consecutive tries, TODO this can be abstracted into monad (maybe wrap bind in ContT?)
+    conf <- ask
+    let n = f (fromIntegral $ dwidth conf) (fromIntegral $ dheight conf) (fromIntegral $ sparsity conf)
+        f = (\w h s -> floor $ (w * h) / s)
+    if (i + 1 < n) then
         cgenerator
     else
         gets gdata
@@ -103,6 +107,15 @@ genCell :: Point -> Dimension -> Cell
 genCell p (w, h) = C p buildCell
     where buildCell = blankMap w h
 
+
+-- tests if a cell intersects another cell (collision detection) with padding
+isIntersectingPad :: Int -> Cell -> Cell -> Bool
+isIntersectingPad p c c2 = isIntersecting (pad c) (pad c2)
+    where pad (C (x, y) ts) = (C (x - p, y - p) $ padTs ts)
+          padTs             = map padTs' . padTs'
+          padTs'        []  = []
+          padTs'        ts  = (head ts):ts ++ [last ts]
+
 -- tests if a cell intersects another cell (collision detection)
 isIntersecting :: Cell -> Cell -> Bool
 isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
@@ -113,7 +126,6 @@ isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
                             || (botY c >= topY c2 && botY c <= botY c2))
                             || (topY c2 >= topY c && topY c2 <= botY c)
                             || (botY c2 >= topY c && botY c2 <= botY c))
-    where
 
 
 -- tests if a cell is within dungeon boundaries
@@ -149,7 +161,7 @@ ioGenerator :: Generator s a -> GenConfig -> IO a
 ioGenerator g c = newStdGen >>= ioGenerator'
     where ioGenerator' rng = return (runGenerator' g c $ mkGState rng)
 
-mkGConfig  = GenConfig 30 15
+mkGConfig  = GenConfig 40 20 25
 mkGState g = GenState  [] g 0
 
 instance Monad (Generator s) where
