@@ -48,17 +48,12 @@ getTileAt (x, y) cs = do
 
 -- generate a list of dungeon cells
 cells :: CellGenerator [Cell]
-cells = do
+cells = generate $ do
     c     <- cell
     inDng <- inDungeon c
     cs    <- getGData
     let touchingCells = filter (isIntersectingPad 1 c) cs
-
-    if inDng && null touchingCells then
-        appendGData c
-    else
-        incGCount
-
+    when (inDng && null touchingCells) $ appendGData c
     getGData
 
 -- generate random dungeon cell
