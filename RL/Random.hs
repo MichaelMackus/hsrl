@@ -22,6 +22,12 @@ randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
 
 newtype Roller m a = Roller { getRand :: StateT StdGen m a } deriving Functor
 
+runRoller :: Monad m => Roller m a -> StdGen -> m (a, StdGen)
+runRoller = runStateT . getRand
+
+mkRoller :: Monad m => (StdGen -> m (a, StdGen)) -> Roller m a
+mkRoller = Roller . StateT
+
 instance Monad m => Monad (Roller m) where
     return x = mkRoller $ \s -> return (x, s)
     r >>= f  = mkRoller $ \s -> do
@@ -40,9 +46,3 @@ instance Monad m => MonadRandom (Roller m) where
 
 instance Monad m => MonadSplit StdGen (Roller m) where
     getSplit = mkRoller $ \g -> return (g, snd $ next g)
-
-mkRoller :: Monad m => (StdGen -> m (a, StdGen)) -> Roller m a
-mkRoller = Roller . StateT
-
-runRoller :: Monad m => Roller m a -> StdGen -> m (a, StdGen)
-runRoller = runStateT . getRand

@@ -1,4 +1,4 @@
-module RL.Generator.Dungeon where
+module RL.Generator.Dungeon (generateDungeon, ioGenerateDungeon) where
 
 -- Basic random dungeon generator.
 --
@@ -18,7 +18,12 @@ import Data.Maybe (listToMaybe)
 
 -- delegates to runGenerator dgenerator
 generateDungeon :: GenConfig -> StdGen -> Dungeon
-generateDungeon c g = let ((a, g'), s) = runGenerator dgenerator c g (mkGenState []) in a
+generateDungeon c g = let (a, g', s) = runGenerator dgenerator c g (mkGenState []) in a
+
+-- helper to wrap generateDungeon in IO
+ioGenerateDungeon :: GenConfig -> IO Dungeon
+ioGenerateDungeon c = fst <$> ioGenerator dgenerator c
+
 
 -- Quick Map generator
 -- dgenerator :: (Monad m, MonadReader GenConfig m, MonadSplit StdGen m) => m Dungeon

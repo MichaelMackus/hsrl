@@ -1,4 +1,4 @@
-module RL.Generator (Generator, GenConfig(..), GenState, generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, isGDone, markGDone) where
+module RL.Generator (Generator, GenConfig(..), GenState(..), generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, isGDone, markGDone) where
 
 import RL.Dice
 import RL.Random
@@ -16,7 +16,9 @@ import Debug.Trace
 
 -- Generator monad which generates a list of objects of type s based on GenConfig.
 -- ContGenerator represents a Generator wrapped in a Cont monad - see "generate".
-data Generator s a = Generator (ReaderT GenConfig (Roller (State (GenState s))) a) | ContGenerator (ContT a (Generator s) a)
+newtype Generator s a = Generator {
+    runGenerator :: (GenConfig -> StdGen -> GenState s -> (a, StdGen, GenState s))
+}
 
 -- Configuration to generate something within dwidth x dheight dungeon
 data GenConfig = GenConfig {
@@ -30,20 +32,15 @@ data GenState s = GenState {
     gdone :: Bool
 }
 
--- run a generator, returning the full modified RNG & state
-runGenerator :: Generator s a -> GenConfig -> StdGen -> GenState s -> ((a, StdGen), GenState s)
-runGenerator (Generator gen) c g = runState (runRoller genRoller g)
-    where genRoller = runReaderT gen c
-runGenerator gen@(ContGenerator cont) c g = runGenerator (runContT cont return) c g
-
 -- run a generator, returning only the result
 runGenerator_ :: Generator s a -> GenConfig -> StdGen -> GenState s -> a
-runGenerator_ gen c g s = fst . fst $ runGenerator gen c g s
+runGenerator_ gen c g s = let (r, _, _) = runGenerator gen c g s
+                          in r
 
 -- run a generator through IO
 ioGenerator :: Generator s a -> GenConfig -> IO (a, GenState s)
 ioGenerator g c = newStdGen >>= ioGenerator'
-    where ioGenerator' rng = let ((r, _), s) = runGenerator g c rng (mkGenState [])
+    where ioGenerator' rng = let (r, _, s) = runGenerator g c rng (mkGenState [])
                              in return (r, s)
 
 -- Wrap a generator in a ContGenerator.
@@ -58,7 +55,7 @@ ioGenerator g c = newStdGen >>= ioGenerator'
 --
 -- Then, it returns the latest result.
 generate :: Int -> Generator s a -> Generator s a
-generate maxTries gen = ContGenerator (ContT $ continue 0)
+generate maxTries gen = runContT (ContT (continue 0)) return
     where
         continue i next = do
             prevLen <- length <$> getGData
@@ -78,57 +75,70 @@ generate maxTries gen = ContGenerator (ContT $ continue 0)
                 else
                     continue (i + 1) next
 
--- constructor for function of Reader, StdGen, State
-mkGenerator :: ((GenConfig, StdGen, GenState s) -> ((a, StdGen), GenState s)) -> Generator s a
-mkGenerator f = Generator . ReaderT $ \r -> (mkRoller $ \g -> (state $ \s -> f (r, g, s)))
-
 -- constructor for initial gen state
 mkGenState :: [s] -> GenState s
 mkGenState s = GenState [] False
 
 -- is generation done?
 isGDone :: Generator s Bool
-isGDone = mkGenerator $ \(c, g, s) -> ((gdone s, g), s)
+isGDone = Generator $ \c g s -> (gdone s, g, s)
 
 -- mark generation as done
 markGDone :: Generator s ()
-markGDone = mkGenerator $ \(c, g, s) -> (((), g), done s)
+markGDone = Generator $ \c g s -> ((), g, done s)
     where done s = s { gdone = True }
 
 -- get generator data from state
 getGData :: Generator s [s]
-getGData = mkGenerator $ \(c, g, s) -> ((gdata s, g), s)
+getGData = Generator $ \c g s -> (gdata s, g, s)
 
 -- append data to state, also resetting the generator count
 appendGData :: s -> Generator s ()
-appendGData x = mkGenerator $ \(c, g, s) -> (((), g), appended s)
+appendGData x = Generator $ \c g s -> ((), g, appended s)
     where appended s = s { gdata = (x:gdata s) }
 
 instance Monad (Generator s) where
-    gen >>= f = mkGenerator $ \(c, g, s) ->
-        let ((r, g'), s') = runGenerator gen c g s
+    gen >>= f = Generator $ \c g s ->
+        let (r, g', s') = runGenerator gen c g s
         in runGenerator (f r) c g' s'
 
     return = pure
 
 instance MonadReader GenConfig (Generator s) where
-    ask       = mkGenerator $ \(c, g, s) -> ((c, g), s)
-    reader  f = mkGenerator $ \(c, g, s) -> ((f c, g), s)
-    local f m = mkGenerator $ \(c, g, s) ->
+    ask    = readGen ask
+    reader = readGen . reader
+    local f m = Generator $ \c g s ->
         let c' = f c
         in runGenerator m c' g s
 
-instance MonadRandom (Generator s) where
-    getRandom     = Generator . ReaderT $ \c -> getRandom
-    getRandoms    = Generator . ReaderT $ \c -> getRandoms
-    getRandomR  r = Generator . ReaderT $ \c -> getRandomR r
-    getRandomRs r = Generator . ReaderT $ \c -> getRandomRs r
+-- helper for MonadReader
+readGen :: ReaderT GenConfig (Generator s) a -> Generator s a
+readGen r = do
+        c <- getConf
+        runReaderT r c
+    where getConf = Generator $ \c g s -> (c, g, s)
 
 instance MonadSplit StdGen (Generator s) where
-    getSplit = Generator . ReaderT $ \c -> getSplit
+    getSplit = do
+        g' <- rollGen getSplit
+        Generator $ \c g s -> (g, g', s)
+
+instance MonadRandom (Generator s) where
+    getRandom     = rollGen getRandom
+    getRandoms    = rollGen getRandoms
+    getRandomR  r = rollGen (getRandomR r)
+    getRandomRs r = rollGen (getRandomRs r)
+
+-- helper for MonadRandom instance
+rollGen :: Roller (Generator s) a -> Generator s a
+rollGen rand = do
+        g       <- getGen
+        (r, g') <- runRoller rand g
+        Generator $ \c g s -> (r, g', s)
+    where getGen = Generator $ \c g s -> (g, g, s)
 
 instance Functor (Generator s) where
     fmap = liftM
 instance Applicative (Generator s) where
     (<*>)  = ap
-    pure x = mkGenerator $ \(c, rng, s) -> ((x, rng), s)
+    pure x = Generator $ \c rng s -> (x, rng, s)
