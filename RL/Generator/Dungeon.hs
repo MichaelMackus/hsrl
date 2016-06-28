@@ -23,41 +23,30 @@ generateDungeon c g = let ((a, g'), s) = runGenerator dgenerator c g (mkGenState
 -- Quick Map generator
 dgenerator :: Generator s Dungeon
 dgenerator = do
-    conf <- ask
-    g    <- getSplit
-    let cs = runGenerator_ (generate cells) conf g (mkGenState [])
-    return (toDungeon conf cs)
+        conf <- ask
+        g    <- getSplit
+        let cs = runGenerator_ cells conf g (mkGenState [])
+        return (toDungeon conf cs)
+    where
+        toDungeon conf cs = iterMap fillDng blankDng
+            where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
+                  fillDng  p t = maybe t id $ getTileAt p cs
 
-type CellGenerator = Generator Cell
 data Cell = C Point [[Tile]] deriving (Show)
 
-toDungeon :: GenConfig -> [Cell] -> Dungeon
-toDungeon conf cs = iterMap fillDng blankDng
-    where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
-          fillDng  p t = maybe t id $ getTileAt p cs
-
-getTileAt :: Point -> [Cell] -> Maybe Tile
-getTileAt (x, y) cs = do
-        c <- cell
-        Just '*'
-        -- Just (tileIn c)
-    where cell  = listToMaybe $ filter cAt cs
-          cAt c = let (cx, cy) = cpoint c
-                      (cw, ch) = (cx + cwidth c, cy + cheight c)
-                  in  (x >= cx && x < cw) && (y >= cy && y < ch)
-
 -- generate a list of dungeon cells
-cells :: CellGenerator [Cell]
-cells = generate $ do
-    c     <- cell
-    inDng <- inDungeon c
-    cs    <- getGData
-    let touchingCells = filter (isIntersectingPad 1 c) cs
-    when (inDng && null touchingCells) $ appendGData c
-    getGData
+cells :: Generator Cell [Cell]
+cells = generate maxTries $ do
+        c     <- cell
+        inDng <- inDungeon c
+        cs    <- getGData
+        let touchingCells = filter (isIntersectingPad 1 c) cs
+        when (inDng && null touchingCells) $ appendGData c
+        getGData
+    where maxTries = 5
 
 -- generate random dungeon cell
-cell :: CellGenerator Cell
+cell :: Generator Cell Cell
 cell = do
         dim   <- getDim
         start <- randomCellPoint dim
@@ -78,6 +67,18 @@ randomCellPoint (w, h) = do
         rows = dheight c
 
     randomPoint (cols - 1) (rows - 1)
+
+-- get a tile at specific point
+getTileAt :: Point -> [Cell] -> Maybe Tile
+getTileAt (x, y) cs = do
+        c <- cell
+        Just '*'
+        -- Just (tileIn c)
+    where cell  = listToMaybe $ filter cAt cs
+          cAt c = let (cx, cy) = cpoint c
+                      (cw, ch) = (cx + cwidth c, cy + cheight c)
+                  in  (x >= cx && x < cw) && (y >= cy && y < ch)
+
 
 -- just a blank dungeon cell
 genCell :: Point -> Dimension -> Cell
@@ -106,7 +107,7 @@ isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
 
 
 -- tests if a cell is within dungeon boundaries
-inDungeon :: Cell -> CellGenerator Bool
+inDungeon :: Cell -> Generator Cell Bool
 inDungeon c = do
     conf <- ask
 
