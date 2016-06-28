@@ -1,4 +1,4 @@
-module RL.Generator (Generator, GenConfig(..), GenState, generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData) where
+module RL.Generator (Generator, GenConfig(..), GenState, generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, isGDone, markGDone) where
 
 import RL.Dice
 import RL.Random
@@ -19,15 +19,16 @@ import Debug.Trace
 data Generator s a = Generator (ReaderT GenConfig (Roller (State (GenState s))) a) | ContGenerator (ContT a (Generator s) a)
 
 -- Configuration to generate something within dwidth x dheight dungeon
--- gmax is the max length of the state (when generation is considered done)
 data GenConfig = GenConfig {
-    dwidth   :: Int,
-    dheight  :: Int,
-    gmax     :: Int
+    dwidth  :: Int,
+    dheight :: Int
 }
 
 -- Generator state
-type GenState s = [s]
+data GenState s = GenState {
+    gdata :: [s],
+    gdone :: Bool
+}
 
 -- run a generator, returning the full modified RNG & state
 runGenerator :: Generator s a -> GenConfig -> StdGen -> GenState s -> ((a, StdGen), GenState s)
@@ -49,8 +50,11 @@ ioGenerator g c = newStdGen >>= ioGenerator'
 --
 -- This attempts to endlessly generate a result, until either:
 --
--- 1) i >= maxTries
--- 2) length getGData >= gmax
+-- 1) i >= maxTries. The "i" counter is incremented on each contination (after
+-- the wrapped generator has done 1 pass). If the state has changed, the
+-- counter is reset to 0.
+--
+-- 2) isGDone returns True
 --
 -- Then, it returns the latest result.
 generate :: Int -> Generator s a -> Generator s a
@@ -62,13 +66,14 @@ generate maxTries gen = ContGenerator (ContT $ continue 0)
             c       <- ask
             d       <- getGData
             curLen  <- length <$> getGData
+            done    <- isGDone
 
             -- have we hit the max limit, or are done generating?
-            if i >= maxTries || curLen >= gmax c then
+            if i >= maxTries || done then
                 next r
             else
                 -- reset i if we've appended data
-                if curLen > prevLen then
+                if curLen /= prevLen then
                     continue 0 next
                 else
                     continue (i + 1) next
@@ -79,16 +84,25 @@ mkGenerator f = Generator . ReaderT $ \r -> (mkRoller $ \g -> (state $ \s -> f (
 
 -- constructor for initial gen state
 mkGenState :: [s] -> GenState s
-mkGenState s = []
+mkGenState s = GenState [] False
+
+-- is generation done?
+isGDone :: Generator s Bool
+isGDone = mkGenerator $ \(c, g, s) -> ((gdone s, g), s)
+
+-- mark generation as done
+markGDone :: Generator s ()
+markGDone = mkGenerator $ \(c, g, s) -> (((), g), done s)
+    where done s = s { gdone = True }
 
 -- get generator data from state
 getGData :: Generator s [s]
-getGData = mkGenerator $ \(c, g, s) -> ((s, g), s)
+getGData = mkGenerator $ \(c, g, s) -> ((gdata s, g), s)
 
 -- append data to state, also resetting the generator count
 appendGData :: s -> Generator s ()
 appendGData x = mkGenerator $ \(c, g, s) -> (((), g), appended s)
-    where appended s = (x:s)
+    where appended s = s { gdata = (x:gdata s) }
 
 instance Monad (Generator s) where
     gen >>= f = mkGenerator $ \(c, g, s) ->

@@ -21,6 +21,7 @@ generateDungeon :: GenConfig -> StdGen -> Dungeon
 generateDungeon c g = let ((a, g'), s) = runGenerator dgenerator c g (mkGenState []) in a
 
 -- Quick Map generator
+-- dgenerator :: (Monad m, MonadReader GenConfig m, MonadSplit StdGen m) => m Dungeon
 dgenerator :: Generator s Dungeon
 dgenerator = do
         conf <- ask
@@ -40,10 +41,19 @@ cells = generate maxTries $ do
         c     <- cell
         inDng <- inDungeon c
         cs    <- getGData
+
+        -- append cell if not touching any other cells
         let touchingCells = filter (isIntersectingPad 1 c) cs
         when (inDng && null touchingCells) $ appendGData c
-        getGData
-    where maxTries = 5
+
+        -- mark generation as done if we hit maxCells
+        cs' <- getGData
+        when (length cs' >= maxCells) markGDone
+
+        return cs'
+    where
+        maxTries = 5
+        maxCells = 10 -- TODO this should be based on a formula of the dungeon dimensions
 
 -- generate random dungeon cell
 cell :: Generator Cell Cell
