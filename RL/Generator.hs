@@ -1,4 +1,4 @@
-module RL.Generator (Generator, GenConfig(..), GenState(..), generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, isGDone, markGDone) where
+module RL.Generator (Generator, GenConfig(..), GenState(..), generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, setGData, isGDone, markGDone) where
 
 import RL.Dice
 import RL.Random
@@ -92,10 +92,14 @@ markGDone = Generator $ \c g s -> ((), g, done s)
 getGData :: Generator s [s]
 getGData = Generator $ \c g s -> (gdata s, g, s)
 
--- append data to state, also resetting the generator count
+-- append data to state
 appendGData :: s -> Generator s ()
 appendGData x = Generator $ \c g s -> ((), g, appended s)
     where appended s = s { gdata = (x:gdata s) }
+
+-- set data to state
+setGData :: [s] -> Generator s ()
+setGData gdata = Generator $ \c g s -> ((), g, s { gdata = gdata })
 
 instance Monad (Generator s) where
     gen >>= f = Generator $ \c g s ->
