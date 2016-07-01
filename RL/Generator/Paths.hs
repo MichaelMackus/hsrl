@@ -6,7 +6,7 @@ import RL.Types
 
 import Control.Applicative
 import Control.Monad (forM, when)
-import Data.List (sortBy)
+import Data.List (sortBy, deleteBy)
 import Data.Maybe (listToMaybe)
 
 data Path = P Point Point deriving Show
@@ -38,9 +38,10 @@ generatePath c cs = do
 findNeighbor :: Cell -> [Cell] -> Cell
 findNeighbor c cs
     | null cs   = error "findNeighbor expects non-empty list"
-    | otherwise = head $ sortBy sortF cs
+    | otherwise = head . sortBy sortF . deleteBy (equating cpoint) c $ cs
         where sortF           c1 c2 = compare (distanceBetween c c1) (distanceBetween c c2)
               distanceBetween c1 c2 = distance (cpoint c1) (cpoint c2)
+              equating            f = \a b -> f a == f b
 
 getTileAt :: Point -> [Path] -> Maybe Tile
 getTileAt p ps = do
