@@ -4,8 +4,10 @@ import RL.Dice
 import RL.Random
 import RL.Types
 import RL.Generator
-import RL.Generator.Cells
-import RL.Generator.Paths
+import RL.Generator.Cells (cells, Cell)
+import RL.Generator.Paths (paths, Path)
+import qualified RL.Generator.Cells as C
+import qualified RL.Generator.Paths as P
 
 import Control.Applicative
 import Control.Monad.Random (getSplit)
@@ -28,10 +30,14 @@ dgenerator :: Generator s Dungeon
 dgenerator = do
         conf <- ask
         g    <- getSplit
-        let cs = runGenerator_ cells conf g (mkGenState [])
-        return (toDungeon conf cs)
+        let (cs, g', _) = runGenerator cells conf g (mkGenState [])
+            (ps, _ , _) = runGenerator (paths cs) conf g' (mkGenState [])
+        return (toDungeon conf cs ps)
     where
-        toDungeon conf cs = iterMap fillDng blankDng
+        toDungeon conf cs ps = iterMap fillDng blankDng
             where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
-                  fillDng  p t = maybe t id $ getTileAt p cs
+                  fillDng  p t = maybe t id $ getTileAt p cs ps
 
+-- combines C.getTileAt and P.getTileAt
+getTileAt :: Point -> [Cell] -> [Path] -> Maybe Tile
+getTileAt p cs ps = maybe (P.getTileAt p ps) Just $ C.getTileAt p cs
