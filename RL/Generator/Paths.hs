@@ -30,9 +30,7 @@ allCellsReachable cs = return True
 generatePath :: Cell -> [Cell] -> Generator Path [Path]
 generatePath c cs = do
     let target = findNeighbor c cs
-
-    -- TODO generate Path at right angle
-    return [P (cpoint c) (cpoint target)]
+    return (makeRightAngle $ P (cpoint c) (cpoint target))
 
 -- find closest cell
 findNeighbor :: Cell -> [Cell] -> Cell
@@ -49,6 +47,15 @@ getTileAt p ps = do
         Just '#'
     where path     = listToMaybe $ filter pAt ps
           pAt path = intersects p path && within p path
+
+-- transform a path into a right angle, to prevent diagonals
+makeRightAngle :: Path -> [Path]
+makeRightAngle (P (x1,y1) (x2,y2)) =
+    -- make longer path first
+    if (abs $ x1 - y2) > (abs $ y1 - y2) then
+        [ P (x1,y1) (x2,y1), P (x2,y1) (x2,y2) ]
+    else
+        [ P (x1,y1) (x1,y2), P (x1,y2) (x2,y2) ]
 
 type Slope = Double
 
