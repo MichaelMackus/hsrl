@@ -48,9 +48,13 @@ getTileAt p ps = do
         p <- path
         Just '#'
     where path     = listToMaybe $ filter pAt ps
-          pAt path = intersects p path
+          pAt path = intersects p path && within p path
 
 type Slope = Double
+
+-- tests if point is within path boundaries
+within :: Point -> Path -> Bool
+within (x,y) (P (px,py) (px',py')) = x >= px && x <= px' && y >= py && y <= py'
 
 -- tests if point intersects path
 intersects :: Point -> Path -> Bool
