@@ -1,30 +1,60 @@
 module RL.Generator.Paths (Path(..), paths, getTileAt) where
 
 import RL.Generator
-import RL.Generator.Cells (cells, Cell, cpoint)
+import RL.Generator.Cells (Cell, cpoint)
 import RL.Types
 
-import Control.Applicative
 import Control.Monad (forM, when)
-import Data.List (sortBy, deleteBy)
-import Data.Maybe (listToMaybe)
+import Data.List (sortBy, deleteBy, find)
+import Data.Maybe (isJust, listToMaybe)
 
 data Path = P Point Point deriving Show
 
 -- generate list of paths between cells
 paths :: [Cell] -> Generator Path [Path]
 paths cs = generate maxTries $ do
-        ps <- concat <$> forM cs (`generatePath` cs)
-        setGData ps
+        ps  <- getGData
+        ps' <- concat <$> forM (unreachableCells cs ps) (`generatePath` cs)
+        setGData ps'
 
-        done <- allCellsReachable cs
-        when done markGDone
+        when (allCellsReachable cs ps') markGDone
 
-        return ps
-    where maxTries = 5
+        return ps'
+    where maxTries = 10
 
-allCellsReachable :: [Cell] -> Generator Path Bool
-allCellsReachable cs = return True
+allCellsReachable :: [Cell] -> [Path] -> Bool
+allCellsReachable [] _ = False
+allCellsReachable (c:[]) [] = True
+allCellsReachable _ [] = False
+allCellsReachable (c:cs) ps = length (c:cs) == length (reachableCells (c:cs) ps)
+
+reachableCells :: [Cell] -> [Path] -> [Cell]
+reachableCells [] _ = []
+reachableCells (c:[]) [] = [c]
+reachableCells _ [] = []
+reachableCells (c:cs) ps = filter isReachable cs
+    where isReachable c' = isJust (findPath (cpoint c) (cpoint c') ps)
+
+findPath :: Point -> Point -> [Path] -> Maybe [Path]
+findPath p1 p2 paths = do
+        start <- findStartPathAt p1
+        end   <- findEndPathAt   p2
+
+        -- TODO find connecting path(s)
+
+        return [start, end]
+    where
+        findStartPathAt p = find (\(P p1 p2) -> p1 == p) paths
+        findEndPathAt   p = find (\(P p1 p2) -> p2 == p) paths
+
+findConnectedPaths :: Point -> [Path] -> [Path]
+findConnectedPaths p ps = filter connectedPaths ps
+    where connectedPaths (P p1 p2) = p == p1 || p == p2
+
+unreachableCells :: [Cell] -> [Path] -> [Cell]
+unreachableCells cs ps = let reachable = reachableCells cs ps
+                         in filter (`notIn` reachable) cs
+    where notIn c cs' = cpoint c `notElem` (map cpoint cs')
 
 -- generate a path between cells
 generatePath :: Cell -> [Cell] -> Generator Path [Path]

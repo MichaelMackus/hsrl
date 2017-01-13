@@ -1,7 +1,5 @@
 module RL.Generator.Dungeon (generateDungeon, ioGenerateDungeon) where
 
-import RL.Dice
-import RL.Random
 import RL.Types
 import RL.Generator
 import RL.Generator.Cells (cells, Cell)
@@ -9,7 +7,6 @@ import RL.Generator.Paths (paths, Path)
 import qualified RL.Generator.Cells as C
 import qualified RL.Generator.Paths as P
 
-import Control.Applicative
 import Control.Monad.Random (getSplit)
 import Control.Monad.Reader (ask)
 import System.Random (StdGen)

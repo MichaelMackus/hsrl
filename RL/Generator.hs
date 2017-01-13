@@ -77,7 +77,7 @@ generate maxTries gen = runContT (ContT (continue 0)) return
 
 -- constructor for initial gen state
 mkGenState :: [s] -> GenState s
-mkGenState s = GenState [] False
+mkGenState s = GenState s False
 
 -- is generation done?
 isGDone :: Generator s Bool
