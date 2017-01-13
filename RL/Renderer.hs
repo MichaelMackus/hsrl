@@ -16,8 +16,9 @@ module RL.Renderer (
 -- The Renderable thing returns Sprites through "getSprites" which are strings
 -- somewhere on the screen.
 
-import Graphics.Vty
+import RL.Game
 
+import Graphics.Vty
 import Control.Monad.Reader
 
 type Renderer = ReaderT Display IO
@@ -28,6 +29,11 @@ type Point    = (Int, Int)      -- cheap cop out, todo move Point declaration
 
 class Renderable r where
     getSprites :: r -> [Sprite]
+
+-- game is renderable
+instance Renderable (Game a) where
+    -- getSprites g = getSprites (level g) ++ getMsgSprites (messages g)
+    -- getSprites g = [((0, 0), show $ gets dungeon)]
 
 -- main render function
 render :: Renderable r => r -> Display -> IO ()

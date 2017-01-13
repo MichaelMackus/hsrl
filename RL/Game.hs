@@ -1,4 +1,4 @@
-module RL.Game (Game, Env(..), runGame, runIO, withEnv, mkEnv, withRng, iterDungeon) where
+module RL.Game (Game, Env(..), runGame, runIO, withEnv, withRng, iterDungeon, module Control.Monad.State) where
 
 import RL.Random
 import RL.Types
@@ -20,8 +20,8 @@ runGame (GameState pr) e = pr e
 runIO :: Game a -> Env -> IO (a, Env)
 runIO g e = return (runGame g e)
 
-mkEnv :: Env
-mkEnv = Env (generateDungeon 10 10) $ mkStdGen 0
+-- mkEnv :: Env
+-- mkEnv = Env (generateDungeon 10 10) $ mkStdGen 0
 
 
 -- get/setters
