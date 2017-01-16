@@ -6,7 +6,7 @@ import RL.Types
 
 import Control.Monad (forM, when)
 import Data.List (sortBy, deleteBy, find)
-import Data.Maybe (isJust, listToMaybe)
+import Data.Maybe (listToMaybe)
 
 data Path = P Point Point deriving Show
 
@@ -14,7 +14,8 @@ data Path = P Point Point deriving Show
 paths :: [Cell] -> Generator Path [Path]
 paths cs = generate maxTries $ do
         ps  <- getGData
-        ps' <- concat <$> forM (unreachableCells cs ps) (`generatePath` cs)
+        ps' <- (\ps' -> ps ++ concat ps') <$> forM (unreachableCells cs ps) (`generatePath` cs)
+
         setGData ps'
 
         when (allCellsReachable cs ps') markGDone
@@ -32,20 +33,22 @@ reachableCells :: [Cell] -> [Path] -> [Cell]
 reachableCells [] _ = []
 reachableCells (c:[]) [] = [c]
 reachableCells _ [] = []
-reachableCells (c:cs) ps = filter isReachable cs
-    where isReachable c' = isJust (findPath (cpoint c) (cpoint c') ps)
+reachableCells (c:cs) ps = (c:filter isReachable cs)
+    where isReachable c' = not (null (pathBetween c'))
+          pathBetween c' = findPath (cpoint c) (cpoint c') ps
 
-findPath :: Point -> Point -> [Path] -> Maybe [Path]
-findPath p1 p2 paths = do
-        start <- findStartPathAt p1
-        end   <- findEndPathAt   p2
+findPath :: Point -> Point -> [Path] -> [Path]
+findPath p1 p2 paths = maybe [] id $ do
+        start <- findPathAt p1
+        end   <- findPathAt p2
 
         -- TODO find connecting path(s)
 
         return [start, end]
     where
-        findStartPathAt p = find (\(P p1 p2) -> p1 == p) paths
-        findEndPathAt   p = find (\(P p1 p2) -> p2 == p) paths
+        findPathAt      p = find (\(P p1 p2) -> p1 == p || p2 == p) paths
+        -- findStartPathAt p = find (\(P p1 p2) -> p1 == p) paths
+        -- findEndPathAt   p = find (\(P p1 p2) -> p2 == p) paths
 
 findConnectedPaths :: Point -> [Path] -> [Path]
 findConnectedPaths p ps = filter connectedPaths ps
@@ -56,17 +59,27 @@ unreachableCells cs ps = let reachable = reachableCells cs ps
                          in filter (`notIn` reachable) cs
     where notIn c cs' = cpoint c `notElem` (map cpoint cs')
 
+-- -- generate a path between cells
+-- generatePath :: Cell -> [Cell] -> Generator Path [Path]
+-- generatePath c cs = do
+--     let target = findNeighbor c cs
+--     return (makeRightAngle $ P (cpoint c) (cpoint target))
+
 -- generate a path between cells
 generatePath :: Cell -> [Cell] -> Generator Path [Path]
-generatePath c cs = do
-    let target = findNeighbor c cs
-    return (makeRightAngle $ P (cpoint c) (cpoint target))
+generatePath c [] = return []
+generatePath c cs =
+    return . maybe [] id $ do
+        target <- findNeighbor c cs
+        let path = P (cpoint c) (cpoint target)
+        return (makeRightAngle path)
+
 
 -- find closest cell
-findNeighbor :: Cell -> [Cell] -> Cell
+findNeighbor :: Cell -> [Cell] -> Maybe Cell
 findNeighbor c cs
-    | null cs   = error "findNeighbor expects non-empty list"
-    | otherwise = head . sortBy sortF . deleteBy (equating cpoint) c $ cs
+    | null cs   = Nothing
+    | otherwise = Just . head . sortBy sortF . deleteBy (equating cpoint) c $ cs
         where sortF           c1 c2 = compare (distanceBetween c c1) (distanceBetween c c2)
               distanceBetween c1 c2 = distance (cpoint c1) (cpoint c2)
               equating            f = \a b -> f a == f b

@@ -4,7 +4,6 @@ import RL.Generator
 import RL.Types
 import RL.Random
 
-import Control.Applicative
 import Control.Monad (when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (listToMaybe)
@@ -63,7 +62,7 @@ genCell p (w, h) = C p buildCell
 getTileAt :: Point -> [Cell] -> Maybe Tile
 getTileAt (x, y) cs = do
         c <- cell
-        Just '*'
+        Just '.'
         -- Just (tileIn c)
     where cell  = listToMaybe $ filter cAt cs
           cAt c = let (cx, cy) = cpoint c

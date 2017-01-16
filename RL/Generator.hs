@@ -10,9 +10,6 @@ import Control.Monad.Cont
 import Control.Monad.Random
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Maybe (listToMaybe)
-
-import Debug.Trace
 
 -- Generator monad which generates a list of objects of type s based on GenConfig.
 -- ContGenerator represents a Generator wrapped in a Cont monad - see "generate".
@@ -54,14 +51,12 @@ ioGenerator g c = newStdGen >>= ioGenerator'
 -- 2) isGDone returns True
 --
 -- Then, it returns the latest result.
-generate :: Int -> Generator s a -> Generator s a
+generate :: (Show a, Show s) => Int -> Generator s a -> Generator s a
 generate maxTries gen = runContT (ContT (continue 0)) return
     where
         continue i next = do
             prevLen <- length <$> getGData
             r       <- gen
-            c       <- ask
-            d       <- getGData
             curLen  <- length <$> getGData
             done    <- isGDone
 
