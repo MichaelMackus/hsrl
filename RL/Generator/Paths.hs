@@ -12,16 +12,15 @@ data Path = P Point Point deriving Show
 
 -- generate list of paths between cells
 paths :: [Cell] -> Generator Path [Path]
-paths cs = generate maxTries $ do
-        ps  <- getGData
-        ps' <- (\ps' -> ps ++ concat ps') <$> forM (unreachableCells cs ps) (`generatePath` cs)
+paths cs = do
+    ps  <- getGData
+    ps' <- (\ps' -> ps ++ concat ps') <$> forM (unreachableCells cs ps) (`generatePath` cs)
 
-        setGData ps'
+    setGData ps'
 
-        when (allCellsReachable cs ps') markGDone
+    when (allCellsReachable cs ps') markGDone
 
-        return ps'
-    where maxTries = 10
+    return ps'
 
 allCellsReachable :: [Cell] -> [Path] -> Bool
 allCellsReachable [] _ = False

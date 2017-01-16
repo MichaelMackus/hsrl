@@ -12,7 +12,7 @@ data Cell = C Point [[Tile]] deriving Show
 
 -- generate a list of dungeon cells
 cells :: Generator Cell [Cell]
-cells = generate maxTries $ do
+cells = do
         c     <- cell
         inDng <- inDungeon c
         cs    <- getGData
@@ -27,7 +27,6 @@ cells = generate maxTries $ do
 
         return cs'
     where
-        maxTries = 5
         maxCells = 10 -- TODO this should be based on a formula of the dungeon dimensions
 
 -- generate random dungeon cell

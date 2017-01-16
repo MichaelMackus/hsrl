@@ -1,4 +1,4 @@
-module RL.Generator (Generator, GenConfig(..), GenState(..), generate, runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, setGData, isGDone, markGDone) where
+module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, setGData, isGDone, markGDone) where
 
 import RL.Dice
 import RL.Random
@@ -14,13 +14,14 @@ import Control.Monad.State
 -- Generator monad which generates a list of objects of type s based on GenConfig.
 -- ContGenerator represents a Generator wrapped in a Cont monad - see "generate".
 newtype Generator s a = Generator {
-    runGenerator :: (GenConfig -> StdGen -> GenState s -> (a, StdGen, GenState s))
+    unwrapGenerator :: (GenConfig -> StdGen -> GenState s -> (a, StdGen, GenState s))
 }
 
 -- Configuration to generate something within dwidth x dheight dungeon
 data GenConfig = GenConfig {
-    dwidth  :: Int,
-    dheight :: Int
+    dwidth   :: Int,
+    dheight  :: Int,
+    maxTries :: Int -- max amount of times to wrap in Cont monad (markGDone aborts the continuation)
 }
 
 -- Generator state
@@ -29,15 +30,20 @@ data GenState s = GenState {
     gdone :: Bool
 }
 
+runGenerator :: Generator s a -> GenConfig -> StdGen -> (a, StdGen, GenState s)
+runGenerator gen conf g =
+    let st = mkGenState []
+        gen' = generate (maxTries conf) gen
+    in  unwrapGenerator gen' conf g st
+
 -- run a generator, returning only the result
-runGenerator_ :: Generator s a -> GenConfig -> StdGen -> GenState s -> a
-runGenerator_ gen c g s = let (r, _, _) = runGenerator gen c g s
-                          in r
+runGenerator_ :: Generator s a -> GenConfig -> StdGen -> a
+runGenerator_ gen c g = let (r, _, _) = runGenerator gen c g in r
 
 -- run a generator through IO
 ioGenerator :: Generator s a -> GenConfig -> IO (a, GenState s)
 ioGenerator g c = newStdGen >>= ioGenerator'
-    where ioGenerator' rng = let (r, _, s) = runGenerator g c rng (mkGenState [])
+    where ioGenerator' rng = let (r, _, s) = runGenerator g c rng
                              in return (r, s)
 
 -- Wrap a generator in a ContGenerator.
@@ -51,7 +57,7 @@ ioGenerator g c = newStdGen >>= ioGenerator'
 -- 2) isGDone returns True
 --
 -- Then, it returns the latest result.
-generate :: (Show a, Show s) => Int -> Generator s a -> Generator s a
+generate :: Int -> Generator s a -> Generator s a
 generate maxTries gen = runContT (ContT (continue 0)) return
     where
         continue i next = do
@@ -98,8 +104,8 @@ setGData gdata = Generator $ \c g s -> ((), g, s { gdata = gdata })
 
 instance Monad (Generator s) where
     gen >>= f = Generator $ \c g s ->
-        let (r, g', s') = runGenerator gen c g s
-        in runGenerator (f r) c g' s'
+        let (r, g', s') = unwrapGenerator gen c g s
+        in unwrapGenerator (f r) c g' s'
 
     return = pure
 
@@ -108,7 +114,7 @@ instance MonadReader GenConfig (Generator s) where
     reader = readGen . reader
     local f m = Generator $ \c g s ->
         let c' = f c
-        in runGenerator m c' g s
+        in unwrapGenerator m c' g s
 
 -- helper for MonadReader
 readGen :: ReaderT GenConfig (Generator s) a -> Generator s a

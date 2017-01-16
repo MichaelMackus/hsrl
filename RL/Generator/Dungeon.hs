@@ -15,7 +15,7 @@ import System.Random (StdGen)
 --
 -- Encapsulated in own state machine, only needs Config and Random
 generateDungeon :: GenConfig -> StdGen -> Dungeon
-generateDungeon c g = let (a, g', s) = runGenerator dgenerator c g (mkGenState []) in a
+generateDungeon c g = let (a, g', s) = runGenerator dgenerator c g in a
 
 -- helper to wrap generateDungeon in IO
 ioGenerateDungeon :: GenConfig -> IO Dungeon
@@ -27,8 +27,8 @@ dgenerator :: Generator s Dungeon
 dgenerator = do
         conf <- ask
         g    <- getSplit
-        let (cs, g', _) = runGenerator cells conf g (mkGenState [])
-            (ps, _ , _) = runGenerator (paths cs) conf g' (mkGenState [])
+        let (cs, g', _) = runGenerator cells conf g
+            (ps, _ , _) = runGenerator (paths cs) conf g'
         return (toDungeon conf cs ps)
     where
         toDungeon conf cs ps = iterMap fillDng blankDng
