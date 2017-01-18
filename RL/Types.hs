@@ -42,11 +42,17 @@ blankBox (w,h) = [top] ++ space ++ [bot]
 iterMap :: (Point -> Tile -> Tile) -> Dungeon -> Dungeon
 iterMap f (Dungeon d) = Dungeon (M.mapWithKey f d)
 
-dneighbors :: Dungeon -> (Point, Tile) -> [(Point, Tile)]
-dneighbors d (p, t) = mapDungeon (\p' t' -> if p == p' && t == t' then Just (p', t') else Nothing) d
-    where
-        mapDungeon :: (Point -> Tile -> Maybe r) -> Dungeon -> [r]
-        mapDungeon f (Dungeon d) = catMaybes . map snd . M.toList $ M.mapWithKey f d
+dneighbors :: Dungeon -> Point -> [Point]
+dneighbors d p = mapDungeon f d
+    where f p' t = if p == p' && isPassable t then Just p' else Nothing
+
+mapDungeon :: (Point -> Tile -> Maybe r) -> Dungeon -> [r]
+mapDungeon f (Dungeon d) = catMaybes . map snd . M.toList $ M.mapWithKey f d
+
+isPassable :: Tile -> Bool
+isPassable '.' = True
+isPassable '#' = True
+isPassable  _  = False
 
 -- dungeon cell box (w x h)
 type Dimension = (Width, Height)

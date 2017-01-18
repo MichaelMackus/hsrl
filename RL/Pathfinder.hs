@@ -23,10 +23,10 @@ import Data.Maybe (listToMaybe, catMaybes)
 -- -> Maybe [a]	        -- An optimal path, if any path exists. This excludes the starting vertex.
 
 
-findPath :: ((Point, Tile) -> [(Point, Tile)]) -- Tile -> Neighbors
-         -> (Point, Tile)                      -- end
-         -> (Point, Tile)                      -- start
-         -> Maybe [(Point, Tile)]
+findPath :: (Point -> [Point]) -- Tile -> Neighbors
+         -> Point              -- end
+         -> Point              -- start
+         -> Maybe [Point]
 findPath f end start
     | end == start = pure [end]
     | otherwise    =
