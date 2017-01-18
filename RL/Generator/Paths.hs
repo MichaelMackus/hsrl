@@ -4,11 +4,18 @@ import RL.Generator
 import RL.Generator.Cells (Cell, cpoint)
 import RL.Types
 
-import Control.Monad (forM, when)
-import Data.List (sortBy, deleteBy, find)
+import Control.Monad (forM, when, filterM, mapM)
+import Control.Monad.State (State, runState, get)
+import Data.List (sortBy, deleteBy, filter)
 import Data.Maybe (listToMaybe)
 
-data Path = P Point Point deriving Show
+data Path = P Point Point deriving (Show, Eq)
+
+start :: Path -> Point
+start (P p _) = p
+
+end :: Path -> Point
+end (P _ p) = p
 
 -- generate list of paths between cells
 paths :: [Cell] -> Generator Path [Path]
@@ -34,20 +41,76 @@ reachableCells (c:[]) [] = [c]
 reachableCells _ [] = []
 reachableCells (c:cs) ps = (c:filter isReachable cs)
     where isReachable c' = not (null (pathBetween c'))
-          pathBetween c' = findPath (cpoint c) (cpoint c') ps
+          pathBetween c' = findPath ps (c:cs) (cpoint c) (cpoint c')
 
-findPath :: Point -> Point -> [Path] -> [Path]
-findPath p1 p2 paths = maybe [] id $ do
-        start <- findPathAt p1
-        end   <- findPathAt p2
+type PathFinder = State ([Path], [Cell])
 
-        -- TODO find connecting path(s)
+findPath :: [Path] -> [Cell] -> Point -> Point -> [Path]
+findPath ps cs p1 p2 = fst (runState (pathFinder p1 p2) (ps, cs))
 
-        return [start, end]
+pathFinder :: Point -> Point -> PathFinder [Path]
+pathFinder p1 p2 = do
+    p1s <- findPathsAt p1
+    p2s <- findPathsAt p2
+
+    -- TODO filter p1s' by isPathTo
+    p1s' <- filterM (\p -> start p `isPathTo` p2) . filter (\p -> start p == p1) $ p1s
+    -- TODO filterM
+    let p2s' = filter (\p -> end p == p1) p2s
+        connecting = []
+
+    -- TODO list of Monad
+    -- connecting <- findPathsBetween <$> start <*> end
+
+    return (p1s' ++ connecting ++ p2s')
+
+findPathsBetween :: Path -> Path -> PathFinder [Path]
+findPathsBetween p1 p2 =
+    if end p1 == start p2 then
+        return []
+    else do
+        -- TODO findPathsAt and find path to p2 from results
+        return []
+
+-- TODO doesn't work if paths intersect
+-- TODO walk through cells
+-- FIXME endless loop
+isPathTo :: Point -> Point -> PathFinder Bool
+isPathTo p1 p2 =
+    if p1 == p2 then
+        return True
+    else do
+        (ps, cs) <- get
+
+        -- Step 1. Find paths (starting) at p1
+        starts <- findPathsAt p1
+
+        -- Step 2. Find paths (ending) at p2
+        ends   <- findPathsAt p2
+
+        -- Step 3. Check `isPathTo` for each point in path
+        -- TODO endless loop here
+        starts' <- or <$> mapM (\p -> (start p `isPathTo` p2) <||> (end p `isPathTo` p2)) starts
+        ends'   <- or <$> mapM (\p -> (p1 `isPathTo` start p) <||> (p2 `isPathTo` end p)) ends
+
+        return (starts' && ends')
     where
-        findPathAt      p = find (\(P p1 p2) -> p1 == p || p2 == p) paths
-        -- findStartPathAt p = find (\(P p1 p2) -> p1 == p) paths
-        -- findEndPathAt   p = find (\(P p1 p2) -> p2 == p) paths
+        findPathsStartingAt p = return . filter (not . (== p1) . end) =<< findPathsAt p
+        a <||> b = a >>= \a' -> if a' then return a' else b
+        -- f p = (start p `isPathTo` p2) <||> (end p `isPathTo` p2)
+        -- g p = (p1 `isPathTo` start p) <||> (p2 `isPathTo` end p)
+
+-- find paths through Cells
+findPathsAt :: Point -> PathFinder [Path]
+findPathsAt p = do
+    (ps, cs) <- get
+
+    let ps' = filter (\(P p1 p2) -> p1 == p || p2 == p) ps
+        -- cs' = map toPath . filter (\c -> cpoint c == p) cs -- TODO find accounting for dimensions
+
+    -- TODO convert cells to paths
+
+    return ps'
 
 findConnectedPaths :: Point -> [Path] -> [Path]
 findConnectedPaths p ps = filter connectedPaths ps
