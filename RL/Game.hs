@@ -3,7 +3,6 @@ module RL.Game (Game, Env(..), runGame, runIO, withEnv, withRng, iterDungeon, mo
 import RL.Random
 import RL.Types
 
-import Control.Applicative
 import Control.Monad (liftM)
 import Control.Monad.State
 import System.Random

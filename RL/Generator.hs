@@ -1,15 +1,11 @@
 module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, setGData, isGDone, markGDone) where
 
-import RL.Dice
 import RL.Random
-import RL.Types
 
-import Control.Applicative
 import Control.Monad (ap, liftM)
 import Control.Monad.Cont
 import Control.Monad.Random
 import Control.Monad.Reader
-import Control.Monad.State
 
 -- Generator monad which generates a list of objects of type s based on GenConfig.
 -- ContGenerator represents a Generator wrapped in a Cont monad - see "generate".

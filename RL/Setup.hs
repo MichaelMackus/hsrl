@@ -14,7 +14,6 @@ import RL.IO
 import RL.Renderer
 import RL.Setup.Dungeon
 
-import Control.Applicative
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Time.Clock.POSIX

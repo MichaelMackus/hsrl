@@ -4,7 +4,6 @@ module RL.Random (roll, randomPoint, Roller(..)) where
 
 import RL.Types
 
-import Control.Applicative
 import Control.Monad          (liftM2, ap)
 import Control.Monad.Random   (MonadRandom(..), MonadSplit(..))
 import System.Random
