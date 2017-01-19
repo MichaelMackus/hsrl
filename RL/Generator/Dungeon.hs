@@ -32,7 +32,7 @@ dgenerator = do
         markGDone
 
         return (toDungeon conf cs ps)
-    where
-        toDungeon conf cs ps = iterMap fillDng blankDng
-            where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
-                  fillDng  p t = maybe t id $ getTileAt p cs ps
+
+toDungeon conf cs ps = iterMap fillDng blankDng
+    where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
+          fillDng  p t = maybe t id $ getTileAt p cs ps

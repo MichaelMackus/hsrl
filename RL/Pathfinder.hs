@@ -25,7 +25,7 @@ import qualified Data.Set as Set
 -- -> Maybe [a]	        -- An optimal path, if any path exists. This excludes the starting vertex.
 
 
-findPath :: (Ord a, Ord c)
+findPath :: (Ord a, Ord c, Show a)
          => (a -> Set a)     -- Tile -> Neighbors
          -> (a -> a -> c)    -- distance function
          -> a                -- end
@@ -34,7 +34,7 @@ findPath :: (Ord a, Ord c)
 findPath f distance end start
     = evalState (findPathM (finder f) distance end start) Set.empty
 
-findPathM :: (Monad m, Ord a, Ord c)
+findPathM :: (Monad m, Ord a, Ord c, Show a)
          => (a -> m (Set a)) -- Tile -> Neighbors
          -> (a -> a -> c)    -- distance function
          -> a                -- end
@@ -52,7 +52,7 @@ findPathM f distance end start
             comparing f end = \a b -> compare (f a end) (f b end)
 
 -- simple finder implementation using queue
-finder :: Ord a => (a -> Set a) -> a -> State (Set a) (Set a)
+finder :: (Ord a, Show a) => (a -> Set a) -> a -> State (Set a) (Set a)
 finder f a = do
     queue <- get
     put (Set.insert a queue)

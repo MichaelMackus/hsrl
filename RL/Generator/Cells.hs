@@ -8,7 +8,7 @@ import Control.Monad (when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (listToMaybe)
 
-data Cell = C Point [[Tile]] deriving Show
+data Cell = C Point [[Tile]] deriving (Show, Eq)
 
 -- generate a list of dungeon cells
 cells :: Generator Cell [Cell]

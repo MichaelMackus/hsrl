@@ -3,13 +3,11 @@ module RL.Generator.Paths (Path(..), paths, getTileAt) where
 import RL.Generator
 import RL.Generator.Cells (Cell(..), cpoint)
 import RL.Types
-import RL.Pathfinder
 import qualified RL.Generator.Cells as C
 
-import Control.Monad (forM, when)
-import Data.List (sortBy, deleteBy, filter)
-import Data.Maybe (listToMaybe, isJust)
-import qualified Data.Set as Set
+import Control.Monad (forM)
+import Data.List (sortBy, deleteBy, filter, nub)
+import Data.Maybe (listToMaybe)
 
 data Path = P Point Point deriving (Show, Eq)
 
@@ -23,13 +21,18 @@ end (P _ p) = p
 paths :: [Cell] -> Generator Path [Path]
 paths cs = do
     ps  <- getGData
-    ps' <- (\ps' -> ps ++ concat ps') <$> forM (unreachableCells cs ps) (`generatePath` cs)
 
-    setGData ps'
+    let reachable   = reachableCells cs ps
+        unreachable = filter (`notElem` reachable) cs
 
-    when (allCellsReachable cs ps') markGDone
-
-    return ps'
+    if (null unreachable) then do
+        markGDone
+        return ps
+    else do
+        -- TODO generating too much paths
+        ps' <- nub . (ps ++) . concat <$> forM reachable (`generatePath` unreachable)
+        setGData ps'
+        return ps'
 
 allCellsReachable :: [Cell] -> [Path] -> Bool
 allCellsReachable [] _ = False
@@ -39,28 +42,26 @@ allCellsReachable (c:cs) ps = length (c:cs) == length (reachableCells (c:cs) ps)
 
 reachableCells :: [Cell] -> [Path] -> [Cell]
 reachableCells [] _ = []
-reachableCells (c:[]) [] = [c]
-reachableCells _ [] = []
+reachableCells (c:[]) _ = [c]
+reachableCells (c:_ ) [] = [c]
 reachableCells (c:cs) ps = (c:filter isReachable cs)
-    where isReachable    = isJust . pathBetween
-          pathBetween c' = findPath finder distance (cpoint c') (cpoint c)
-          finder         = Set.fromList . dneighbors (toDungeon (c:cs) ps)
+    where isReachable c' = not . null . filter (\p -> within (cpoint c') p && intersects (cpoint c') p) $ ps
+-- TODO fix performance
+-- reachableCells (c:cs) ps = (c:filter isReachable cs)
+--     where isReachable    = isJust . pathBetween
+--           pathBetween c' = findPath finder distance (cpoint c') (cpoint c)
+--           finder         = dfinder (toDungeon (c:cs) ps)
+
+-- TODO if we use this for pathfinding it could be faster
+-- connectedCells :: [Cell] -> [Path] -> Cell -> [Cell]
+-- connectedCells cs ps c =
+--         let ps' = connectedPaths (cpoint c) ps
+--     where connectedPaths p = filter (\path -> start path == p || end path == p)
 
 toDungeon cs ps = iterMap fillDng blankDng
     where conf         = GenConfig 100 100 0
           blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
           fillDng  p t = maybe t id $ getTileAt p cs ps
-
-unreachableCells :: [Cell] -> [Path] -> [Cell]
-unreachableCells cs ps = let reachable = reachableCells cs ps
-                         in filter (`notIn` reachable) cs
-    where notIn c cs' = cpoint c `notElem` (map cpoint cs')
-
--- -- generate a path between cells
--- generatePath :: Cell -> [Cell] -> Generator Path [Path]
--- generatePath c cs = do
---     let target = findNeighbor c cs
---     return (makeRightAngle $ P (cpoint c) (cpoint target))
 
 -- generate a path between cells
 generatePath :: Cell -> [Cell] -> Generator Path [Path]
@@ -101,11 +102,9 @@ makeRightAngle (P (x1,y1) (x2,y2)) =
     else
         [ P (x1,y1) (x1,y2), P (x1,y2) (x2,y2) ]
 
-type Slope = Double
-
 -- tests if point is within path boundaries
 within :: Point -> Path -> Bool
-within (x,y) (P (px,py) (px',py')) = x >= px && x <= px' && y >= py && y <= py'
+within (x,y) (P (px,py) (px',py')) = (x >= px && x <= px' && y >= py && y <= py') || (x <= px && x >= px' && y <= py && y >= py')
 
 -- tests if point intersects path
 intersects :: Point -> Path -> Bool
@@ -113,18 +112,3 @@ intersects p (P p1 p2) = b == intercept p m
     where m = slope p1 p2
           b = intercept p1 m
 
--- get y-intercept
-intercept :: Point -> Slope -> Double
-intercept (x, y) m = fromIntegral y - (m * fromIntegral x)
-
--- slope of two points
-slope :: Point -> Point -> Slope
-slope (x1, y1) (x2, y2) = fromIntegral ys / fromIntegral xs
-    where xs = abs $ x1 - x2
-          ys = abs $ y1 - y2
-
--- distance between points
-distance :: (Floating a, Ord a) => Point -> Point -> a
-distance (x1, y1) (x2, y2) = sqrt (xs^2 + ys^2)
-    where xs = abs (fromIntegral x1 - fromIntegral x2)
-          ys = abs (fromIntegral y1 - fromIntegral y2)

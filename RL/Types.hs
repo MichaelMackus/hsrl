@@ -2,10 +2,12 @@ module RL.Types (module RL.Types, module RL.Dice) where
 
 import RL.Dice
 
-import qualified Data.List as L
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
+import Data.Set (Set)
+import qualified Data.List as L
 import qualified Data.Map as M
+import qualified Data.Set as Set
 
 -- the dungeon Map is just a map of Points -> Tiles
 data Dungeon = Dungeon (Map Point Tile)
@@ -42,7 +44,6 @@ blankBox (w,h) = [top] ++ space ++ [bot]
 iterMap :: (Point -> Tile -> Tile) -> Dungeon -> Dungeon
 iterMap f (Dungeon d) = Dungeon (M.mapWithKey f d)
 
--- TODO prevent going back
 dneighbors :: Dungeon -> Point -> [Point]
 dneighbors d p = mapDungeon f d
     where
@@ -52,13 +53,15 @@ dneighbors d p = mapDungeon f d
                                          (p1x == p2x && p1y - 1 == p2y) ||
                                          (p1x - 1 == p2x && p1y == p2y)
 
+dfinder :: Dungeon -> Point -> Set Point
+dfinder d p = Set.fromList (dneighbors d p)
+
 mapDungeon :: (Point -> Tile -> Maybe r) -> Dungeon -> [r]
 mapDungeon f (Dungeon d) = catMaybes . map snd . M.toList $ M.mapWithKey f d
 
 isPassable :: Tile -> Bool
-isPassable '.' = True
-isPassable '#' = True
-isPassable  _  = False
+isPassable ' ' = False
+isPassable otherwise = True
 
 -- dungeon cell box (w x h)
 type Dimension = (Width, Height)
@@ -84,3 +87,22 @@ toTiles (Dungeon d) = justTiles . mtiles . sortYs $ M.toList d
           justTiles ts = map (map snd) ts
           pointY    t  = snd (fst t)
           compareTs    = (\((x, y), _) ((x', y'), _) -> compare y y' `mappend` compare x x')
+
+-- Point helpers
+type Slope = Double
+
+-- get y-intercept
+intercept :: Point -> Slope -> Double
+intercept (x, y) m = fromIntegral y - (m * fromIntegral x)
+
+-- slope of two points
+slope :: Point -> Point -> Slope
+slope (x1, y1) (x2, y2) = fromIntegral ys / fromIntegral xs
+    where xs = abs $ x1 - x2
+          ys = abs $ y1 - y2
+
+-- distance between points
+distance :: (Floating a, Ord a) => Point -> Point -> a
+distance (x1, y1) (x2, y2) = sqrt (xs^2 + ys^2)
+    where xs = abs (fromIntegral x1 - fromIntegral x2)
+          ys = abs (fromIntegral y1 - fromIntegral y2)
