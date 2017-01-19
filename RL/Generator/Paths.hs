@@ -1,13 +1,15 @@
 module RL.Generator.Paths (Path(..), paths, getTileAt) where
 
 import RL.Generator
-import RL.Generator.Cells (Cell, cpoint)
+import RL.Generator.Cells (Cell(..), cpoint)
 import RL.Types
+import RL.Pathfinder
+import qualified RL.Generator.Cells as C
 
-import Control.Monad (forM, when, filterM, mapM)
-import Control.Monad.State (State, runState, get)
+import Control.Monad (forM, when)
 import Data.List (sortBy, deleteBy, filter)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, isJust)
+import qualified Data.Set as Set
 
 data Path = P Point Point deriving (Show, Eq)
 
@@ -40,81 +42,14 @@ reachableCells [] _ = []
 reachableCells (c:[]) [] = [c]
 reachableCells _ [] = []
 reachableCells (c:cs) ps = (c:filter isReachable cs)
-    where isReachable c' = not (null (pathBetween c'))
-          pathBetween c' = findPath ps (c:cs) (cpoint c) (cpoint c')
+    where isReachable    = isJust . pathBetween
+          pathBetween c' = findPath finder distance (cpoint c') (cpoint c)
+          finder         = Set.fromList . dneighbors (toDungeon (c:cs) ps)
 
-type PathFinder = State ([Path], [Cell])
-
-findPath :: [Path] -> [Cell] -> Point -> Point -> [Path]
-findPath ps cs p1 p2 = fst (runState (pathFinder p1 p2) (ps, cs))
-
-pathFinder :: Point -> Point -> PathFinder [Path]
-pathFinder p1 p2 = do
-    p1s <- findPathsAt p1
-    p2s <- findPathsAt p2
-
-    -- TODO filter p1s' by isPathTo
-    p1s' <- filterM (\p -> start p `isPathTo` p2) . filter (\p -> start p == p1) $ p1s
-    -- TODO filterM
-    let p2s' = filter (\p -> end p == p1) p2s
-        connecting = []
-
-    -- TODO list of Monad
-    -- connecting <- findPathsBetween <$> start <*> end
-
-    return (p1s' ++ connecting ++ p2s')
-
-findPathsBetween :: Path -> Path -> PathFinder [Path]
-findPathsBetween p1 p2 =
-    if end p1 == start p2 then
-        return []
-    else do
-        -- TODO findPathsAt and find path to p2 from results
-        return []
-
--- TODO doesn't work if paths intersect
--- TODO walk through cells
--- FIXME endless loop
-isPathTo :: Point -> Point -> PathFinder Bool
-isPathTo p1 p2 =
-    if p1 == p2 then
-        return True
-    else do
-        (ps, cs) <- get
-
-        -- Step 1. Find paths (starting) at p1
-        starts <- findPathsAt p1
-
-        -- Step 2. Find paths (ending) at p2
-        ends   <- findPathsAt p2
-
-        -- Step 3. Check `isPathTo` for each point in path
-        -- TODO endless loop here
-        starts' <- or <$> mapM (\p -> (start p `isPathTo` p2) <||> (end p `isPathTo` p2)) starts
-        ends'   <- or <$> mapM (\p -> (p1 `isPathTo` start p) <||> (p2 `isPathTo` end p)) ends
-
-        return (starts' && ends')
-    where
-        findPathsStartingAt p = return . filter (not . (== p1) . end) =<< findPathsAt p
-        a <||> b = a >>= \a' -> if a' then return a' else b
-        -- f p = (start p `isPathTo` p2) <||> (end p `isPathTo` p2)
-        -- g p = (p1 `isPathTo` start p) <||> (p2 `isPathTo` end p)
-
--- find paths through Cells
-findPathsAt :: Point -> PathFinder [Path]
-findPathsAt p = do
-    (ps, cs) <- get
-
-    let ps' = filter (\(P p1 p2) -> p1 == p || p2 == p) ps
-        -- cs' = map toPath . filter (\c -> cpoint c == p) cs -- TODO find accounting for dimensions
-
-    -- TODO convert cells to paths
-
-    return ps'
-
-findConnectedPaths :: Point -> [Path] -> [Path]
-findConnectedPaths p ps = filter connectedPaths ps
-    where connectedPaths (P p1 p2) = p == p1 || p == p2
+toDungeon cs ps = iterMap fillDng blankDng
+    where conf         = GenConfig 100 100 0
+          blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
+          fillDng  p t = maybe t id $ getTileAt p cs ps
 
 unreachableCells :: [Cell] -> [Path] -> [Cell]
 unreachableCells cs ps = let reachable = reachableCells cs ps
@@ -146,12 +81,16 @@ findNeighbor c cs
               distanceBetween c1 c2 = distance (cpoint c1) (cpoint c2)
               equating            f = \a b -> f a == f b
 
-getTileAt :: Point -> [Path] -> Maybe Tile
-getTileAt p ps = do
+getPTileAt :: Point -> [Path] -> Maybe Tile
+getPTileAt p ps = do
         p <- path
         Just '#'
     where path     = listToMaybe $ filter pAt ps
           pAt path = intersects p path && within p path
+
+-- combines C.getTileAt and P.getTileAt
+getTileAt :: Point -> [Cell] -> [Path] -> Maybe Tile
+getTileAt p cs ps = maybe (getPTileAt p ps) Just $ C.getTileAt p cs
 
 -- transform a path into a right angle, to prevent diagonals
 makeRightAngle :: Path -> [Path]
@@ -185,7 +124,7 @@ slope (x1, y1) (x2, y2) = fromIntegral ys / fromIntegral xs
           ys = abs $ y1 - y2
 
 -- distance between points
-distance :: Point -> Point -> Int
-distance (x1, y1) (x2, y2) = xs + ys
-    where xs = abs $ x1 - x2
-          ys = abs $ y1 - y2
+distance :: (Floating a, Ord a) => Point -> Point -> a
+distance (x1, y1) (x2, y2) = sqrt (xs^2 + ys^2)
+    where xs = abs (fromIntegral x1 - fromIntegral x2)
+          ys = abs (fromIntegral y1 - fromIntegral y2)

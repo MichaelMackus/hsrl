@@ -2,10 +2,8 @@ module RL.Generator.Dungeon (generateDungeon, ioGenerateDungeon) where
 
 import RL.Types
 import RL.Generator
-import RL.Generator.Cells (cells, Cell)
-import RL.Generator.Paths (paths, Path)
-import qualified RL.Generator.Cells as C
-import qualified RL.Generator.Paths as P
+import RL.Generator.Cells (cells)
+import RL.Generator.Paths (paths, getTileAt)
 
 import Control.Monad.Random (getSplit)
 import Control.Monad.Reader (ask)
@@ -29,12 +27,12 @@ dgenerator = do
         g    <- getSplit
         let (cs, g', _) = runGenerator cells conf g
             (ps, _ , _) = runGenerator (paths cs) conf g'
+
+        -- ensure we only generate the dungeon once, TODO check dungeon dimensions
+        markGDone
+
         return (toDungeon conf cs ps)
     where
         toDungeon conf cs ps = iterMap fillDng blankDng
             where blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
                   fillDng  p t = maybe t id $ getTileAt p cs ps
-
--- combines C.getTileAt and P.getTileAt
-getTileAt :: Point -> [Cell] -> [Path] -> Maybe Tile
-getTileAt p cs ps = maybe (P.getTileAt p ps) Just $ C.getTileAt p cs

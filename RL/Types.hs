@@ -42,9 +42,15 @@ blankBox (w,h) = [top] ++ space ++ [bot]
 iterMap :: (Point -> Tile -> Tile) -> Dungeon -> Dungeon
 iterMap f (Dungeon d) = Dungeon (M.mapWithKey f d)
 
+-- TODO prevent going back
 dneighbors :: Dungeon -> Point -> [Point]
 dneighbors d p = mapDungeon f d
-    where f p' t = if p == p' && isPassable t then Just p' else Nothing
+    where
+        f p' t = if p `touching` p' && isPassable t then Just p' else Nothing
+        touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) || 
+                                         (p1x + 1 == p2x && p1y == p2y) ||
+                                         (p1x == p2x && p1y - 1 == p2y) ||
+                                         (p1x - 1 == p2x && p1y == p2y)
 
 mapDungeon :: (Point -> Tile -> Maybe r) -> Dungeon -> [r]
 mapDungeon f (Dungeon d) = catMaybes . map snd . M.toList $ M.mapWithKey f d

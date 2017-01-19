@@ -1,8 +1,10 @@
 module RL.Pathfinder where
 
-import RL.Types
-
-import Data.Maybe (listToMaybe, catMaybes)
+import Control.Monad.State
+import Data.Maybe (catMaybes, listToMaybe)
+import Data.Set (Set)
+import qualified Data.List as L
+import qualified Data.Set as Set
 
 -- Stolen from https://hackage.haskell.org/package/astar-0.3.0.0/docs/Data-Graph-AStar.html
 --
@@ -10,7 +12,7 @@ import Data.Maybe (listToMaybe, catMaybes)
 -- distance function for now.
 --
 -- findPath :: (Hashable a, Ord a, Ord c, Num c)
--- => (a -> HashSet a)	-- The graph we are searching through, given as a function from vertices to their neighbours.
+-- => (a -> Set a)	    -- The graph we are searching through, given as a function from vertices to their neighbours.
 -- -> (a -> a -> c)	    -- Distance function between neighbouring
 --                      -- vertices of the graph. This will never be applied to vertices that
 --                      -- are not neighbours, so may be undefined on pairs that are not
@@ -23,13 +25,38 @@ import Data.Maybe (listToMaybe, catMaybes)
 -- -> Maybe [a]	        -- An optimal path, if any path exists. This excludes the starting vertex.
 
 
-findPath :: (Point -> [Point]) -- Tile -> Neighbors
-         -> Point              -- end
-         -> Point              -- start
-         -> Maybe [Point]
-findPath f end start
-    | end == start = pure [end]
-    | otherwise    =
-        let neighbors = f start
-            rs = catMaybes (map (findPath f end) neighbors)
-        in  (start:) <$> listToMaybe rs
+findPath :: (Ord a, Ord c)
+         => (a -> Set a)     -- Tile -> Neighbors
+         -> (a -> a -> c)    -- distance function
+         -> a                -- end
+         -> a                -- start
+         -> Maybe [a]
+findPath f distance end start
+    = evalState (findPathM (finder f) distance end start) Set.empty
+
+findPathM :: (Monad m, Ord a, Ord c)
+         => (a -> m (Set a)) -- Tile -> Neighbors
+         -> (a -> a -> c)    -- distance function
+         -> a                -- end
+         -> a                -- start
+         -> m (Maybe [a])
+findPathM f distance end start
+    | end == start = return (Just [end])
+    | otherwise    = do
+            neighbors <- L.sortBy sortf . Set.elems <$> f start
+            paths     <- mapM (findPathM f distance end) neighbors
+            return ((start:) <$> listToMaybe (catMaybes paths))
+        where
+            -- finder          = \a -> if a == start then return (Set.empty) else f a
+            sortf           = comparing distance end
+            comparing f end = \a b -> compare (f a end) (f b end)
+
+-- simple finder implementation using queue
+finder :: Ord a => (a -> Set a) -> a -> State (Set a) (Set a)
+finder f a = do
+    queue <- get
+    put (Set.insert a queue)
+    if a `Set.member` queue then
+        return (Set.empty)
+    else
+        return (f a)
