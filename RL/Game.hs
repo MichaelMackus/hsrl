@@ -1,16 +1,17 @@
-module RL.Game (Game, Env(..), runGame, runIO, withEnv, withRng, iterDungeon, module Control.Monad.State) where
+module RL.Game (Game, Env(..), runGame, runIO, withEnv, withRng, iterLevel, module RL.Map) where
 
-import RL.Random
-import RL.Types
+import RL.Map
 
 import Control.Monad (liftM)
+import Control.Monad.Random
 import Control.Monad.State
-import System.Random
 
 data Game a = GameState (Env -> (a, Env))
 data Env    = Env {
-    dungeon :: Dungeon,
-    rng     :: StdGen
+    dungeon  :: Dungeon,
+    level    :: DLevel,
+    rng      :: StdGen,
+    messages :: [Message]
 }
 
 runGame :: Game a -> Env -> (a, Env)
@@ -35,8 +36,8 @@ withRng f = withEnv $ \e -> do
     put $ e { rng = g' }
     return r
 
-iterDungeon :: (Point -> Tile -> Tile) -> Game Dungeon
-iterDungeon f = pure . iterMap f . dungeon =<< get
+iterLevel :: (Point -> Tile -> Tile) -> Game DLevel
+iterLevel f = pure . iterMap f . level =<< get
 
 -- plumbing
 

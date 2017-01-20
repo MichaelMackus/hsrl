@@ -16,8 +16,6 @@ module RL.Renderer (
 -- The Renderable thing returns Sprites through "getSprites" which are strings
 -- somewhere on the screen.
 
-import RL.Game
-
 import Graphics.Vty
 import Control.Monad.Reader
 
@@ -31,7 +29,7 @@ class Renderable r where
     getSprites :: r -> [Sprite]
 
 -- game is renderable
-instance Renderable (Game a) where
+-- instance Renderable (Game a) where
     -- getSprites g = getSprites (level g) ++ getMsgSprites (messages g)
     -- getSprites g = [((0, 0), show $ gets dungeon)]
 

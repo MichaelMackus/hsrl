@@ -11,6 +11,6 @@ import RL.Client
 data AI = AI
 
 instance Client AI where
-    tick ai = do
+    tick _ ai = do
         return ai
 

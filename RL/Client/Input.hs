@@ -2,9 +2,9 @@ module RL.Client.Input (
     UserInput(..),
     user,
     isPlaying,
+    charToAction,
 
-    module RL.Client,
-    module RL.IO
+    module RL.Client
 ) where
 
 -- player input
@@ -13,11 +13,10 @@ module RL.Client.Input (
 
 import RL.Game
 import RL.Client
-import RL.IO
+import RL.State
+import RL.Random
 
-import Control.Monad.Reader
-import Control.Monad.State
-import Graphics.Vty
+import Control.Monad (when)
 
 -- user client             last action
 data UserInput = UserInput Action
@@ -25,8 +24,7 @@ user           = UserInput None
 
 -- user input
 instance Client UserInput where
-    tick u = do
-        a <- getAction
+    tick a u = do
         case a of Move d    -> moveDir d
                   otherwise -> return ()
 
@@ -37,22 +35,8 @@ isPlaying :: UserInput -> Bool
 isPlaying (UserInput Quit)      = False
 isPlaying (UserInput otherwise) = True
 
--- specific actions that can have inputs on the keyboard
-data Action = Move Dir | Restart | Quit | None                deriving (Eq)
-data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
-
--- gets game Action from user input
-getAction :: GameState Action
-getAction = do
-        disp <- ask
-        fmap getAction' (io $ nextEvent disp)
-    where
-        -- Event -> Action
-        getAction' (EvKey (KChar c) _) = charToAction c
-        getAction' otherwise           = None
-
 -- move dir in map
-moveDir :: Dir -> GameState ()
+moveDir :: Dir -> Game ()
 moveDir NW    = movePlayer (-1, -1)
 moveDir North = movePlayer ( 0, -1)
 moveDir NE    = movePlayer ( 1, -1)
@@ -64,7 +48,7 @@ moveDir West  = movePlayer (-1,  0)
 
 -- move player (or attack if mob present)
 --            offset
-movePlayer :: Point -> GameState ()
+movePlayer :: Point -> Game ()
 movePlayer (0, 0) = return ()
 movePlayer off    = do
         newloc <- getloc
@@ -75,7 +59,7 @@ movePlayer off    = do
         addoff = addOffset off . at
 
 -- basic attack function
-attack :: Mob -> GameState ()
+attack :: Mob -> Game ()
 attack target = do
     p    <- getPlayer
     dmg  <- roll $ dmgd p
@@ -101,15 +85,15 @@ charToAction 'q'       = Quit
 charToAction otherwise = None
 
 -- move player to a given tile offset
-moveToTile :: Point -> GameState ()
+moveToTile :: Point -> Game ()
 moveToTile xy = do
         p <- getPlayer
         t <- getTileAt xy
-        when (isPassable t) $ movePlayer p
+        maybe (return ()) (\t -> when (isPassable t) (movePlayer p)) t
     where movePlayer = setPlayer . moveMobTo xy
 
 -- hurt    mob    dmg
-hurtMob :: Mob -> Int -> GameState ()
+hurtMob :: Mob -> Int -> Game ()
 hurtMob target dmg = do
         ms <- getMobs
         setMobs $ map (hurtMob dmg) ms

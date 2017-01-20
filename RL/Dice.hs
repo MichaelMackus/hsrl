@@ -2,7 +2,7 @@ module RL.Dice (Dice(..), d) where
 
 -- helper module to construct a Dice object
 --
--- the Dice then gets rolled in RL.IO (roll) sometime in the future
+-- the Dice then gets rolled in roll sometime in the future
 
 data Dice  = D Int Sides
 type Sides = Int

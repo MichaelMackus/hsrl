@@ -1,7 +1,5 @@
 module RL.Mob where
 
-import RL.Dice
-import RL.Game
 import RL.Types
 
 -- player/mobs
@@ -17,7 +15,7 @@ data Mob = Mob {
 }
 
 type Player  = Mob
-data Event a = Won | Lost | Playing a
+-- data Event a = Won | Lost | Playing a
 
 -- attack :: Mob -> Dice -> Game Event
 -- attack m d = do

@@ -2,7 +2,7 @@ module RL.Generator.Paths (Path(..), paths, getTileAt) where
 
 import RL.Generator
 import RL.Generator.Cells (Cell(..), cpoint)
-import RL.Types
+import RL.Map
 import qualified RL.Generator.Cells as C
 
 import Control.Monad (forM)
@@ -52,15 +52,9 @@ reachableCells (c:cs) ps = (c:filter isReachable cs)
 --           pathBetween c' = findPath finder distance (cpoint c') (cpoint c)
 --           finder         = dfinder (toDungeon (c:cs) ps)
 
--- TODO if we use this for pathfinding it could be faster
--- connectedCells :: [Cell] -> [Path] -> Cell -> [Cell]
--- connectedCells cs ps c =
---         let ps' = connectedPaths (cpoint c) ps
---     where connectedPaths p = filter (\path -> start path == p || end path == p)
-
-toDungeon cs ps = iterMap fillDng blankDng
+toLevel cs ps = iterMap fillDng blankDng
     where conf         = GenConfig 100 100 0
-          blankDng     = mkDungeon $ blankMap (dwidth conf) (dheight conf)
+          blankDng     = mkLevel $ blankMap (dwidth conf) (dheight conf)
           fillDng  p t = maybe t id $ getTileAt p cs ps
 
 -- generate a path between cells

@@ -1,4 +1,4 @@
-module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, runGenerator_, ioGenerator, mkGenState, getGData, appendGData, setGData, isGDone, markGDone) where
+module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, runGenerator_, ioGenerator, ioGenerator_, mkGenState, getGData, appendGData, setGData, isGDone, markGDone) where
 
 import RL.Random
 
@@ -41,6 +41,10 @@ ioGenerator :: Generator s a -> GenConfig -> IO (a, GenState s)
 ioGenerator g c = newStdGen >>= ioGenerator'
     where ioGenerator' rng = let (r, _, s) = runGenerator g c rng
                              in return (r, s)
+
+-- run a generator through IO
+ioGenerator_ :: Generator s a -> GenConfig -> IO a
+ioGenerator_ g c = fst <$> ioGenerator g c
 
 -- Wrap a generator in a ContGenerator.
 --
