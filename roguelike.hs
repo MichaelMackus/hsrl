@@ -2,6 +2,7 @@ import RL.Client.AI
 import RL.Client.Input
 import RL.Game
 import RL.Generator.Dungeon
+import RL.Generator.DLevel
 import RL.Renderer.Game
 import RL.State
 
@@ -12,7 +13,7 @@ import System.Random
 -- generate a new level
 nextLevel :: GenConfig -> (Env -> IO ()) -> IO ()
 nextLevel conf loop = do
-        lvl <- ioGenerateLevel conf
+        lvl <- ioGenerator_ levelGenerator conf
         e   <- mkEnv lvl
         loop e
     where
