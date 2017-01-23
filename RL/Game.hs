@@ -1,4 +1,4 @@
-module RL.Game (Game, Env(..), runGame, runIO, withEnv, withRng, iterLevel, module RL.Map) where
+module RL.Game (Game, Env(..), runGame, withEnv, withRng, iterLevel, module RL.Map) where
 
 import RL.Map
 
@@ -16,9 +16,6 @@ data Env    = Env {
 
 runGame :: Game a -> Env -> (a, Env)
 runGame (GameState pr) e = pr e
-
-runIO :: Game a -> Env -> IO (a, Env)
-runIO g e = return (runGame g e)
 
 -- mkEnv :: Env
 -- mkEnv = Env (generateDungeon 10 10) $ mkStdGen 0

@@ -11,11 +11,8 @@ import Graphics.Vty
 import System.Random
 
 -- generate a new level
-nextLevel :: GenConfig -> (Env -> IO ()) -> IO ()
-nextLevel conf loop = do
-        lvl <- ioGenerator_ levelGenerator conf
-        e   <- mkEnv lvl
-        loop e
+nextLevel :: GenConfig -> IO Env
+nextLevel conf = mkEnv =<< ioGenerator_ levelGenerator conf
     where
         mkEnv lvl = newStdGen >>= (\g -> return $ Env {
             dungeon  = DTip lvl,
@@ -25,26 +22,24 @@ nextLevel conf loop = do
         })
 
 -- main game loop
-gameLoop :: (Env -> IO ()) -> (IO Action) -> Env -> IO ()
+gameLoop :: (Env -> IO ()) -> IO Action -> Env -> IO ()
 gameLoop draw nextAction env = do
     draw env           -- draw to screen
     a <- nextAction    -- wait for user input, and transform into Action
 
-    let (playing, env') = flip runGame env $ do
-        u   <- tick a user   -- user movement
-        ai  <- tick a AI     -- AI
-        won <- isGameWon
+    let turn = do
+            u   <- tick a user   -- user movement
+            ai  <- tick a AI     -- AI
+            won <- isGameWon
 
-        if won then do
-            sendMessage "Congratulations, you won the game!"
-            return False
-        else
-            return (isPlaying u)
+            if won then do
+                sendMessage "Congratulations, you won the game!"
+                return False
+            else
+                return (isPlaying u)
+        (playing, env') = runGame turn env
 
     when playing (gameLoop draw nextAction env')
-
-draw :: Display -> Env -> IO ()
-draw = flip render
 
 nextAction :: Vty -> IO Action
 nextAction vty = toAction <$> nextEvent vty
@@ -58,4 +53,5 @@ main = do
         vty <- mkRenderer -- initialize VTY renderer
 
         let conf = GenConfig 80 15 10
-        nextLevel conf (gameLoop (draw vty) (nextAction vty))
+        e <- nextLevel conf
+        gameLoop (`render` vty) (nextAction vty) e
