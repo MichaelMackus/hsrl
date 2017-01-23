@@ -11,7 +11,7 @@ import Data.Maybe (listToMaybe)
 data Cell = C Point [[Tile]] deriving (Show, Eq)
 
 -- generate a list of dungeon cells
-cells :: Generator Cell [Cell]
+cells :: Generator [Cell] [Cell]
 cells = do
         c     <- cell
         inDng <- inDungeon c
@@ -30,7 +30,7 @@ cells = do
         maxCells = 10 -- TODO this should be based on a formula of the dungeon dimensions
 
 -- generate random dungeon cell
-cell :: Generator Cell Cell
+cell :: Generator [Cell] Cell
 cell = do
         dim   <- getDim
         start <- randomCellPoint dim
@@ -89,7 +89,7 @@ isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
 
 
 -- tests if a cell is within dungeon boundaries
-inDungeon :: Cell -> Generator Cell Bool
+inDungeon :: Cell -> Generator [Cell] Bool
 inDungeon c = do
     conf <- ask
 

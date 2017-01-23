@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, randomPoint, Roller(..)) where
+module RL.Random (roll, randomPoint, Roller(..), module System.Random) where
 
 import RL.Types
 

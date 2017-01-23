@@ -18,7 +18,7 @@ end :: Path -> Point
 end (P _ p) = p
 
 -- generate list of paths between cells
-paths :: [Cell] -> Generator Path [Path]
+paths :: [Cell] -> Generator [Path] [Path]
 paths cs = do
     ps  <- getGData
 
@@ -58,7 +58,7 @@ toLevel cs ps = iterMap fillDng blankDng
           fillDng  p t = maybe t id $ getTileAt p cs ps
 
 -- generate a path between cells
-generatePath :: Cell -> [Cell] -> Generator Path [Path]
+generatePath :: Cell -> [Cell] -> Generator [Path] [Path]
 generatePath c [] = return []
 generatePath c cs =
     return . maybe [] id $ do
