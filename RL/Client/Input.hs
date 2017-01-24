@@ -61,11 +61,12 @@ movePlayer off    = do
 -- basic attack function
 attack :: Mob -> Game ()
 attack target = do
-    p    <- getPlayer
-    dmg  <- roll $ dmgd p
+    p       <- getPlayer
+    dmg     <- roll (dmgd p)
+    target' <- hurtMob target dmg
 
-    hurtMob target dmg
-    sendMessage $ "Player hit! " ++ (show dmg) ++ " damage"
+    sendMessage ("Player hit! " ++ (show dmg) ++ " damage")
+    when (isDead target') (sendMessage ("You killed the " ++ [symbol target]))
 
 -- helper functions
 
@@ -93,10 +94,11 @@ moveToTile xy = do
     where movePlayer = setPlayer . moveMobTo xy
 
 -- hurt    mob    dmg
-hurtMob :: Mob -> Int -> Game ()
+hurtMob :: Mob -> Int -> Game Mob
 hurtMob target dmg = do
         ms <- getMobs
-        setMobs $ map (hurtMob dmg) ms
+        setMobs (map (hurtMob dmg) ms)
+        return target'
     where
-        hurtMob  dmg m = if m == target then hurtMob' dmg m else m
-        hurtMob' dmg m = m { hp = (hp target) - dmg }
+        hurtMob  dmg m = if m == target then target' else m
+        target' = target { hp = (hp target) - dmg }

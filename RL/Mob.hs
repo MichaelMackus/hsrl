@@ -42,6 +42,9 @@ mkPlayer hp d at = Mob {
 
 -- helper functions for mob management
 
+isDead :: Mob -> Bool
+isDead m = hp m <= 0
+
 filterMobs :: [Mob] -> [Mob]
 filterMobs = filter $ (> 0) . hp
 
