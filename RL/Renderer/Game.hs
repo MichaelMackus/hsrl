@@ -18,16 +18,17 @@ instance Renderable Env where
 
 -- dungeon is renderable
 instance Renderable DLevel where
-    getSprites d = getMapSprites (toTiles d)
+    getSprites d = getMapSprites d
 
 -- helper functions since map/mob isn't renderable without context
 
 getMobSprite :: Mob -> Sprite
 getMobSprite m = (at m, symbol m : [])
 
-getMapSprites :: [[Tile]] -> [Sprite]
-getMapSprites = map getRowSprite . enumerate
+getMapSprites :: DLevel -> [Sprite]
+getMapSprites lvl = map getRowSprite . enumerate . toTiles $ iterMap sym lvl
     where
+        sym p t = either id symbol (findPoint p lvl)
         getRowSprite ((y), ts) = ((0, y), ts)
 
 getMsgSprites :: [Message] -> [Sprite]

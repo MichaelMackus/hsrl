@@ -51,15 +51,22 @@ blankBox (w,h) = [top] ++ space ++ [bot]
 iterMap :: (Point -> Tile -> Tile) -> DLevel -> DLevel
 iterMap f lvl = lvl { tiles = M.mapWithKey f (tiles lvl) }
 
--- TODO findInLevel and return container around Tile & contents
 findTile :: Point -> DLevel -> Maybe Tile
 findTile p lvl = M.lookup p (tiles lvl)
+
+findPoint :: Point -> DLevel -> Either Tile Mob
+findPoint p lvl =
+    let t = M.lookup p (tiles lvl)
+        m = if at (player lvl) == p then Just (player lvl)
+            else L.find ((== p) . at) (mobs lvl)
+        err = error ("Error during finding " ++ show p)
+    in  maybe (maybe err Left t) Right m
 
 dneighbors :: DLevel -> Point -> [Point]
 dneighbors d p = mapDLevel f d
     where
         f p' t = if p `touching` p' && isPassable t then Just p' else Nothing
-        touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) || 
+        touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
                                          (p1x + 1 == p2x && p1y == p2y) ||
                                          (p1x == p2x && p1y - 1 == p2y) ||
                                          (p1x - 1 == p2x && p1y == p2y)
@@ -89,42 +96,3 @@ toTiles lvl = justTiles . mtiles . sortYs $ M.toList (tiles lvl)
           justTiles ts = map (map snd) ts
           pointY    t  = snd (fst t)
           compareTs    = (\((x, y), _) ((x', y'), _) -> compare y y' `mappend` compare x x')
-
--- TODO remove below
---
--- -- represents a level in the dungeon
--- data Level = Level {
---     tiles :: Tiles,
---     player :: Player,
---     mobs :: [Mob]
---     -- todo items
--- }
-
--- data Tile = TWall | Wall | Floor | Rock deriving (Show, Eq)
--- type Tiles = [[Tile]]
-
--- type TilesIterator = [(Point, Tile)]
-
--- tile :: Char -> Tile
--- tile '|'       = Wall
--- tile '-'       = TWall
--- tile '.'       = Floor
--- tile otherwise = Rock
-
--- fromTile :: Tile -> Char
--- fromTile Wall      = '|'
--- fromTile TWall     = '-'
--- fromTile Floor     = '.'
--- fromTile otherwise = ' '
-
--- isPassable :: Maybe Tile -> Bool
--- isPassable (Just Floor) = True
--- isPassable otherwise    = False
-
-
--- -- helper function
--- iterateTiles :: Tiles -> TilesIterator
--- iterateTiles = enumerate2
-
--- -- toTiles :: TilesIterator -> Tiles
--- -- toTiles it = k
