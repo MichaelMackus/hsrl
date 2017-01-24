@@ -37,7 +37,7 @@ main = do
         shutdown vty
 
         -- print latest status messages
-        mapM_ putStrLn (take 9 (messages e'))
+        mapM_ putStrLn (reverse (take 9 (messages e')))
 
         -- print final text
         if won then
