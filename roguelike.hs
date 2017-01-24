@@ -49,9 +49,9 @@ nextAction vty = toAction <$> nextEvent vty
 nextLevel :: GenConfig -> IO Env
 nextLevel conf = do
         g <- newStdGen
-        let (lvl, g) = generateLevel conf g
+        let (lvl, g') = generateLevel conf g
 
-        return (mkEnv lvl g)
+        return (mkEnv lvl g')
     where
         mkEnv lvl g = Env {
             dungeon  = DTip lvl,
