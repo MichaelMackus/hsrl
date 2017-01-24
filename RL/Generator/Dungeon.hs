@@ -17,7 +17,7 @@ generateLevel conf g =
             (player, s''') = runGenerator (playerGenerator 10 (1 `d` 4)) conf (mkGenState cs (gen s''))
             (mobs, _) = runGenerator (mobGenerator 5) conf (mkGenState lvl (gen s'''))
             lvl = maybe (error "No player generated") (toLevel conf cs ps) player
-        in  (lvl { mobs = mobs }, snd (split (gen s''')))
+        in  (lvl { mobs = withMobIds mobs }, snd (split (gen s''')))
 
 toLevel conf cs ps player = lvl { player = player }
     where lvl = iterMap fillDng blankDng
