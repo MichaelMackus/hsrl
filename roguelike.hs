@@ -10,7 +10,9 @@ import Graphics.Vty
 import System.Random
 
 -- main game loop
-gameLoop :: (Env -> IO ()) -> IO Action -> Env -> IO ()
+--
+-- first part of returned tuple is whether player has won or not
+gameLoop :: (Env -> IO ()) -> IO Action -> Env -> IO (Bool, Env)
 gameLoop draw nextAction env = do
     draw env           -- draw to screen
     a <- nextAction    -- wait for user input, and transform into Action
@@ -18,21 +20,30 @@ gameLoop draw nextAction env = do
     let turn = do
             u   <- tick a user   -- user movement
             ai  <- tick a AI     -- AI
-            won <- isGameWon
-
-            if won then do
-                sendMessage "Congratulations, you won the game!"
-                return False
-            else
-                return (isPlaying u)
+            return (isPlaying u)
         (playing, env') = runGame turn env
+        (won, _)        = runGame isGameWon env'
 
-    when playing (gameLoop draw nextAction env')
+    if playing && not won then
+        gameLoop draw nextAction env'
+    else
+        return (won, env')
 
 main = do
-        vty <- mkRenderer -- initialize VTY renderer
-        e   <- nextLevel conf
-        gameLoop (`render` vty) (nextAction vty) e
+        vty       <- mkRenderer -- initialize VTY renderer
+        e         <- nextLevel conf
+        (won, e') <- gameLoop (`render` vty) (nextAction vty) e
+
+        shutdown vty
+
+        -- print latest status messages
+        mapM_ putStrLn (take 9 (messages e'))
+
+        -- print final text
+        if won then
+            putStrLn "Congratulations, you won the game!"
+        else
+            putStrLn "Goodbye!"
     where
         conf = GenConfig 80 15 10
 
