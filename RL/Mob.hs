@@ -1,4 +1,4 @@
-module RL.Mob where
+module RL.Mob (module RL.Mob, module RL.Types) where
 
 import RL.Types
 
@@ -29,6 +29,15 @@ type Player  = Mob
 instance Eq Mob where
     m == m' = mobId m == mobId m'
 
+-- configure default player
+mkPlayer :: HP -> Dice -> Point -> Player
+mkPlayer hp d at = Mob {
+    mobId  = 0,
+    symbol = '@',
+    hp = hp,
+    dmgd = d,
+    at = at
+}
 
 -- helper functions for mob management
 
