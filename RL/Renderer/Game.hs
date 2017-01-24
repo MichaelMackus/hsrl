@@ -6,7 +6,7 @@ module RL.Renderer.Game (
 
 import RL.Game
 import RL.Renderer
-import RL.Util
+import RL.Util (enumerate)
 
 -- game is renderable
 instance Renderable Env where
@@ -35,4 +35,3 @@ getMsgSprites :: [Message] -> [Sprite]
 getMsgSprites = take 10 . map toSprite . enumerate
     where
         toSprite (i, m) = ((0, i + 15), m)
-        enumerate       = zip [0..]

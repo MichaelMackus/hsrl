@@ -2,6 +2,7 @@ module RL.Map (module RL.Map, module RL.Mob, module RL.Types) where
 
 import RL.Mob
 import RL.Types
+import RL.Util (enumerate)
 
 import Data.Map (Map)
 import Data.Maybe (catMaybes)
@@ -86,7 +87,6 @@ enumerateMap :: [[Tile]] -> [(Point, Tile)]
 enumerateMap = concat . map toPoints . enumerate . map enumerate
     where toPoints (y, ts)   = map (toPoint y) ts
           toPoint   y (x, t) = ((x, y), t)
-          enumerate          = zip [0..] :: [b] -> [(Int, b)]
 
 -- helper function for map deconstruction
 toTiles :: DLevel -> [[Tile]]

@@ -1,6 +1,7 @@
 module RL.Mob (module RL.Mob, module RL.Types) where
 
 import RL.Types
+import RL.Util (enumerate)
 
 -- player/mobs
 type HP = Int
@@ -58,7 +59,6 @@ addOffset (offx, offy) (x, y) = (offx + x, offy + y)
 
 -- initializes mob IDs
 withMobIds :: [Mob] -> [Mob]
-withMobIds = map withMobId . enumerateId
+withMobIds = map withMobId . enumerate
     where
         withMobId   (id, m) = if mobId m == 0 then m { mobId = id } else m
-        enumerateId         = zip [0..]
