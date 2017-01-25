@@ -12,7 +12,7 @@ import qualified Data.Map as M
 import qualified Data.Set as Set
 
 -- the dungeon Map is just a map of Points -> Tiles
-data Dungeon = DTree DLevel Dungeon Dungeon | DTip DLevel | DNotGenerated
+data Dungeon = DTip DLevel | DNotGenerated
 data DLevel  = DLevel {
     tiles :: Map Point Tile,
     player :: Player,
@@ -20,11 +20,32 @@ data DLevel  = DLevel {
     mobs :: [Mob]
 }
 
-type Tile    = Char
+data Tile = Floor | Cavern | Rock | Up DLevel | Down DLevel | Other Char
+
+instance Eq Tile where
+    Floor     == Floor  = True
+    Cavern    == Cavern = True
+    (Up _  )  == (Up _  ) = True
+    (Down _)  == (Down _) = True
+    (Other c) == (Other c') = c == c'
+    _ == _ = False
+
+fromTile :: Tile -> Char
+fromTile Floor     = '.'
+fromTile Cavern    = '#'
+fromTile (Other c) = c
+fromTile (Up    _) = '<'
+fromTile (Down  _) = '>'
+fromTile otherwise = ' '
+
+toTile :: Char -> Tile
+toTile '.' = Floor
+toTile '#' = Cavern
+toTile otherwise = Rock
 
 -- the dungeon is printable
 instance Show DLevel where
-    show = unlines . toTiles
+    show = unlines . map (map fromTile) . toTiles
 
 -- Map constructor
 mkLevel :: [[Tile]] -> DLevel
@@ -33,15 +54,15 @@ mkLevel ts = DLevel (M.fromList (enumerateMap ts)) p [] []
 
 -- blank map
 blankMap :: Int -> Int -> [[Tile]]
-blankMap w h = replicate (h - 1) $ " " ++ floor ++ " "
+blankMap w h = map (map toTile) . replicate (h - 1) $ " " ++ floor ++ " "
     where floor = replicate (w - 1) ' '
 
 -- Quick Tile generator
 blankBox :: Dimension -> [[Tile]]
-blankBox (w,h) = [top] ++ space ++ [bot]
-    where top   = replicate w '-'
+blankBox (w,h) = map (map toTile) ([top] ++ space ++ [bot])
+    where top   = replicate w ' '
           bot   = top
-          space = replicate (h - 2) $ "|" ++ floor ++ "|"
+          space = replicate (h - 2) $ " " ++ floor ++ " "
           floor = replicate (w - 2) ' '
 
 -- This allows for easy iteration of the map
@@ -55,13 +76,13 @@ iterMap f lvl = lvl { tiles = M.mapWithKey f (tiles lvl) }
 findTile :: Point -> DLevel -> Maybe Tile
 findTile p lvl = M.lookup p (tiles lvl)
 
-findPoint :: Point -> DLevel -> Either Tile Mob
+findPoint :: Point -> DLevel -> Char
 findPoint p lvl =
     let t = M.lookup p (tiles lvl)
         m = if at (player lvl) == p then Just (player lvl)
             else L.find ((== p) . at) (mobs lvl)
         err = error ("Error during finding " ++ show p)
-    in  maybe (maybe err Left t) Right m
+    in  maybe (maybe err fromTile t) symbol m
 
 dneighbors :: DLevel -> Point -> [Point]
 dneighbors d p = mapDLevel f d
@@ -79,7 +100,7 @@ mapDLevel :: (Point -> Tile -> Maybe r) -> DLevel -> [r]
 mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)
 
 isPassable :: Tile -> Bool
-isPassable ' ' = False
+isPassable Rock = False
 isPassable otherwise = True
 
 -- helper function for map construction

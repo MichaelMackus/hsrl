@@ -26,9 +26,9 @@ getMobSprite :: Mob -> Sprite
 getMobSprite m = (at m, symbol m : [])
 
 getMapSprites :: DLevel -> [Sprite]
-getMapSprites lvl = map getRowSprite . enumerate . toTiles $ iterMap sym lvl
+getMapSprites lvl = map getRowSprite . enumerate . map (map fromTile) . toTiles $ iterMap sym lvl
     where
-        sym p t = either id symbol (findPoint p lvl)
+        sym p t = Other (findPoint p lvl)
         getRowSprite ((y), ts) = ((0, y), ts)
 
 getMsgSprites :: [Message] -> [Sprite]

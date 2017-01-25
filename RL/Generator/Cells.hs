@@ -8,7 +8,11 @@ import Control.Monad (when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (listToMaybe)
 
-data Cell = C Point [[Tile]] deriving (Show, Eq)
+data Cell = C Point [[Tile]]
+
+instance Eq Cell where
+    -- TODO OR tiles intersect
+    c == c' = cpoint c == cpoint c'
 
 -- generate a list of dungeon cells
 cells :: Generator [Cell] [Cell]
@@ -59,10 +63,7 @@ genCell p (w, h) = C p buildCell
 
 -- get a tile at specific point
 getTileAt :: Point -> [Cell] -> Maybe Tile
-getTileAt (x, y) cs = do
-        c <- cell
-        Just '.'
-        -- Just (tileIn c)
+getTileAt (x, y) cs = maybe Nothing (const (Just Floor)) cell
     where cell  = listToMaybe $ filter cAt cs
           cAt c = let (cx, cy) = cpoint c
                       (cw, ch) = (cx + cwidth c, cy + cheight c)

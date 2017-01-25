@@ -5,11 +5,13 @@ import RL.Generator.Cells (Cell(..), cpoint)
 import RL.Map
 import qualified RL.Generator.Cells as C
 
-import Control.Monad (forM)
+import Control.Monad (forM, when)
 import Data.List (sortBy, deleteBy, filter, nub)
 import Data.Maybe (listToMaybe)
 
-data Path = P Point Point deriving (Show, Eq)
+import Debug.Trace
+
+data Path = P Point Point deriving Eq
 
 start :: Path -> Point
 start (P p _) = p
@@ -23,15 +25,14 @@ paths cs = do
     ps  <- getGData
 
     let reachable   = reachableCells cs ps
-        unreachable = filter (`notElem` reachable) cs
+        unreachable = unreachableCells cs ps
 
     if (null unreachable) then do
         markGDone
         return ps
     else do
-        -- TODO generating too much paths
         ps' <- nub . (ps ++) . concat <$> forM reachable (`generatePath` unreachable)
-        setGData ps'
+        when (length ps' > length ps) $ setGData ps'
         return ps'
 
 allCellsReachable :: [Cell] -> [Path] -> Bool
@@ -51,6 +52,11 @@ reachableCells (c:cs) ps = (c:filter isReachable cs)
 --     where isReachable    = isJust . pathBetween
 --           pathBetween c' = findPath finder distance (cpoint c') (cpoint c)
 --           finder         = dfinder (toDungeon (c:cs) ps)
+
+unreachableCells :: [Cell] -> [Path] -> [Cell]
+unreachableCells cs ps =
+    let reachable = reachableCells cs ps
+    in  filter (`notElem` reachable) cs
 
 toLevel cs ps = iterMap fillDng blankDng
     where conf         = GenConfig 100 100 0
@@ -77,9 +83,7 @@ findNeighbor c cs
               equating            f = \a b -> f a == f b
 
 getPTileAt :: Point -> [Path] -> Maybe Tile
-getPTileAt p ps = do
-        p <- path
-        Just '#'
+getPTileAt p ps = maybe Nothing (const (Just Cavern)) path
     where path     = listToMaybe $ filter pAt ps
           pAt path = intersects p path && within p path
 
