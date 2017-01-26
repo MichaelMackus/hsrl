@@ -13,4 +13,4 @@ import RL.Game
 -- (see: RL.Input and RL.AI)
 class Client c where
     -- 1 turn tick, modifies   state & Client
-    tick :: Client c => Action -> c -> Game c
+    tick :: Client c => c -> Game ()

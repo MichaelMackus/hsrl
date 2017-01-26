@@ -1,5 +1,7 @@
 module RL.Client.Input (
     UserInput(..),
+    Action(..),
+    Dir(..),
     user,
     isPlaying,
     charToAction,
@@ -21,19 +23,39 @@ import Control.Monad (when)
 -- user client             last action
 data UserInput = UserInput Action
 user           = UserInput None
-
+ 
+-- specific actions that can have inputs on the keyboard
+data Action = Move Dir | Restart | Quit | ChangeLevel DLevel | None
+data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
+ 
 -- user input
 instance Client UserInput where
-    tick a u = do
-        case a of Move d    -> moveDir d
-                  otherwise -> return ()
-
-        return $ UserInput a
+    tick (UserInput a) = do
+        case a of Move d          -> moveDir d
+                  ChangeLevel lvl -> moveToLevel lvl
+                  otherwise       -> return ()
 
 -- is user playing?
-isPlaying :: UserInput -> Bool
-isPlaying (UserInput Quit)      = False
-isPlaying (UserInput otherwise) = True
+isPlaying :: Action -> Bool
+isPlaying Quit      = False
+isPlaying otherwise = True
+
+-- Char input to Action
+-- todo expose via config
+charToAction :: Char -> Action
+charToAction 'k'       = Move North
+charToAction 'j'       = Move South
+charToAction 'h'       = Move West
+charToAction 'l'       = Move East
+charToAction 'u'       = Move NE
+charToAction 'y'       = Move NW
+charToAction 'b'       = Move SW
+charToAction 'n'       = Move SE
+charToAction 'r'       = Restart
+charToAction '>'       = ChangeLevel undefined -- down
+charToAction '<'       = ChangeLevel undefined -- up
+charToAction 'q'       = Quit
+charToAction otherwise = None
 
 -- move dir in map
 moveDir :: Dir -> Game ()
@@ -68,23 +90,6 @@ attack target = do
     sendMessage ("Player hit! " ++ (show dmg) ++ " damage")
     when (isDead target') (sendMessage ("You killed the " ++ [symbol target]))
 
--- helper functions
-
--- Char input to Action
--- todo expose via config
-charToAction :: Char -> Action
-charToAction 'k'       = Move North
-charToAction 'j'       = Move South
-charToAction 'h'       = Move West
-charToAction 'l'       = Move East
-charToAction 'u'       = Move NE
-charToAction 'y'       = Move NW
-charToAction 'b'       = Move SW
-charToAction 'n'       = Move SE
-charToAction 'r'       = Restart
-charToAction 'q'       = Quit
-charToAction otherwise = None
-
 -- move player to a given tile offset
 moveToTile :: Point -> Game ()
 moveToTile xy = do
@@ -102,3 +107,14 @@ hurtMob target dmg = do
     where
         hurtMob  dmg m = if m == target then target' else m
         target' = target { hp = (hp target) - dmg }
+
+-- change to another dlevel, if we're on the stairs for that level
+moveToLevel :: DLevel -> Game ()
+moveToLevel lvl = do
+        p <- getPlayer
+        t <- getTileAt (at p)
+        when (tileLevel t == Just lvl) (setLevel lvl)
+    where
+        tileLevel (Just (Up lvl))   = Just lvl
+        tileLevel (Just (Down lvl)) = Just lvl
+        tileLevel otherwise         = Nothing

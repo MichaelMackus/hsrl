@@ -18,7 +18,7 @@ data DLevel  = DLevel {
     player :: Player,
     items :: [()],
     mobs :: [Mob]
-}
+} deriving Eq
 
 data Tile = Floor | Cavern | Rock | Up DLevel | Down DLevel | Other Char
 

@@ -7,10 +7,6 @@ type Sides = Int
 d :: Int -> Sides -> Dice
 d n ns = D n ns
 
--- specific actions that can have inputs on the keyboard
-data Action = Move Dir | Restart | Quit | None
-data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
-
 type Message = String
 type Point   = (Int, Int)
 

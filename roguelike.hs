@@ -5,7 +5,6 @@ import RL.Generator.Dungeon
 import RL.Renderer.Game
 import RL.State
 
-import Control.Monad.State
 import Graphics.Vty
 import System.Random
 
@@ -18,9 +17,10 @@ gameLoop draw nextAction env = do
     a <- nextAction    -- wait for user input, and transform into Action
 
     let turn = do
-            u   <- tick a user   -- user movement
-            ai  <- tick a AI     -- AI
-            return (isPlaying u)
+            tick (UserInput a) -- user movement
+            tick AI            -- AI
+            return (isPlaying a)
+
         (playing, env') = runGame turn env
         (won, _)        = runGame isGameWon env'
 
