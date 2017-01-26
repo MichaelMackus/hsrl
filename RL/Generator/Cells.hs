@@ -1,4 +1,4 @@
-module RL.Generator.Cells (Cell(..), cells, getTileAt, cpoint, cwidth, cheight, ctiles) where
+module RL.Generator.Cells (Cell(..), cells, getTileAt, cpoint, cwidth, cheight, ctiles, cmid) where
 
 import RL.Generator
 import RL.Map
@@ -108,3 +108,8 @@ cpoint  (C p _ ) = p
 cwidth  (C _ ts) = length $ head ts
 cheight (C _ ts) = length ts
 ctiles  (C _ ts) = ts
+
+cmid :: Cell -> Point
+cmid c =
+    let (cx, cy) = cpoint c
+    in  (cx + floor (fromIntegral (cwidth c) / 2), cy + floor (fromIntegral (cheight c) / 2))

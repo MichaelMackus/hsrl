@@ -2,7 +2,7 @@ module RL.Generator.Mobs (playerGenerator, mobGenerator) where
 
 import RL.Game
 import RL.Generator
-import RL.Generator.Cells (Cell, cheight, cwidth, cpoint)
+import RL.Generator.Cells (Cell, cmid)
 import RL.Random
 
 import Control.Monad (replicateM, when)
@@ -16,8 +16,7 @@ playerGenerator hp dmg = do
     cs <- getGData
     if not (null cs) then
         -- TODO place player randomly around dungeon
-        let (cx, cy) = cpoint (cs !! 0)
-            p = (cx + floor (fromIntegral (cwidth (cs !! 0)) / 2), cy + floor (fromIntegral (cheight (cs !! 0)) / 2))
+        let p = cmid (cs !! 0)
         in  markGDone >> return (Just (mkPlayer hp dmg p))
     else
         return Nothing
@@ -34,7 +33,7 @@ mob = do
         lvl  <- getGData
         p    <- randomPoint (dwidth conf) (dheight conf)
 
-        let t = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTile p lvl)
+        let t = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTileAt p lvl)
             m = maybe Nothing (const (Just (kobold 0 p))) t
 
         return m

@@ -67,7 +67,7 @@ getMobAt p = fmap getMobAt' getMobs
           getMobsAt = filter ((p ==) . at)
 
 getTileAt :: Point -> Game (Maybe Tile)
-getTileAt p = findTile p <$> getLevel
+getTileAt p = findTileAt p <$> getLevel
 
 -- max map rows
 maxRow :: Game Int

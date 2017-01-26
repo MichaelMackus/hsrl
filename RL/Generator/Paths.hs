@@ -9,8 +9,6 @@ import Control.Monad (forM, when)
 import Data.List (sortBy, deleteBy, filter, nub)
 import Data.Maybe (listToMaybe)
 
-import Debug.Trace
-
 data Path = P Point Point deriving Eq
 
 start :: Path -> Point

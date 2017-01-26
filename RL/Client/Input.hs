@@ -25,15 +25,16 @@ data UserInput = UserInput Action
 user           = UserInput None
  
 -- specific actions that can have inputs on the keyboard
-data Action = Move Dir | Restart | Quit | ChangeLevel DLevel | None
+data Action = Move Dir | Restart | Quit | Up DLevel | Down DLevel | None
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
  
 -- user input
 instance Client UserInput where
     tick (UserInput a) = do
-        case a of Move d          -> moveDir d
-                  ChangeLevel lvl -> moveToLevel lvl
-                  otherwise       -> return ()
+        case a of Move d    -> moveDir d
+                  Up lvl    -> setLevel lvl
+                  Down lvl  -> setLevel lvl
+                  otherwise -> return ()
 
 -- is user playing?
 isPlaying :: Action -> Bool
@@ -52,8 +53,8 @@ charToAction 'y'       = Move NW
 charToAction 'b'       = Move SW
 charToAction 'n'       = Move SE
 charToAction 'r'       = Restart
-charToAction '>'       = ChangeLevel undefined -- down
-charToAction '<'       = ChangeLevel undefined -- up
+charToAction '>'       = Down undefined -- down
+charToAction '<'       = Up undefined   -- up
 charToAction 'q'       = Quit
 charToAction otherwise = None
 
@@ -107,14 +108,3 @@ hurtMob target dmg = do
     where
         hurtMob  dmg m = if m == target then target' else m
         target' = target { hp = (hp target) - dmg }
-
--- change to another dlevel, if we're on the stairs for that level
-moveToLevel :: DLevel -> Game ()
-moveToLevel lvl = do
-        p <- getPlayer
-        t <- getTileAt (at p)
-        when (tileLevel t == Just lvl) (setLevel lvl)
-    where
-        tileLevel (Just (Up lvl))   = Just lvl
-        tileLevel (Just (Down lvl)) = Just lvl
-        tileLevel otherwise         = Nothing

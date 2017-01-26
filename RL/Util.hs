@@ -23,3 +23,6 @@ splitEvery _ [] = []
 splitEvery x l
     | x > 0     = (take x l) : (splitEvery x (drop x l))
     | otherwise = error "splitEvery requires non-negative number"
+
+comparing :: Ord o => (a -> o) -> a -> a -> Ordering
+comparing f = \a b -> compare (f a) (f b)

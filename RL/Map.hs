@@ -20,28 +20,33 @@ data DLevel  = DLevel {
     mobs :: [Mob]
 } deriving Eq
 
-data Tile = Floor | Cavern | Rock | Up DLevel | Down DLevel | Other Char
+data Tile = Floor | Cavern | Rock | StairUp DLevel | StairDown DLevel | Other Char
 
 instance Eq Tile where
-    Floor     == Floor  = True
-    Cavern    == Cavern = True
-    (Up _  )  == (Up _  ) = True
-    (Down _)  == (Down _) = True
-    (Other c) == (Other c') = c == c'
+    Floor         == Floor  = True
+    Cavern        == Cavern = True
+    (StairUp _  ) == (StairUp _  ) = True
+    (StairDown _) == (StairDown _) = True
+    (Other c)     == (Other c') = c == c'
     _ == _ = False
 
 fromTile :: Tile -> Char
-fromTile Floor     = '.'
-fromTile Cavern    = '#'
-fromTile (Other c) = c
-fromTile (Up    _) = '<'
-fromTile (Down  _) = '>'
+fromTile Floor          = '.'
+fromTile Cavern         = '#'
+fromTile (Other c)      = c
+fromTile (StairUp    _) = '<'
+fromTile (StairDown  _) = '>'
 fromTile otherwise = ' '
 
 toTile :: Char -> Tile
 toTile '.' = Floor
 toTile '#' = Cavern
 toTile otherwise = Rock
+
+isStair :: Tile -> Bool
+isStair (StairUp _) = True
+isStair (StairDown _) = True
+isStair otherwise = False
 
 -- the dungeon is printable
 instance Show DLevel where
@@ -73,8 +78,11 @@ blankBox (w,h) = map (map toTile) ([top] ++ space ++ [bot])
 iterMap :: (Point -> Tile -> Tile) -> DLevel -> DLevel
 iterMap f lvl = lvl { tiles = M.mapWithKey f (tiles lvl) }
 
-findTile :: Point -> DLevel -> Maybe Tile
-findTile p lvl = M.lookup p (tiles lvl)
+findTileAt :: Point -> DLevel -> Maybe Tile
+findTileAt p lvl = M.lookup p (tiles lvl)
+
+findTile :: (Tile -> Bool) -> DLevel -> Maybe Tile
+findTile f lvl = L.find f (M.elems (tiles lvl))
 
 findPoint :: Point -> DLevel -> Char
 findPoint p lvl =
