@@ -23,9 +23,11 @@ playerGenerator hp dmg = do
 
 mobGenerator :: Int -> Generator DLevel [Mob]
 mobGenerator maxMobs = do
-    mobs <- catMaybes <$> replicateM maxMobs mob
-    when (length mobs == maxMobs) markGDone
-    return mobs
+    lvl   <- getGData
+    mobs' <- (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs - length (mobs lvl)) mob
+    when (length mobs' == maxMobs) markGDone
+    when (length mobs' /= length (mobs lvl)) (setGData (lvl { mobs = mobs' }))
+    return mobs'
 
 mob :: Generator DLevel (Maybe Mob)
 mob = do
