@@ -38,7 +38,7 @@ changeLevel lvl = do
 
         when (lvl /= level game) $ do
             setLevel (maybe lvl (placeOnStair isStair) lvl')
-            when (isNothing lvl') $ setDungeon (insertLevel lvl dng)
+            setDungeon . insertLevel (level game) . (`insertLevel` dng) =<< getLevel
     where
         placeOnStair isStair lvl' =
             let t         = findTile (isStair . snd) lvl'
@@ -67,8 +67,11 @@ setMobs ms = do
 
 isGameWon :: Game Bool
 isGameWon = do
-    ms <- filterMobs <$> getMobs
-    return $ null ms
+    lvl <- getLevel
+    ms  <- filterMobs <$> getMobs
+    let down = findTile (isDownStair . snd) lvl
+
+    return ((null ms) && isNothing down)
 
 -- getSeed :: Game StdGen
 -- getSeed = do

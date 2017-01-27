@@ -23,6 +23,7 @@ insertLevel lvl (DungeonLevel start rest)
     | depth start == depth lvl = DungeonLevel lvl rest
     | otherwise = DungeonLevel start (insertLevel lvl rest)
 
+-- return level at depth
 atDepth :: Int -> Dungeon -> Maybe DLevel
 atDepth d (DTip lvl) = if depth lvl == d then Just lvl else Nothing
 atDepth d (DungeonLevel start rest) =
