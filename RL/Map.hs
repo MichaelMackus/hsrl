@@ -66,9 +66,15 @@ toTile '#' = Cavern
 toTile otherwise = Rock
 
 isStair :: Tile -> Bool
-isStair (StairUp _) = True
-isStair (StairDown _) = True
-isStair otherwise = False
+isStair t = isDownStair t || isUpStair t
+
+isDownStair :: Tile -> Bool
+isDownStair (StairDown _) = True
+isDownStair otherwise = False
+
+isUpStair :: Tile -> Bool
+isUpStair (StairUp _) = True
+isUpStair otherwise = False
 
 -- the dungeon is printable
 instance Show DLevel where
@@ -103,8 +109,8 @@ iterMap f lvl = lvl { tiles = M.mapWithKey f (tiles lvl) }
 findTileAt :: Point -> DLevel -> Maybe Tile
 findTileAt p lvl = M.lookup p (tiles lvl)
 
-findTile :: (Tile -> Bool) -> DLevel -> Maybe Tile
-findTile f lvl = L.find f (M.elems (tiles lvl))
+findTile :: ((Point, Tile) -> Bool) -> DLevel -> Maybe (Point, Tile)
+findTile f lvl = L.find f (M.toList (tiles lvl))
 
 findPoint :: Point -> DLevel -> Char
 findPoint p lvl =

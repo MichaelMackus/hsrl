@@ -29,23 +29,21 @@ setDungeon dng = do
     put (game { dungeon = dng })
 
 -- use this to change to a different dungeon level
--- TODO set player to up/down stair
 changeLevel :: DLevel -> Game ()
 changeLevel lvl = do
-    game <- get
-    let dng  = dungeon game
-        lvl' = atDepth (depth lvl) dng
+        game <- get
+        let dng     = dungeon game
+            lvl'    = atDepth (depth lvl) dng
+            isStair = if depth lvl > depth (level game) then isUpStair else isDownStair
 
-    when (lvl /= level game) $ do
-        setLevel (maybe lvl id lvl')
-        when (isNothing lvl') $ setDungeon (insertLevel lvl dng)
-
--- generateLevel :: Int -> Game ()
--- generateLevel depth = do
---     conf <- ask
---     g    <- getSplit
---     let (lvl, s) = runGenerator (levelGenerator depth) conf (initState g)
---     setLevel (lvl)
+        when (lvl /= level game) $ do
+            setLevel (maybe lvl (placeOnStair isStair) lvl')
+            when (isNothing lvl') $ setDungeon (insertLevel lvl dng)
+    where
+        placeOnStair isStair lvl' =
+            let t         = findTile (isStair . snd) lvl'
+                f  (p, _) = lvl' { player = (player lvl') { at = p } }
+            in  maybe lvl' f t
 
 getMessages :: Game [Message]
 getMessages = gets messages
