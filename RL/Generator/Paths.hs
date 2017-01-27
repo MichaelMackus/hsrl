@@ -56,11 +56,6 @@ unreachableCells cs ps =
     let reachable = reachableCells cs ps
     in  filter (`notElem` reachable) cs
 
-toLevel cs ps = iterMap fillDng blankDng
-    where conf         = GenConfig 100 100 0
-          blankDng     = mkLevel $ blankMap (dwidth conf) (dheight conf)
-          fillDng  p t = maybe t id $ getTileAt p cs ps
-
 -- generate a path between cells
 generatePath :: Cell -> [Cell] -> Generator [Path] [Path]
 generatePath c [] = return []

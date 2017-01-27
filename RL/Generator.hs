@@ -4,7 +4,6 @@ import RL.Random
 
 import Control.Monad (ap, liftM)
 import Control.Monad.Cont
-import Control.Monad.Random
 import Control.Monad.Reader
 
 -- Generator monad which generates a list of objects of type s based on GenConfig.

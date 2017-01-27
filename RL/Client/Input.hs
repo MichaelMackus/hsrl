@@ -23,17 +23,17 @@ import Control.Monad (when)
 -- user client             last action
 data UserInput = UserInput Action
 user           = UserInput None
- 
+
 -- specific actions that can have inputs on the keyboard
-data Action = Move Dir | Restart | Quit | Up DLevel | Down DLevel | None
+data Action = Move Dir | Restart | Quit | Up | Down | None
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
- 
+
 -- user input
 instance Client UserInput where
     tick (UserInput a) = do
         case a of Move d    -> moveDir d
-                  Up lvl    -> setLevel lvl
-                  Down lvl  -> setLevel lvl
+                  Up        -> takeStairs a
+                  Down      -> takeStairs a
                   otherwise -> return ()
 
 -- is user playing?
@@ -53,8 +53,8 @@ charToAction 'y'       = Move NW
 charToAction 'b'       = Move SW
 charToAction 'n'       = Move SE
 charToAction 'r'       = Restart
-charToAction '>'       = Down undefined -- down
-charToAction '<'       = Up undefined   -- up
+charToAction '>'       = Down
+charToAction '<'       = Up
 charToAction 'q'       = Quit
 charToAction otherwise = None
 
@@ -68,6 +68,17 @@ moveDir SE    = movePlayer ( 1,  1)
 moveDir South = movePlayer ( 0,  1)
 moveDir SW    = movePlayer (-1,  1)
 moveDir West  = movePlayer (-1,  0)
+
+takeStairs :: Action -> Game ()
+takeStairs a = do
+    lvl <- getLevel
+    p   <- getPlayer
+    let t = findTileAt (at p) lvl
+
+    case (t, a) of
+        (Just (StairUp   lvl), Up)   -> changeLevel lvl
+        (Just (StairDown lvl), Down) -> changeLevel lvl
+        otherwise                    -> return ()
 
 -- move player (or attack if mob present)
 --            offset

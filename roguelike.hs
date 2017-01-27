@@ -8,7 +8,6 @@ import RL.State
 import Graphics.Vty
 import System.Random
 
-import Debug.Trace
 -- main game loop
 --
 -- first part of returned tuple is whether player has won or not
@@ -32,7 +31,7 @@ gameLoop draw nextAction env = do
 
 main = do
         vty       <- mkRenderer -- initialize VTY renderer
-        e         <- nextLevel conf
+        e         <- nextLevel Nothing conf
         (won, e') <- gameLoop (`render` vty) (nextAction vty) e
 
         shutdown vty
@@ -52,33 +51,18 @@ main = do
 nextAction :: Vty -> Env -> IO Action
 nextAction vty env = do
         e <- nextEvent vty
-        return (fillAction (toAction e))
+        return (toAction e)
     where
         -- gets game Action from user input
         toAction :: Event -> Action
         toAction (EvKey (KChar c) _) = charToAction c
         toAction (EvKey otherwise _) = None
 
-        -- fill in action with next/prev level
-        fillAction a@(Up _)   =
-            let lvl = level env
-                t = findTileAt (at (player lvl)) lvl
-                f (StairUp lvl') = Up lvl'
-                f b = None
-            in  maybe None f t
-        fillAction a@(Down _) =
-            let lvl = level env
-                t = findTileAt (at (player lvl)) lvl
-                f (StairDown lvl') = Down lvl'
-                f b = None
-            in  maybe None f t
-        fillAction b = b
-
 -- generate a new level
-nextLevel :: GenConfig -> IO Env
-nextLevel conf = do
+nextLevel :: Maybe DLevel -> GenConfig -> IO Env
+nextLevel prev conf = do
         g <- newStdGen
-        let (lvl, g') = generateLevel conf g
+        let (lvl, g') = generateLevel prev conf g
 
         return (mkEnv lvl g')
     where

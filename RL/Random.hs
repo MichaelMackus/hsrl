@@ -1,11 +1,11 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, randomPoint, Roller(..), module System.Random) where
+module RL.Random (roll, randomPoint, Roller(..), module System.Random, module Control.Monad.Random) where
 
 import RL.Types
 
 import Control.Monad          (liftM2, ap)
-import Control.Monad.Random   (MonadRandom(..), MonadSplit(..))
+import Control.Monad.Random
 import System.Random
 
 newtype Roller m a = Roller { runRoller :: StdGen -> m (a, StdGen) } deriving Functor

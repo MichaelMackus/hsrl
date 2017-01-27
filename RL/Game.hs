@@ -54,6 +54,9 @@ instance MonadRandom Game where
     getRandomR    = withRng . randomR
     getRandomRs r = withRng $ \g -> (randomRs r g, g)
 
+instance MonadSplit StdGen Game where
+    getSplit      = withRng $ \g -> split g
+
 instance Functor Game where
     fmap = liftM
 

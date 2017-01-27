@@ -14,10 +14,38 @@ import Data.Maybe
 getLevel :: Game DLevel
 getLevel = gets level
 
+-- this is used internally to update the current dungeon level
 setLevel :: DLevel -> Game ()
 setLevel lvl = do
     game <- get
     put $ game { level = lvl }
+
+getDungeon :: Game Dungeon
+getDungeon = gets dungeon
+
+setDungeon :: Dungeon -> Game ()
+setDungeon dng = do
+    game <- get
+    put (game { dungeon = dng })
+
+-- use this to change to a different dungeon level
+-- TODO set player to up/down stair
+changeLevel :: DLevel -> Game ()
+changeLevel lvl = do
+    game <- get
+    let dng  = dungeon game
+        lvl' = atDepth (depth lvl) dng
+
+    when (lvl /= level game) $ do
+        setLevel (maybe lvl id lvl')
+        when (isNothing lvl') $ setDungeon (insertLevel lvl dng)
+
+-- generateLevel :: Int -> Game ()
+-- generateLevel depth = do
+--     conf <- ask
+--     g    <- getSplit
+--     let (lvl, s) = runGenerator (levelGenerator depth) conf (initState g)
+--     setLevel (lvl)
 
 getMessages :: Game [Message]
 getMessages = gets messages

@@ -11,31 +11,53 @@ import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Set as Set
 
+-- represents a tree of dungeon levels (TODO currently only 1 dimension)
+data Dungeon = DungeonLevel DLevel Dungeon | DTip DLevel
+
+-- insert level at DLevel's depth
+insertLevel :: DLevel -> Dungeon -> Dungeon
+insertLevel lvl (DTip prev)
+    | depth prev == depth lvl = DTip lvl
+    | otherwise = DungeonLevel prev (DTip lvl)
+insertLevel lvl (DungeonLevel start rest)
+    | depth start == depth lvl = DungeonLevel lvl rest
+    | otherwise = DungeonLevel start (insertLevel lvl rest)
+
+atDepth :: Int -> Dungeon -> Maybe DLevel
+atDepth d (DTip lvl) = if depth lvl == d then Just lvl else Nothing
+atDepth d (DungeonLevel start rest) =
+    if depth start == d then Just start
+    else atDepth d rest
+
 -- the dungeon Map is just a map of Points -> Tiles
-data Dungeon = DTip DLevel | DNotGenerated
 data DLevel  = DLevel {
+    depth :: Int,
     tiles :: Map Point Tile,
     player :: Player,
     items :: [()],
     mobs :: [Mob]
-} deriving Eq
+}
+
+instance Eq DLevel where
+    -- TODO this won't work with different dungeon branches
+    d == d' = depth d == depth d'
 
 data Tile = Floor | Cavern | Rock | StairUp DLevel | StairDown DLevel | Other Char
 
 instance Eq Tile where
-    Floor         == Floor  = True
-    Cavern        == Cavern = True
-    (StairUp _  ) == (StairUp _  ) = True
+    Floor         == Floor         = True
+    Cavern        == Cavern        = True
+    (StairUp _)   == (StairUp _)   = True
     (StairDown _) == (StairDown _) = True
-    (Other c)     == (Other c') = c == c'
+    (Other c)     == (Other c')    = c == c'
     _ == _ = False
 
 fromTile :: Tile -> Char
-fromTile Floor          = '.'
-fromTile Cavern         = '#'
-fromTile (Other c)      = c
-fromTile (StairUp    _) = '<'
-fromTile (StairDown  _) = '>'
+fromTile Floor     = '.'
+fromTile Cavern    = '#'
+fromTile (Other c) = c
+fromTile (StairUp _) = '<'
+fromTile (StairDown _) = '>'
 fromTile otherwise = ' '
 
 toTile :: Char -> Tile
@@ -53,8 +75,8 @@ instance Show DLevel where
     show = unlines . map (map fromTile) . toTiles
 
 -- Map constructor
-mkLevel :: [[Tile]] -> DLevel
-mkLevel ts = DLevel (M.fromList (enumerateMap ts)) p [] []
+mkLevel :: Int -> [[Tile]] -> DLevel
+mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] []
     where p = Mob 0 '@' (0,0) 0 (1 `d` 4)
 
 -- blank map
