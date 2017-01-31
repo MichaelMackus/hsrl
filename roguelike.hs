@@ -31,7 +31,7 @@ gameLoop draw nextAction env = do
 
 main = do
         vty       <- mkRenderer -- initialize VTY renderer
-        e         <- nextLevel Nothing conf
+        e         <- nextLevel dconf conf
         (won, e') <- gameLoop (`render` vty) (nextAction vty) e
 
         shutdown vty
@@ -46,6 +46,15 @@ main = do
             putStrLn "Goodbye!"
     where
         conf = GenConfig 80 15 10
+        dconf = DungeonConfig {
+            prevLevel = Nothing,
+            maxDepth  = 5,
+            maxMobs   = 5,
+            playerConfig = PlayerConfig {
+                playerHp = 10,
+                playerDmg = 1 `d` 6
+            }
+        }
 
 
 nextAction :: Vty -> Env -> IO Action
@@ -59,10 +68,10 @@ nextAction vty env = do
         toAction (EvKey otherwise _) = None
 
 -- generate a new level
-nextLevel :: Maybe DLevel -> GenConfig -> IO Env
-nextLevel prev conf = do
+nextLevel :: DungeonConfig -> GenConfig -> IO Env
+nextLevel dconf conf = do
         g <- newStdGen
-        let (lvl, g') = generateLevel prev conf g
+        let (lvl, g') = generateLevel dconf conf g
 
         return (mkEnv lvl g')
     where

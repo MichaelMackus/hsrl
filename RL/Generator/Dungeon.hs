@@ -1,4 +1,4 @@
-module RL.Generator.Dungeon (generateLevel, levelGenerator, module RL.Generator) where
+module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), generateLevel, levelGenerator, module RL.Generator) where
 
 import RL.Map
 import RL.Generator
@@ -13,33 +13,46 @@ import Control.Monad.Reader (ask)
 import Data.Maybe (fromMaybe, listToMaybe, isJust, fromJust)
 import qualified Data.List as L
 
+data DungeonConfig = DungeonConfig {
+    prevLevel :: Maybe DLevel,
+    maxDepth :: Int,
+    maxMobs :: Int,
+    playerConfig :: PlayerConfig
+}
+
+data PlayerConfig = PlayerConfig {
+    playerHp :: Int,
+    playerDmg :: Dice
+}
+
 -- Quick Map generator
 -- dgenerator :: (Monad m, MonadReader GenConfig m, MonadSplit StdGen m) => m DLevel
-generateLevel :: Maybe DLevel -> GenConfig -> StdGen -> (DLevel, StdGen)
-generateLevel prev conf g =
-    let (r, s) = runGenerator (levelGenerator prev) conf (initState g)
+generateLevel :: DungeonConfig -> GenConfig -> StdGen -> (DLevel, StdGen)
+generateLevel dconf conf g =
+    let (r, s) = runGenerator (levelGenerator dconf) conf (initState g)
     in  (r, gen s)
 
-levelGenerator :: Maybe DLevel -> Generator s DLevel
-levelGenerator prev = do
+levelGenerator :: DungeonConfig -> Generator s DLevel
+levelGenerator dconf = do
         conf   <- ask
         cs     <- runGenerator' cells conf initState
         ps     <- runGenerator' (paths cs) conf initState
-        player <- fromMaybe (error errPlayer) <$> runGenerator' (playerGenerator 10 (1 `d` 4)) conf (mkGenState cs)
+        player <- fromMaybe (error errPlayer) <$> runGenerator' (playerGenerator (playerHp (playerConfig dconf)) (playerDmg (playerConfig dconf))) conf (mkGenState cs)
 
-        let d   = maybe 1 ((+1) . depth) prev
-            lvl = toLevel conf d cs ps player
+        let prev = prevLevel dconf
+            d    = maybe 1 ((+1) . depth) prev
+            lvl  = toLevel conf d cs ps player
 
-        mobs <- runGenerator' (mobGenerator 5) conf (mkGenState lvl)
+        mobs <- runGenerator' (mobGenerator (maxMobs dconf)) conf (mkGenState lvl)
         g    <- getSplit
 
         -- generate up/down stairs
         let lvl'    = iterMap f lvl
             f p t   = if p == at player && not (isStair t) && isJust prev then (StairUp (fromJust prev))
-                      else if Just p == lastP then (StairDown nextLvl)
+                      else if Just p == lastP && d + 1 <= maxDepth dconf then (StairDown nextLvl)
                            else t
             lastP   = cmid <$> listToMaybe (reverse (L.sortBy (comparing' (distance (at player))) cs))
-            nextLvl = fst (generateLevel (Just lvl') conf g)
+            nextLvl = fst (generateLevel (dconf { prevLevel = Just lvl' }) conf g)
 
         return (lvl' { mobs = withMobIds mobs })
     where
