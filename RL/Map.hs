@@ -125,13 +125,19 @@ dneighbors :: DLevel -> Point -> [Point]
 dneighbors d p = mapDLevel f d
     where
         f p' t = if p `touching` p' && isPassable t then Just p' else Nothing
-        touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
-                                         (p1x + 1 == p2x && p1y == p2y) ||
-                                         (p1x == p2x && p1y - 1 == p2y) ||
-                                         (p1x - 1 == p2x && p1y == p2y)
+
+touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
+                                 (p1x + 1 == p2x && p1y == p2y) ||
+                                 (p1x == p2x && p1y - 1 == p2y) ||
+                                 (p1x - 1 == p2x && p1y == p2y)
 
 dfinder :: DLevel -> Point -> Set Point
 dfinder d p = Set.fromList (dneighbors d p)
+
+-- this passes through non passables
+dfinder' :: DLevel -> Point -> Set Point
+dfinder' d p = Set.fromList (mapDLevel f d)
+    where f p' t = if p' `touching` p then Just p' else Nothing
 
 mapDLevel :: (Point -> Tile -> Maybe r) -> DLevel -> [r]
 mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)

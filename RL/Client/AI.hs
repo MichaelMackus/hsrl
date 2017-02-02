@@ -32,12 +32,17 @@ instance Client AI where
             moveCloser (m, smelling, seeing) = do
                 p   <- getPlayer
                 lvl <- getLevel
-                let path = findPath (dfinder lvl) distance (at p) (at m)
-                    -- TODO path should be valid if smelling (i.e. can still move closer without direct path)
-                    isValidPath = isJust path && length (fromJust path) > 1
+
+                let f  g  = findPath (g lvl) distance (at p) (at m)
+                    -- first attempt to find walkable path
+                    path  = maybe (f dfinder') Just (f dfinder)
+                    next  = fromJust path !! 1
+                    t     = findTileAt next lvl
+                    isValidPath = isJust path && length (fromJust path) > 1 &&
+                                  isJust t && isPassable (fromJust t)
+
                 if (smelling || seeing) && isValidPath then
-                    let next = fromJust path !! 1
-                    in  return (moveMobTo next m)
+                    return (moveMobTo next m)
                 else
                     return m
 
