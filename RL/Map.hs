@@ -84,7 +84,7 @@ instance Show DLevel where
 -- Map constructor
 mkLevel :: Int -> [[Tile]] -> DLevel
 mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] []
-    where p = Mob 0 '@' (0,0) 0 (1 `d` 4)
+    where p = Mob 0 '@' (0,0) 0 (1 `d` 4) 0
 
 -- blank map
 blankMap :: Int -> Int -> [[Tile]]

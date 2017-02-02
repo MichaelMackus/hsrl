@@ -11,13 +11,13 @@ import Data.Maybe (catMaybes)
 
 -- TODO initial state
 
-playerGenerator :: HP -> Dice -> Generator [Cell] (Maybe Player)
-playerGenerator hp dmg = do
+playerGenerator :: HP -> Dice -> Radius -> Generator [Cell] (Maybe Player)
+playerGenerator hp dmg fov = do
     cs <- getGData
     if not (null cs) then
         -- TODO place player randomly around dungeon
         let p = cmid (cs !! 0)
-        in  markGDone >> return (Just (mkPlayer hp dmg p))
+        in  markGDone >> return (Just (mkPlayer hp dmg p fov))
     else
         return Nothing
 
@@ -45,5 +45,6 @@ mob = do
             symbol = 'k',
             hp = 5,
             dmgd = 1 `d` 4,
-            at = p
+            at = p,
+            fov = 5
         }

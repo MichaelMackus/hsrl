@@ -4,7 +4,8 @@ import RL.Types
 import RL.Util (enumerate)
 
 -- player/mobs
-type HP = Int
+type HP     = Int
+type Radius = Double
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
@@ -12,32 +13,24 @@ data Mob = Mob {
     symbol :: Char,
     at     :: Point,
     hp     :: HP,
-    dmgd   :: Dice
+    dmgd   :: Dice,
+    fov    :: Radius
 }
-
-type Player  = Mob
--- data Event a = Won | Lost | Playing a
-
--- attack :: Mob -> Dice -> Game Event
--- attack m d = do
-
--- player :: Game Player
--- moveTo :: Point -> Game Event
-
--- dungeon :: Game s Dungeon
--- dungeon = runStateT
 
 instance Eq Mob where
     m == m' = mobId m == mobId m'
 
+type Player = Mob
+
 -- configure default player
-mkPlayer :: HP -> Dice -> Point -> Player
-mkPlayer hp d at = Mob {
+mkPlayer :: HP -> Dice -> Point -> Radius -> Player
+mkPlayer hp d at fov = Mob {
     mobId  = 0,
     symbol = '@',
     hp = hp,
     dmgd = d,
-    at = at
+    at = at,
+    fov = fov
 }
 
 -- helper functions for mob management

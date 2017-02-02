@@ -22,7 +22,8 @@ data DungeonConfig = DungeonConfig {
 
 data PlayerConfig = PlayerConfig {
     playerHp :: Int,
-    playerDmg :: Dice
+    playerDmg :: Dice,
+    playerFov :: Radius
 }
 
 -- Quick Map generator
@@ -37,7 +38,7 @@ levelGenerator dconf = do
         conf   <- ask
         cs     <- runGenerator' cells conf initState
         ps     <- runGenerator' (paths cs) conf initState
-        player <- fromMaybe (error errPlayer) <$> runGenerator' (playerGenerator (playerHp (playerConfig dconf)) (playerDmg (playerConfig dconf))) conf (mkGenState cs)
+        player <- fromMaybe (error errPlayer) <$> runGenerator' (playerGenerator (playerHp (playerConfig dconf)) (playerDmg (playerConfig dconf)) (playerFov (playerConfig dconf))) conf (mkGenState cs)
 
         let prev = prevLevel dconf
             d    = maybe 1 ((+1) . depth) prev

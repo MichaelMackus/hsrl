@@ -33,6 +33,7 @@ instance Client AI where
                 p   <- getPlayer
                 lvl <- getLevel
                 let path = findPath (dfinder lvl) distance (at p) (at m)
+                    -- TODO path should be valid if smelling (i.e. can still move closer without direct path)
                     isValidPath = isJust path && length (fromJust path) > 1
                 if (smelling || seeing) && isValidPath then
                     let next = fromJust path !! 1
@@ -40,17 +41,15 @@ instance Client AI where
                 else
                     return m
 
--- TODO use configurable FOV
 canSee :: Mob -> Mob -> Game Bool
-canSee = canSmell
+canSee m1 m2 = do
+    lvl <- getLevel
+    if distance (at m1) (at m2) <= fov m1 then
+        return (isJust $ findPath (dfinder lvl) distance (at m2) (at m1))
+    else
+        return False
 
 -- TODO use configurable nose (i.e. dogs/wolfs smell better than other mobs)
 canSmell :: Mob -> Mob -> Game Bool
-canSmell m1 m2 = do
-        p <- getPlayer
-        -- TODO pathfinding only for canSee function
-        -- lvl <- getLevel
-        -- let p = findPath (dfinder lvl) distance (at m2) (at m1)
-        return (distance (at m1) (at p) <= range)
-    where
-        range = 10
+canSmell m1 m2 = return (distance (at m1) (at m2) <= range)
+    where range = 10

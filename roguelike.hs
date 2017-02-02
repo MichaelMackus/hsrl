@@ -52,7 +52,8 @@ main = do
             maxMobs   = 5,
             playerConfig = PlayerConfig {
                 playerHp = 10,
-                playerDmg = 1 `d` 6
+                playerDmg = 1 `d` 6,
+                playerFov = 5
             }
         }
 
