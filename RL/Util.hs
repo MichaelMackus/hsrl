@@ -7,17 +7,21 @@ import Data.Maybe (isJust)
 enumerate :: [a] -> [(Int, a)]
 enumerate = zip [0..]
 
-enumerate2 :: [[a]] -> [((Int, Int), a)]
-enumerate2 = concat . map enumerateRow . zip [0..] where
+enumerate1 :: [a] -> [(Int, a)]
+enumerate1 = zip [1..]
+
+
+enumerate2d :: [[a]] -> [((Int, Int), a)]
+enumerate2d = concat . map enumerateRow . zip [0..] where
     enumerateRow (y, r) = map (\(x, t) -> ((x, y), t)) $ zip [0..] r
 
 unenumerate :: [(Int, a)] -> [a]
 unenumerate [] = error "unenumerate requires a list"
 unenumerate it = snd $ unzip it
 
-unenumerate2 :: [((Int, Int), a)] -> [[a]]
-unenumerate2 [] = error "unenumerate2 requires a list"
-unenumerate2 it = splitEvery maxX . snd $ unzip it
+unenumerate2d :: [((Int, Int), a)] -> [[a]]
+unenumerate2d [] = error "unenumerate2 requires a list"
+unenumerate2d it = splitEvery maxX . snd $ unzip it
     where maxX = (+1) . fst . fst $ last it
 
 splitEvery :: Int -> [a] -> [[a]]

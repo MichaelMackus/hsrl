@@ -7,6 +7,7 @@ module RL.State where
 -- TODO look into lenses
 
 import RL.Game
+import RL.Random (roll)
 
 import Control.Monad.State
 import Data.Maybe
@@ -63,12 +64,12 @@ getMobs = fmap mobs getLevel
 setMobs :: [Mob] -> Game ()
 setMobs ms = do
     lvl <- getLevel
-    setLevel $ lvl { mobs = filterMobs ms }
+    setLevel $ lvl { mobs = ms }
 
 isGameWon :: Game Bool
 isGameWon = do
     lvl <- getLevel
-    ms  <- filterMobs <$> getMobs
+    ms  <- aliveMobs <$> getMobs
     let down = findTile (isDownStair . snd) lvl
 
     return ((null ms) && isNothing down)
@@ -114,3 +115,27 @@ sendMessage :: Message -> Game ()
 sendMessage msg = do
     game <- get
     put $ game { messages = msg : (messages game) }
+
+-- simple attack function
+attack :: Mob -> Mob -> Game (Int, Mob)
+attack target attacker = do
+    dmg     <- roll (dmgd attacker)
+    target' <- hurtMob target dmg
+
+    return (dmg, target')
+
+-- hurt    mob    dmg
+hurtMob :: Mob -> Int -> Game Mob
+hurtMob target dmg = do
+        p  <- getPlayer
+        if target == p then do
+            let p' = hurtMob dmg p
+            setPlayer p'
+            return p'
+        else do
+            ms <- getMobs
+            setMobs (map (hurtMob dmg) ms)
+            return target'
+    where
+        hurtMob  dmg m = if m == target then target' else m
+        target' = target { hp = (hp target) - dmg }

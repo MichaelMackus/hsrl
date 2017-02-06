@@ -16,7 +16,6 @@ module RL.Client.Input (
 import RL.Game
 import RL.Client
 import RL.State
-import RL.Random
 
 import Control.Monad (when)
 
@@ -31,10 +30,12 @@ data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 -- user input
 instance Client UserInput where
     tick (UserInput a) = do
-        case a of Move d    -> moveDir d
-                  Up        -> takeStairs a
-                  Down      -> takeStairs a
-                  otherwise -> return ()
+        p <- getPlayer
+        when (not (isDead p)) $ do
+            case a of Move d    -> moveDir d
+                      Up        -> takeStairs a
+                      Down      -> takeStairs a
+                      otherwise -> return ()
 
 -- is user playing?
 isPlaying :: Action -> Bool
@@ -87,20 +88,18 @@ movePlayer (0, 0) = return ()
 movePlayer off    = do
         newloc <- getloc
         target <- getMobAt newloc
-        maybe (moveToTile newloc) attack target
+        maybe (moveToTile newloc) attackMob target
     where
         getloc = fmap addoff getPlayer
         addoff = addOffset off . at
 
 -- basic attack function
-attack :: Mob -> Game ()
-attack target = do
-    p       <- getPlayer
-    dmg     <- roll (dmgd p)
-    target' <- hurtMob target dmg
+attackMob :: Mob -> Game ()
+attackMob target = do
+    (dmg, target') <- attack target =<< getPlayer
 
     sendMessage ("Player hit! " ++ (show dmg) ++ " damage")
-    when (isDead target') (sendMessage ("You killed the " ++ mobName target))
+    when (isDead target') (sendMessage ("You killed the " ++ mobName target'))
 
 -- move player to a given tile offset
 moveToTile :: Point -> Game ()
@@ -109,13 +108,3 @@ moveToTile xy = do
         t <- getTileAt xy
         maybe (return ()) (\t -> when (isPassable t) (movePlayer p)) t
     where movePlayer = setPlayer . moveMobTo xy
-
--- hurt    mob    dmg
-hurtMob :: Mob -> Int -> Game Mob
-hurtMob target dmg = do
-        ms <- getMobs
-        setMobs (map (hurtMob dmg) ms)
-        return target'
-    where
-        hurtMob  dmg m = if m == target then target' else m
-        target' = target { hp = (hp target) - dmg }

@@ -19,7 +19,8 @@ gameLoop draw nextAction env = do
     let turn = do
             tick (UserInput a) -- user movement
             tick AI            -- AI
-            return (isPlaying a)
+            dead <- isDead <$> getPlayer
+            return (isPlaying a && not dead)
 
         (playing, env') = runGame turn env
         (won, _)        = runGame isGameWon env'

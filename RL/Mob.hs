@@ -1,7 +1,7 @@
 module RL.Mob (module RL.Mob, module RL.Types) where
 
 import RL.Types
-import RL.Util (enumerate)
+import RL.Util (enumerate1)
 
 -- player/mobs
 type HP     = Int
@@ -38,7 +38,7 @@ mkPlayer hp d at fov = Mob {
 -- helper to prevent uninitialized fields
 mob :: Mob
 mob = Mob {
-    mobId = 0,
+    mobId = -1,
     mobName = "",
     symbol = 'z',
     at = (-1,-1),
@@ -52,8 +52,11 @@ mob = Mob {
 isDead :: Mob -> Bool
 isDead m = hp m <= 0
 
-filterMobs :: [Mob] -> [Mob]
-filterMobs = filter $ (> 0) . hp
+aliveMobs :: [Mob] -> [Mob]
+aliveMobs = filter (not . isDead)
+
+deadMobs :: [Mob] -> [Mob]
+deadMobs = filter isDead
 
 -- move a mob by offset
 moveMob :: Point -> Mob -> Mob
@@ -69,6 +72,6 @@ addOffset (offx, offy) (x, y) = (offx + x, offy + y)
 
 -- initializes mob IDs
 withMobIds :: [Mob] -> [Mob]
-withMobIds = map withMobId . enumerate
+withMobIds = map withMobId . enumerate1
     where
-        withMobId   (id, m) = if mobId m == 0 then m { mobId = id } else m
+        withMobId   (id, m) = if mobId m == (-1) then m { mobId = id } else m
