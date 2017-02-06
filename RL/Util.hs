@@ -1,5 +1,7 @@
 module RL.Util where
 
+import Data.Maybe (isJust)
+
 -- helper functions
 
 enumerate :: [a] -> [(Int, a)]
@@ -26,3 +28,9 @@ splitEvery x l
 
 comparing :: Ord o => (a -> o) -> a -> a -> Ordering
 comparing f = \a b -> compare (f a) (f b)
+
+-- lookup closest to int, fallback to int - 1 (repeatedly)
+lookupMax :: (Num a, Eq a) => a -> [(a, b)] -> Maybe b
+lookupMax n xs
+    | isJust (lookup n xs) = lookup n xs
+    | otherwise            = lookupMax (n - 1) xs

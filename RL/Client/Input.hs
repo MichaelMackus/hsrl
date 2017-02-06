@@ -100,7 +100,7 @@ attack target = do
     target' <- hurtMob target dmg
 
     sendMessage ("Player hit! " ++ (show dmg) ++ " damage")
-    when (isDead target') (sendMessage ("You killed the " ++ [symbol target]))
+    when (isDead target') (sendMessage ("You killed the " ++ mobName target))
 
 -- move player to a given tile offset
 moveToTile :: Point -> Game ()

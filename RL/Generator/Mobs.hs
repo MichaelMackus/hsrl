@@ -4,12 +4,11 @@ import RL.Game
 import RL.Generator
 import RL.Generator.Cells (Cell, cmid)
 import RL.Random
+import RL.Util (lookupMax)
 
 import Control.Monad (replicateM, when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (catMaybes)
-
--- TODO initial state
 
 playerGenerator :: HP -> Dice -> Radius -> Generator [Cell] (Maybe Player)
 playerGenerator hp dmg fov = do
@@ -24,27 +23,40 @@ playerGenerator hp dmg fov = do
 mobGenerator :: Int -> Generator DLevel [Mob]
 mobGenerator maxMobs = do
     lvl   <- getGData
-    mobs' <- (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs - length (mobs lvl)) mob
+    let diff = depth lvl
+    mobs' <- (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs - length (mobs lvl)) (generateMob diff)
     when (length mobs' == maxMobs) markGDone
     when (length mobs' /= length (mobs lvl)) (setGData (lvl { mobs = mobs' }))
     return mobs'
 
-mob :: Generator DLevel (Maybe Mob)
-mob = do
+type Difficulty = Int
+
+generateMob :: Difficulty -> Generator DLevel (Maybe Mob)
+generateMob diff = do
         conf <- ask
         lvl  <- getGData
         p    <- randomPoint (dwidth conf) (dheight conf)
 
-        let t = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTileAt p lvl)
-            m = maybe Nothing (const (Just (kobold 0 p))) t
+        let t  = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTileAt p lvl)
+            ms = maybe [] (const . maybe [] id $ lookupMax diff mobs) t
 
-        return m
+        if length ms > 0 then do
+            let max = length mobs - 1
+            i <- roll (1 `d` max)
+            return $ Just ((ms !! i) { at = p })
+        else
+            return Nothing
     where
-        kobold id p = Mob {
-            mobId = id,
-            symbol = 'k',
-            hp = 5,
-            dmgd = 1 `d` 4,
-            at = p,
-            fov = 5
-        }
+        mobs = [ (1, [ mob {
+                      mobName = "Kobold",
+                      symbol = 'k',
+                      hp = 5,
+                      dmgd = 1 `d` 4
+                  },
+                  mob {
+                      mobName = "Goblin",
+                      symbol = 'g',
+                      hp = 4,
+                      dmgd = 1 `d` 3
+                  }
+               ]) ]

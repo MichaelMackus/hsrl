@@ -9,12 +9,13 @@ type Radius = Double
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
-    mobId  :: Int,
-    symbol :: Char,
-    at     :: Point,
-    hp     :: HP,
-    dmgd   :: Dice,
-    fov    :: Radius
+    mobId   :: Int,
+    mobName :: String,
+    symbol  :: Char,
+    at      :: Point,
+    hp      :: HP,
+    dmgd    :: Dice,
+    fov     :: Radius
 }
 
 instance Eq Mob where
@@ -26,11 +27,24 @@ type Player = Mob
 mkPlayer :: HP -> Dice -> Point -> Radius -> Player
 mkPlayer hp d at fov = Mob {
     mobId  = 0,
+    mobName = "Player", -- TODO configurable name
     symbol = '@',
     hp = hp,
     dmgd = d,
     at = at,
     fov = fov
+}
+
+-- helper to prevent uninitialized fields
+mob :: Mob
+mob = Mob {
+    mobId = 0,
+    mobName = "",
+    symbol = 'z',
+    at = (-1,-1),
+    hp = 0,
+    dmgd = 1 `d` 2,
+    fov = 5
 }
 
 -- helper functions for mob management
