@@ -5,7 +5,7 @@ import RL.Types
 import RL.Util (enumerate)
 
 import Data.Map (Map)
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isNothing)
 import Data.Set (Set)
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -122,9 +122,24 @@ findPoint p lvl =
     in  maybe (maybe err fromTile t) symbol m
 
 dneighbors :: DLevel -> Point -> [Point]
-dneighbors d p = mapDLevel f d
+dneighbors d p = neighbors d p f
     where
-        f p' t = if p `touching` p' && isPassable t then Just p' else Nothing
+        f (p', Nothing) = False
+        f (p', Just t)  = if p `touching` p' && isPassable t then True else False
+
+-- generic neighbors function
+neighbors :: DLevel -> Point -> ((Point, Maybe Tile) -> Bool) -> [Point]
+neighbors d p@(x, y) f
+    | isNothing (M.lookup p (tiles d)) = []
+    | otherwise =
+        let ts = tiles d
+            ps = [ ((x + 1), y),
+                   ((x - 1), y),
+                   (x, (y + 1)),
+                   (x, (y - 1)) ]
+            ts' = map (`M.lookup` ts) ps
+        in  map fst (filter f (zip ps ts'))
+
 
 touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
                                  (p1x + 1 == p2x && p1y == p2y) ||
@@ -136,8 +151,10 @@ dfinder d p = Set.fromList (dneighbors d p)
 
 -- this passes through non passables
 dfinder' :: DLevel -> Point -> Set Point
-dfinder' d p = Set.fromList (mapDLevel f d)
-    where f p' t = if p' `touching` p then Just p' else Nothing
+dfinder' d p = Set.fromList (neighbors d p f)
+    where
+        f (_ , Nothing) = False
+        f (p', Just t)  = if p' `touching` p then True else False
 
 mapDLevel :: (Point -> Tile -> Maybe r) -> DLevel -> [r]
 mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)
