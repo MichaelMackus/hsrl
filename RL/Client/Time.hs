@@ -7,13 +7,17 @@ module RL.Client.Time (end) where
 import RL.Client
 import RL.Game
 import RL.State
+import RL.Random
+import RL.Generator
+import RL.Generator.Mobs
 
-import Control.Monad (replicateM_)
+import Control.Monad (replicateM_, when)
 import Data.Maybe (isNothing, fromJust)
 
 data Time = Ticks Int Env
 
 -- end of 1 turn
+-- TODO pass this mobGenerator?
 end startEnv = Ticks 1 startEnv
 
 instance Client Time where
@@ -29,7 +33,17 @@ instance Client Time where
         let healed = map (healDamaged (allMobs (level start)) (floor (1 / fromIntegral i))) ms'
         setMobs healed
 
-        -- TODO spawn new mobs
+        -- spawn new mobs
+        let maxMobs = 5              -- TODO make this configurable
+            conf = GenConfig 80 15 1 -- TODO make this configurable
+        r <- roll (1 `d` 10)         -- 10% chance to spawn new mob
+        when (length healed < maxMobs && r == 1) $ do
+            max <- getRandomR (length healed + 1, maxMobs)
+            g   <- getSplit
+            lvl <- getLevel
+            let s = mkGenState lvl g
+                (spawned, _) = runGenerator (mobGenerator maxMobs) conf s
+            setMobs spawned
 
 healDamaged :: [Mob] -> Int -> Mob -> Mob
 healDamaged prev amt m
