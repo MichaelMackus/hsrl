@@ -10,7 +10,7 @@ import RL.Util (enumerate)
 
 -- game is renderable
 instance Renderable Env where
-    getSprites e = getSprites (level e) ++ getMsgSprites (messages e)
+    getSprites e = getSprites (level e) ++ getMsgSprites (messages e) ++ getStatusSprites (level e)
 
 -- -- dungeon is renderable
 -- instance Renderable Level where
@@ -31,7 +31,17 @@ getMapSprites lvl = map getRowSprite . enumerate . map (map fromTile) . toTiles 
         sym p t = Other (findPoint p lvl)
         getRowSprite ((y), ts) = ((0, y), ts)
 
+getStatusSprites :: DLevel -> [Sprite]
+getStatusSprites lvl =
+    let p = player lvl
+        statusLine = [ "HP: " ++ show (hp p) ++ "/" ++ show (mhp p),
+                       "Depth: " ++ show (depth lvl) ]
+    in  mkSprites (60, 15) statusLine
+
 getMsgSprites :: [Message] -> [Sprite]
-getMsgSprites = take 10 . map toSprite . enumerate
+getMsgSprites = take 10 . mkSprites (0, 15)
+
+mkSprites :: Point -> [String] -> [Sprite]
+mkSprites (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, m) = ((0, i + 15), m)
+        toSprite (i, s) = ((offx, i + offy), s)
