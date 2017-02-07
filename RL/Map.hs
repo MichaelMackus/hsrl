@@ -39,6 +39,9 @@ data DLevel  = DLevel {
     mobs :: [Mob]
 }
 
+allMobs :: DLevel -> [Mob]
+allMobs lvl = (player lvl:mobs lvl)
+
 instance Eq DLevel where
     -- TODO this won't work with different dungeon branches
     d == d' = depth d == depth d'
@@ -84,7 +87,7 @@ instance Show DLevel where
 -- Map constructor
 mkLevel :: Int -> [[Tile]] -> DLevel
 mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] []
-    where p = Mob 0 "" '@' (0,0) 0 (1 `d` 4) 0
+    where p = mob
 
 -- blank map
 blankMap :: Int -> Int -> [[Tile]]

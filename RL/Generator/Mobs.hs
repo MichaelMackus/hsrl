@@ -38,6 +38,7 @@ generateMob diff = do
         p    <- randomPoint (dwidth conf) (dheight conf)
 
         let t  = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTileAt p lvl)
+            -- TODO randomly choose smaller difficulties
             ms = maybe [] (const . maybe [] id $ lookupMax diff mobs) t
 
         if length ms > 0 then do
@@ -50,12 +51,28 @@ generateMob diff = do
                       mobName = "Kobold",
                       symbol = 'k',
                       hp = 5,
+                      mhp = 5,
                       dmgd = 1 `d` 4
                   },
                   mob {
                       mobName = "Goblin",
                       symbol = 'g',
                       hp = 4,
+                      mhp = 4,
                       dmgd = 1 `d` 3
+                  },
+                  mob {
+                      mobName = "Grid Bug",
+                      symbol = 'x',
+                      hp = 3,
+                      mhp = 3,
+                      dmgd = 1 `d` 2
                   }
+               ]), (2, [ mob {
+                      mobName = "Orc",
+                      symbol = 'o',
+                      hp = 6,
+                      mhp = 6,
+                      dmgd = 1 `d` 6
+                   }
                ]) ]

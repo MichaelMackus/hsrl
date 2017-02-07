@@ -3,6 +3,8 @@ module RL.Mob (module RL.Mob, module RL.Types) where
 import RL.Types
 import RL.Util (enumerate1)
 
+import Data.List (find)
+
 -- player/mobs
 type HP     = Int
 type Radius = Double
@@ -14,6 +16,7 @@ data Mob = Mob {
     symbol  :: Char,
     at      :: Point,
     hp      :: HP,
+    mhp     :: HP,
     dmgd    :: Dice,
     fov     :: Radius
 }
@@ -30,10 +33,14 @@ mkPlayer hp d at fov = Mob {
     mobName = "Player", -- TODO configurable name
     symbol = '@',
     hp = hp,
+    mhp = hp,
     dmgd = d,
     at = at,
     fov = fov
 }
+
+isPlayer :: Mob -> Bool
+isPlayer m = mobId m == 0
 
 -- helper to prevent uninitialized fields
 mob :: Mob
@@ -43,6 +50,7 @@ mob = Mob {
     symbol = 'z',
     at = (-1,-1),
     hp = 0,
+    mhp = 0,
     dmgd = 1 `d` 2,
     fov = 5
 }
@@ -75,3 +83,6 @@ withMobIds :: [Mob] -> [Mob]
 withMobIds = map withMobId . enumerate1
     where
         withMobId   (id, m) = if mobId m == (-1) then m { mobId = id } else m
+
+findMob :: Int -> [Mob] -> Maybe Mob
+findMob n = find ((n==) . mobId)

@@ -1,4 +1,4 @@
-module RL.State where
+module RL.State (module RL.State, get, gets) where
 
 -- state manipulation
 --
@@ -11,6 +11,7 @@ import RL.Random (roll)
 
 import Control.Monad.State
 import Data.Maybe
+import Data.List (find)
 
 getLevel :: Game DLevel
 getLevel = gets level
@@ -64,7 +65,7 @@ getMobs = fmap mobs getLevel
 setMobs :: [Mob] -> Game ()
 setMobs ms = do
     lvl <- getLevel
-    setLevel $ lvl { mobs = ms }
+    setLevel $ lvl { mobs = filter (not . isPlayer) ms, player = maybe (player lvl) id (find isPlayer ms) }
 
 isGameWon :: Game Bool
 isGameWon = do

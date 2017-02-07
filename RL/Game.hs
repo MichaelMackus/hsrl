@@ -17,10 +17,6 @@ data Env    = Env {
 runGame :: Game a -> Env -> (a, Env)
 runGame (GameState pr) e = pr e
 
--- mkEnv :: Env
--- mkEnv = Env (generateDungeon 10 10) $ mkStdGen 0
-
-
 -- get/setters
 withEnv :: (Env -> Game a) -> Game a
 withEnv f = f =<< get

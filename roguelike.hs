@@ -1,5 +1,6 @@
 import RL.Client.AI
 import RL.Client.Input
+import RL.Client.Time
 import RL.Game
 import RL.Generator.Dungeon
 import RL.Renderer.Game
@@ -17,8 +18,11 @@ gameLoop draw nextAction env = do
     a <- nextAction env -- wait for user input, and transform into Action
 
     let turn = do
+            s <- get           -- start env
             tick (UserInput a) -- user movement
             tick AI            -- AI
+            tick (end s)       -- mob cleanup, new spawns, healing, etc.
+
             dead <- isDead <$> getPlayer
             return (isPlaying a && not dead)
 
@@ -52,7 +56,7 @@ main = do
             maxDepth  = 5,
             maxMobs   = 5,
             playerConfig = PlayerConfig {
-                playerHp = 10,
+                playerHp = 12,
                 playerDmg = 1 `d` 6,
                 playerFov = 5
             }
