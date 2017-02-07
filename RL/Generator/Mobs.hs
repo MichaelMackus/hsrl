@@ -41,9 +41,8 @@ generateMob diff = do
             ms = maybe [] (const . maybe [] id $ lookupMax diff mobs) t
 
         if length ms > 0 then do
-            let max = length mobs - 1
-            i <- roll (1 `d` max)
-            return $ Just ((ms !! i) { at = p })
+            m <- pick ms
+            return $ fmap (\m -> m { at = p }) m
         else
             return Nothing
     where

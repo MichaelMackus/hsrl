@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, randomPoint, Roller(..), module System.Random, module Control.Monad.Random) where
+module RL.Random (roll, pick, randomPoint, Roller(..), module System.Random, module Control.Monad.Random) where
 
 import RL.Types
 
@@ -14,6 +14,11 @@ roll :: MonadRandom m => Dice -> m Int
 roll (D n ns) = getRandomR (minInt, maxInt)
     where minInt = n
           maxInt = ns * n
+
+-- pick randomly from a list
+pick :: MonadRandom m => [a] -> m (Maybe a)
+pick [] = return Nothing
+pick xs = getRandomR (0, length xs - 1) >>= return . Just . (xs !!)
 
 -- generates random point
 -- between     maxX   maxY

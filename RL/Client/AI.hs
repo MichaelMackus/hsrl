@@ -8,6 +8,7 @@ import RL.Game
 import RL.Client
 import RL.Pathfinder
 import RL.State
+import RL.Random
 
 import Control.Monad (forM, forM_, when)
 import Data.Maybe (isJust, fromJust)
@@ -24,7 +25,7 @@ instance Client AI where
 
             let ms' = zipWith3 (,,) ms smelling seeing
 
-            setMobs =<< forM ms' moveCloser
+            setMobs =<< forM ms' automate
 
             -- send message for dead mobs
             dead <- deadMobs <$> getMobs
@@ -33,7 +34,19 @@ instance Client AI where
             -- cleanup dead mobs
             setMobs =<< aliveMobs <$> getMobs
         where
-            moveCloser :: (Mob, Bool, Bool) -> Game Mob
+            automate (m, smelling, seeing) =
+                if smelling || seeing then
+                    moveCloser (m, smelling, seeing)
+                else do
+                    -- wander randomly
+                    lvl <- getLevel
+                    let neighbors = dneighbors lvl (at m)
+                    p   <- pick neighbors
+
+                    case p of
+                        Just p    -> return (m { at = p })
+                        otherwise -> return m
+
             moveCloser (m, smelling, seeing) = do
                 p   <- getPlayer
                 lvl <- getLevel
