@@ -11,7 +11,7 @@ data Env    = Env {
     dungeon  :: Dungeon,
     level    :: DLevel,
     rng      :: StdGen,
-    messages :: [Message]
+    events   :: [Event Mob]
 }
 
 runGame :: Game a -> Env -> (a, Env)

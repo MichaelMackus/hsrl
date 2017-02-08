@@ -3,6 +3,7 @@ module RL.Renderer (
     Display,
     Sprite,
     Renderable(..),
+    InputEvent,
     render,
     killRenderer,
     mkRenderer
@@ -21,9 +22,10 @@ import Control.Monad.Reader
 
 type Renderer = ReaderT Display IO
 
-type Display  = Vty
-type Sprite   = (Point, String) -- string somewhere on the screen
-type Point    = (Int, Int)      -- cheap cop out, todo move Point declaration
+type Display    = Vty
+type InputEvent = Event
+type Sprite     = (Point, String) -- string somewhere on the screen
+type Point      = (Int, Int)      -- cheap cop out, todo move Point declaration
 
 class Renderable r where
     getSprites :: r -> [Sprite]

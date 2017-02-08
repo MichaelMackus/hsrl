@@ -96,10 +96,11 @@ movePlayer off    = do
 -- basic attack function
 attackMob :: Mob -> Game ()
 attackMob target = do
-    (dmg, target') <- attack target =<< getPlayer
+    p <- getPlayer
+    (dmg, target') <- attack target p
 
-    sendMessage ("Player hit! " ++ (show dmg) ++ " damage")
-    when (isDead target') (sendMessage ("You killed the " ++ mobName target'))
+    send (Attacked p target' dmg)
+    when (isDead target') (send (Died target'))
 
 -- move player to a given tile offset
 moveToTile :: Point -> Game ()

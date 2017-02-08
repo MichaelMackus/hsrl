@@ -1,6 +1,7 @@
 module RL.Renderer.Game (
     Env(..),
     DLevel(..),
+    toMessage,
     module RL.Renderer
 ) where
 
@@ -10,7 +11,7 @@ import RL.Util (enumerate)
 
 -- game is renderable
 instance Renderable Env where
-    getSprites e = getSprites (level e) ++ getMsgSprites (messages e) ++ getStatusSprites (level e)
+    getSprites e = getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
 
 -- -- dungeon is renderable
 -- instance Renderable Level where
@@ -38,8 +39,18 @@ getStatusSprites lvl =
                        "Depth: " ++ show (depth lvl) ]
     in  mkSprites (60, 15) statusLine
 
-getMsgSprites :: [Message] -> [Sprite]
-getMsgSprites = take 10 . mkSprites (0, 15)
+getMsgSprites :: [Event Mob] -> [Sprite]
+getMsgSprites = mkSprites (0, 15) . reverse . take 10 . map toMessage
+
+toMessage :: Event Mob -> String
+toMessage (Attacked attacker target dmg)
+    | isPlayer attacker = "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
+    | isPlayer target = "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
+    | otherwise = "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
+toMessage (Died m)
+    | isPlayer m = "You died!"
+    -- TODO different event for killed
+    | otherwise  = "You killed the " ++ mobName m
 
 mkSprites :: Point -> [String] -> [Sprite]
 mkSprites (offx, offy) = map toSprite . enumerate

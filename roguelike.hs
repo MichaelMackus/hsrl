@@ -43,7 +43,7 @@ main = do
         shutdown vty
 
         -- print latest status messages
-        mapM_ putStrLn (reverse (take 9 (messages e')))
+        mapM_ putStrLn (reverse (take 9 (map toMessage (events e'))))
 
         -- print final text
         if won then
@@ -75,7 +75,7 @@ nextAction vty env = do
         return (toAction e)
     where
         -- gets game Action from user input
-        toAction :: Event -> Action
+        toAction :: InputEvent -> Action
         toAction (EvKey (KChar c) _) = charToAction c
         toAction (EvKey otherwise _) = None
 
@@ -88,8 +88,8 @@ nextLevel conf = do
         return (mkEnv lvl (gen s))
     where
         mkEnv lvl g = Env {
-            dungeon  = DTip lvl,
-            level    = lvl,
-            rng      = g,
-            messages = []
+            dungeon = DTip lvl,
+            level   = lvl,
+            rng     = g,
+            events  = []
         }

@@ -29,7 +29,7 @@ instance Client AI where
 
             -- send message for dead mobs
             dead <- deadMobs <$> getMobs
-            forM_ dead (\t -> when (isDead t) (sendMessage $ "The " ++ mobName t ++ " died"))
+            forM_ dead (\t -> when (isDead t) (send (Died t)))
 
             -- cleanup dead mobs
             setMobs =<< aliveMobs <$> getMobs
@@ -71,8 +71,8 @@ attackPlayer attacker = do
     p         <- getPlayer
     (dmg, p') <- attack p attacker
 
-    sendMessage ("You were hit! " ++ (show dmg) ++ " damage")
-    when (isDead p') (sendMessage ("You died!"))
+    send (Attacked attacker p' dmg)
+    when (isDead p') (send (Died p'))
 
     return attacker
 

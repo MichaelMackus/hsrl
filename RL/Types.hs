@@ -7,7 +7,7 @@ type Sides = Int
 d :: Int -> Sides -> Dice
 d n ns = D n ns
 
-type Message = String
+data Event m = Attacked m m Int | Died m
 type Point   = (Int, Int)
 
 -- dungeon cell box (w x h)

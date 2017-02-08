@@ -47,8 +47,8 @@ changeLevel lvl = do
                 f  (p, _) = lvl' { player = (player lvl') { at = p } }
             in  maybe lvl' f t
 
-getMessages :: Game [Message]
-getMessages = gets messages
+getEvents :: Game [Event Mob]
+getEvents = gets events
 
 getPlayer :: Game Player
 getPlayer = gets $ player . level
@@ -112,10 +112,10 @@ maxColumn = do
     ts <- toTiles <$> getLevel
     return (length $ ts !! 0)
 
-sendMessage :: Message -> Game ()
-sendMessage msg = do
-    game <- get
-    put $ game { messages = msg : (messages game) }
+send :: Event Mob -> Game ()
+send e = do
+    env <- get
+    put (env { events = (e:events env) })
 
 -- simple attack function
 attack :: Mob -> Mob -> Game (Int, Mob)
