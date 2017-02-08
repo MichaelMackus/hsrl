@@ -1,5 +1,6 @@
-module RL.Game (Game, Env(..), runGame, withEnv, withRng, iterLevel, module RL.Map) where
+module RL.Game (Game, Env(..), Event(..), runGame, withEnv, withRng, iterLevel, module RL.Map) where
 
+import RL.Event
 import RL.Map
 
 import Control.Monad (liftM)
@@ -11,7 +12,7 @@ data Env    = Env {
     dungeon  :: Dungeon,
     level    :: DLevel,
     rng      :: StdGen,
-    events   :: [Event Mob]
+    events   :: [Event]
 }
 
 runGame :: Game a -> Env -> (a, Env)

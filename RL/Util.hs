@@ -1,6 +1,7 @@
 module RL.Util where
 
 import Data.Maybe (isJust)
+import Data.Foldable (foldl')
 
 -- helper functions
 
@@ -38,3 +39,10 @@ lookupMax :: (Num a, Eq a) => a -> [(a, b)] -> Maybe b
 lookupMax n xs
     | isJust (lookup n xs) = lookup n xs
     | otherwise            = lookupMax (n - 1) xs
+
+takeWhiles :: ([a] -> Bool) -> [a] -> [a]
+takeWhiles f = translateList g
+    where g accum x = if f accum then (x:accum) else accum
+
+translateList :: ([a] -> b -> [a]) -> [b] -> [a]
+translateList = flip foldl' []

@@ -7,6 +7,7 @@ import RL.Generator.Mobs
 import RL.Renderer.Game
 import RL.State
 
+import Data.Maybe (catMaybes)
 import Graphics.Vty
 import System.Random
 
@@ -19,10 +20,9 @@ gameLoop draw nextAction env = do
     a <- nextAction env -- wait for user input, and transform into Action
 
     let turn = do
-            s <- get           -- start env
             tick (UserInput a) -- user movement
             tick AI            -- AI
-            tick (end s)       -- mob cleanup, new spawns, healing, etc.
+            tick end           -- mob cleanup, new spawns, healing, etc.
 
             dead <- isDead <$> getPlayer
             return (isPlaying a && not dead)
@@ -43,7 +43,7 @@ main = do
         shutdown vty
 
         -- print latest status messages
-        mapM_ putStrLn (reverse (take 9 (map toMessage (events e'))))
+        mapM_ putStrLn (catMaybes (reverse (take 9 (map toMessage (events e')))))
 
         -- print final text
         if won then

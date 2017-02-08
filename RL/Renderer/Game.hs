@@ -9,6 +9,8 @@ import RL.Game
 import RL.Renderer
 import RL.Util (enumerate)
 
+import Data.Maybe (catMaybes)
+
 -- game is renderable
 instance Renderable Env where
     getSprites e = getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
@@ -39,18 +41,19 @@ getStatusSprites lvl =
                        "Depth: " ++ show (depth lvl) ]
     in  mkSprites (60, 15) statusLine
 
-getMsgSprites :: [Event Mob] -> [Sprite]
-getMsgSprites = mkSprites (0, 15) . reverse . take 10 . map toMessage
+getMsgSprites :: [Event] -> [Sprite]
+getMsgSprites = mkSprites (0, 15) . reverse . take 10 . catMaybes . map toMessage
 
-toMessage :: Event Mob -> String
+toMessage :: Event -> Maybe String
 toMessage (Attacked attacker target dmg)
-    | isPlayer attacker = "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
-    | isPlayer target = "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
-    | otherwise = "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
+    | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
+    | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
+    | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
 toMessage (Died m)
-    | isPlayer m = "You died!"
+    | isPlayer m = Just $ "You died!"
     -- TODO different event for killed
-    | otherwise  = "You killed the " ++ mobName m
+    | otherwise  = Just $ "You killed the " ++ mobName m
+toMessage otherwise = Nothing
 
 mkSprites :: Point -> [String] -> [Sprite]
 mkSprites (offx, offy) = map toSprite . enumerate

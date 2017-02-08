@@ -5,6 +5,7 @@ module RL.Client.Time (end) where
 -- does things like spawning mobs, cleanup dead mobs, heal wounds, etc.
 
 import RL.Client
+import RL.Event
 import RL.Game
 import RL.State
 import RL.Random
@@ -12,24 +13,23 @@ import RL.Generator
 import RL.Generator.Mobs
 
 import Control.Monad (replicateM_, when)
-import Data.Maybe (isNothing, fromJust)
 
-data Time = Ticks Int Env
+data Time = Ticks Int
 
 -- end of 1 turn
-end startEnv = Ticks 1 startEnv
+end = Ticks 1
 
 instance Client Time where
-    tick (Ticks i start) = replicateM_ i $ do
+    tick (Ticks i) = replicateM_ i $ do
         -- cleanup dead mobs
         ms <- aliveMobs <$> getMobs
         setMobs ms
 
-        -- TODO use Events instead of Messages to detect changes in state
-
         -- heal wounds if not attacked
+        -- FIXME not properly doing anything
         ms' <- allMobs <$> getLevel
-        let healed = map (healDamaged (allMobs (level start)) (floor (1 / fromIntegral i))) ms'
+        evs <- getEvents
+        let healed = map (healDamaged evs (floor (1 / fromIntegral i))) ms'
         setMobs healed
 
         -- spawn new mobs
@@ -43,11 +43,17 @@ instance Client Time where
                 (spawned, _) = runGenerator mobGenerator (MobConfig (length healed + 1) maxMTries) s
             setMobs spawned
 
-healDamaged :: [Mob] -> Int -> Mob -> Mob
-healDamaged prev amt m
-        | hp m + amt > mhp m = m                 -- can't heal more than max
-        | isNothing (findMob (mobId m) prev) = m -- new mob
-        | otherwise = ifNDamaged heal m (fromJust (findMob (mobId m) prev))
-    where
-        ifNDamaged f m m' = if hp m == hp m' then f m else m
-        heal m = m { hp = hp m + amt }
+        -- mark as end of turn
+        send EndOfTurn
+
+-- heal damaged if mob not damaged 5 turns ago
+healDamaged :: [Event] -> Int -> Mob -> Mob
+healDamaged events amt m
+    | hp m + amt > mhp m = m                     -- can't heal more than max
+    | length (filter isEndOfTurn events) < 5 = m -- hasn't been 5 turns
+    | otherwise =
+        let events' = getEventsNTurns 5 events
+        in  if not (isAttacked m events') then
+                m { hp = hp m + amt }
+            else
+                m
