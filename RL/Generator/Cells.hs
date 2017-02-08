@@ -1,4 +1,4 @@
-module RL.Generator.Cells (Cell(..), cells, getTileAt, cpoint, cwidth, cheight, ctiles, cmid) where
+module RL.Generator.Cells (Cell(..), CellConfig(CellConfig), cells, getTileAt, cpoint, cwidth, cheight, ctiles, cmid) where
 
 import RL.Generator
 import RL.Map
@@ -8,6 +8,15 @@ import Control.Monad (when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (listToMaybe)
 
+data CellConfig = CellConfig {
+    dwidth :: Int,
+    dheight :: Int,
+    maxTries :: Int
+}
+
+instance GenConfig CellConfig where
+    generating conf = (< maxTries conf) <$> getCounter
+
 data Cell = C Point [[Tile]]
 
 instance Eq Cell where
@@ -15,7 +24,7 @@ instance Eq Cell where
     c == c' = cpoint c == cpoint c'
 
 -- generate a list of dungeon cells
-cells :: Generator [Cell] [Cell]
+cells :: Generator CellConfig [Cell] [Cell]
 cells = do
         c     <- cell
         inDng <- inDungeon c
@@ -34,7 +43,7 @@ cells = do
         maxCells = 10 -- TODO this should be based on a formula of the dungeon dimensions
 
 -- generate random dungeon cell
-cell :: Generator [Cell] Cell
+cell :: Generator CellConfig [Cell] Cell
 cell = do
         dim   <- getDim
         start <- randomCellPoint dim
@@ -48,7 +57,7 @@ cell = do
                            6 `x` 6 ]
 
 -- generates random map point for particular dimensions
-randomCellPoint :: Dimension -> Generator s Point
+randomCellPoint :: Dimension -> Generator CellConfig s Point
 randomCellPoint (w, h) = do
     c <- ask
     let cols = dwidth c
@@ -90,7 +99,7 @@ isIntersecting c c2 = (((leftX c >= leftX c2 && leftX c <= rightX c2)
 
 
 -- tests if a cell is within dungeon boundaries
-inDungeon :: Cell -> Generator [Cell] Bool
+inDungeon :: Cell -> Generator CellConfig [Cell] Bool
 inDungeon c = do
     conf <- ask
 

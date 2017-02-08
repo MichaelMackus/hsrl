@@ -35,14 +35,13 @@ instance Client Time where
 
         -- spawn new mobs
         let maxMobs = 5              -- TODO make this configurable
-            conf = GenConfig 80 15 1 -- TODO make this configurable
         r <- roll (1 `d` 10)         -- 10% chance to spawn new mob
         when (length healed < maxMobs && r == 1) $ do
             max <- getRandomR (length healed + 1, maxMobs)
             g   <- getSplit
             lvl <- getLevel
             let s = mkGenState lvl g
-                (spawned, _) = runGenerator (mobGenerator maxMobs) conf s
+                (spawned, _) = runGenerator mobGenerator (MobConfig maxMobs) s
             setMobs spawned
 
 healDamaged :: [Mob] -> Int -> Mob -> Mob

@@ -3,6 +3,7 @@ import RL.Client.Input
 import RL.Client.Time
 import RL.Game
 import RL.Generator.Dungeon
+import RL.Generator.Mobs
 import RL.Renderer.Game
 import RL.State
 
@@ -36,7 +37,7 @@ gameLoop draw nextAction env = do
 
 main = do
         vty       <- mkRenderer -- initialize VTY renderer
-        e         <- nextLevel dconf conf
+        e         <- nextLevel conf
         (won, e') <- gameLoop (`render` vty) (nextAction vty) e
 
         shutdown vty
@@ -50,11 +51,15 @@ main = do
         else
             putStrLn "Goodbye!"
     where
-        conf = GenConfig 80 15 10
-        dconf = DungeonConfig {
+        conf = DungeonConfig {
+            dwidth = 80,
+            dheight = 15,
+            maxTries = 10,
             prevLevel = Nothing,
             maxDepth  = 5,
-            maxMobs   = 5,
+            mobConfig = MobConfig {
+                maxMobs   = 5
+            },
             playerConfig = PlayerConfig {
                 playerHp = 12,
                 playerDmg = 1 `d` 6,
@@ -74,12 +79,12 @@ nextAction vty env = do
         toAction (EvKey otherwise _) = None
 
 -- generate a new level
-nextLevel :: DungeonConfig -> GenConfig -> IO Env
-nextLevel dconf conf = do
+nextLevel :: DungeonConfig -> IO Env
+nextLevel conf = do
         g <- newStdGen
-        let (lvl, g') = generateLevel dconf conf g
+        let (lvl, s) = runGenerator levelGenerator conf (initState g)
 
-        return (mkEnv lvl g')
+        return (mkEnv lvl (gen s))
     where
         mkEnv lvl g = Env {
             dungeon  = DTip lvl,

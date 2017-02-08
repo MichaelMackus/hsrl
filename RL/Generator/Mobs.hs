@@ -1,4 +1,4 @@
-module RL.Generator.Mobs (playerGenerator, mobGenerator) where
+module RL.Generator.Mobs (playerGenerator, mobGenerator, PlayerConfig(..), MobConfig(..)) where
 
 import RL.Game
 import RL.Generator
@@ -10,8 +10,26 @@ import Control.Monad (replicateM, when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (catMaybes)
 
-playerGenerator :: HP -> Dice -> Radius -> Generator [Cell] (Maybe Player)
-playerGenerator hp dmg fov = do
+data PlayerConfig = PlayerConfig {
+    playerHp :: Int,
+    playerDmg :: Dice,
+    playerFov :: Radius
+}
+
+instance GenConfig PlayerConfig where
+    generating conf = return True
+
+data MobConfig = MobConfig {
+    maxMobs :: Int,
+    maxTries :: Int
+}
+
+instance GenConfig MobConfig where
+    generating conf = (< maxTries conf) <$> getCounter
+
+playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
+playerGenerator = do
+    (PlayerConfig hp dmg fov) <- ask
     cs <- getGData
     if not (null cs) then
         -- TODO place player randomly around dungeon
@@ -20,22 +38,25 @@ playerGenerator hp dmg fov = do
     else
         return Nothing
 
-mobGenerator :: Int -> Generator DLevel [Mob]
-mobGenerator maxMobs = do
-    lvl   <- getGData
+mobGenerator :: Generator MobConfig DLevel [Mob]
+mobGenerator = do
+    conf <- ask
+    lvl <- getGData
     let diff = depth lvl
-    mobs' <- (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs - length (mobs lvl)) (generateMob diff)
-    when (length mobs' == maxMobs) markGDone
+    mobs' <- (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs conf - length (mobs lvl)) (generateMob diff)
+    when (length mobs' == maxMobs conf) markGDone
     when (length mobs' /= length (mobs lvl)) (setGData (lvl { mobs = mobs' }))
     return mobs'
 
 type Difficulty = Int
 
-generateMob :: Difficulty -> Generator DLevel (Maybe Mob)
+generateMob :: Difficulty -> Generator MobConfig DLevel (Maybe Mob)
 generateMob diff = do
-        conf <- ask
         lvl  <- getGData
-        p    <- randomPoint (dwidth conf) (dheight conf)
+        let ts = toTiles lvl
+            dheight = length ts
+            dwidth  = if length ts > 0 then length (ts !! 0) else 0
+        p    <- randomPoint dwidth dheight
 
         let t  = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTileAt p lvl)
             -- TODO randomly choose smaller difficulties

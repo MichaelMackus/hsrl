@@ -18,7 +18,7 @@ end :: Path -> Point
 end (P _ p) = p
 
 -- generate list of paths between cells
-paths :: [Cell] -> Generator [Path] [Path]
+paths :: [Cell] -> Generator c [Path] [Path]
 paths cs = do
     ps  <- getGData
 
@@ -57,7 +57,7 @@ unreachableCells cs ps =
     in  filter (`notElem` reachable) cs
 
 -- generate a path between cells
-generatePath :: Cell -> [Cell] -> Generator [Path] [Path]
+generatePath :: Cell -> [Cell] -> Generator c [Path] [Path]
 generatePath c [] = return []
 generatePath c cs =
     return . maybe [] id $ do
