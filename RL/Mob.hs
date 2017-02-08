@@ -82,7 +82,8 @@ addOffset (offx, offy) (x, y) = (offx + x, offy + y)
 withMobIds :: [Mob] -> [Mob]
 withMobIds = map withMobId . enumerate1
     where
-        withMobId   (id, m) = if mobId m == (-1) then m { mobId = id } else m
+        -- prevent re-indexing player
+        withMobId   (id, m) = if mobId m /= 0 then m { mobId = id } else m
 
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)

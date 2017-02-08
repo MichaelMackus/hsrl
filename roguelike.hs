@@ -58,7 +58,8 @@ main = do
             prevLevel = Nothing,
             maxDepth  = 5,
             mobConfig = MobConfig {
-                maxMobs   = 5
+                maxMobs   = 5,
+                maxMTries = 5
             },
             playerConfig = PlayerConfig {
                 playerHp = 12,

@@ -17,7 +17,6 @@ import Data.Maybe (isNothing, fromJust)
 data Time = Ticks Int Env
 
 -- end of 1 turn
--- TODO pass this mobGenerator?
 end startEnv = Ticks 1 startEnv
 
 instance Client Time where
@@ -34,14 +33,14 @@ instance Client Time where
         setMobs healed
 
         -- spawn new mobs
-        let maxMobs = 5              -- TODO make this configurable
-        r <- roll (1 `d` 10)         -- 10% chance to spawn new mob
+        let maxMobs   = 10   -- TODO make this configurable
+            maxMTries = 5    -- TODO make this configurable
+        r <- roll (1 `d` 10) -- 10% chance to spawn new mob
         when (length healed < maxMobs && r == 1) $ do
-            max <- getRandomR (length healed + 1, maxMobs)
             g   <- getSplit
             lvl <- getLevel
             let s = mkGenState lvl g
-                (spawned, _) = runGenerator mobGenerator (MobConfig maxMobs) s
+                (spawned, _) = runGenerator mobGenerator (MobConfig (length healed + 1) maxMTries) s
             setMobs spawned
 
 healDamaged :: [Mob] -> Int -> Mob -> Mob

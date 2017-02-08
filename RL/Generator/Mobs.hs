@@ -21,11 +21,11 @@ instance GenConfig PlayerConfig where
 
 data MobConfig = MobConfig {
     maxMobs :: Int,
-    maxTries :: Int
+    maxMTries :: Int
 }
 
 instance GenConfig MobConfig where
-    generating conf = (< maxTries conf) <$> getCounter
+    generating conf = (< maxMTries conf) <$> getCounter
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
@@ -43,7 +43,7 @@ mobGenerator = do
     conf <- ask
     lvl <- getGData
     let diff = depth lvl
-    mobs' <- (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs conf - length (mobs lvl)) (generateMob diff)
+    mobs' <- withMobIds . (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs conf - length (mobs lvl)) (generateMob diff)
     when (length mobs' == maxMobs conf) markGDone
     when (length mobs' /= length (mobs lvl)) (setGData (lvl { mobs = mobs' }))
     return mobs'

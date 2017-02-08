@@ -48,7 +48,7 @@ levelGenerator = do
             lastP   = cmid <$> listToMaybe (reverse (L.sortBy (comparing' (distance (at player))) cs))
             nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl' }) (initState g))
 
-        return (lvl' { mobs = withMobIds mobs })
+        return (lvl' { mobs = mobs })
     where
         runGenerator' :: GenConfig c => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
         runGenerator' gen conf f = do
