@@ -64,7 +64,14 @@ generateMob diff = do
 
         if length ms > 0 then do
             m <- pick ms
-            return $ fmap (\m -> m { at = p }) m
+            return $ do
+                m <- m
+
+                let maxDist = 10
+                    pDist = distance (at m) (at (player lvl))
+                    flags = if pDist >= maxDist then [Sleeping] else []
+
+                return (m { at = p, flags = flags })
         else
             return Nothing
     where

@@ -18,13 +18,26 @@ data Mob = Mob {
     hp      :: HP,
     mhp     :: HP,
     dmgd    :: Dice,
+    flags   :: [MobFlag],
     fov     :: Radius
 }
+
+data MobFlag = Sleeping deriving Eq
 
 instance Eq Mob where
     m == m' = mobId m == mobId m'
 
 type Player = Mob
+
+canAttack :: Mob -> Bool
+canAttack = canMove
+
+canMove :: Mob -> Bool
+canMove m = not (isDead m) && length (filter isSleeping (flags m)) == 0
+
+isSleeping :: MobFlag -> Bool
+isSleeping (Sleeping) = True
+isSleeping otherwise  = False
 
 -- configure default player
 mkPlayer :: HP -> Dice -> Point -> Radius -> Player
@@ -36,6 +49,7 @@ mkPlayer hp d at fov = Mob {
     mhp = hp,
     dmgd = d,
     at = at,
+    flags = [],
     fov = fov
 }
 
@@ -52,6 +66,7 @@ mob = Mob {
     hp = 0,
     mhp = 0,
     dmgd = 1 `d` 2,
+    flags = [],
     fov = 5
 }
 

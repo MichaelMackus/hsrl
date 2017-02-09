@@ -46,22 +46,26 @@ instance Client AI where
                     maybe (return ()) (dispatch . MoveMob m) p
 
             moveCloser (m, smelling, seeing) = do
+                when (Sleeping `elem` flags m) $ dispatch (Wake m)
+
                 p   <- getPlayer
                 lvl <- getLevel
+                m'  <- getMob (mobId m)
 
-                let f  g  = findPath (g lvl) distance (at p) (at m)
-                    -- first attempt to find walkable path
-                    path  = maybe (f dfinder') Just (f dfinder)
-                    next  = fromJust path !! 1
-                    t     = findTileAt next lvl
-                    isValidPath = isJust path && length (fromJust path) > 1 &&
-                                  isJust t && isPassable (fromJust t)
+                when (isJust m') $ do
+                    let f  g  = findPath (g lvl) distance (at p) (at . fromJust $ m')
+                        -- first attempt to find walkable path
+                        path  = maybe (f dfinder') Just (f dfinder)
+                        next  = fromJust path !! 1
+                        t     = findTileAt next lvl
+                        isValidPath = isJust path && length (fromJust path) > 1 &&
+                                      isJust t && isPassable (fromJust t)
 
-                when ((smelling || seeing) && isValidPath) $ do
-                    if next == at p && not (isDead p) then do
-                        dispatch (AttackPlayer m)
-                    else
-                        dispatch (MoveMob m next)
+                    when ((smelling || seeing) && isValidPath) $ do
+                        if next == at p && not (isDead p) then do
+                            dispatch (AttackPlayer (fromJust m'))
+                        else
+                            dispatch (MoveMob (fromJust m') next)
 
 canSee :: Mob -> Mob -> Game Bool
 canSee m1 m2 = do

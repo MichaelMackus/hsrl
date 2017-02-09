@@ -55,6 +55,8 @@ toMessage (Died m)
     | otherwise  = Just $ "You killed the " ++ mobName m
 toMessage (StairsTaken Up) = Just $ "You've gone up stairs."
 toMessage (StairsTaken Down) = Just $ "You've gone down stairs."
+toMessage (Waken m) = Just $ "The " ++ mobName m ++ " has waken up."
+toMessage (Slept m) = Just $ "The " ++ mobName m ++ " has fell asleep."
 toMessage otherwise = Nothing
 
 mkSprites :: Point -> [String] -> [Sprite]
