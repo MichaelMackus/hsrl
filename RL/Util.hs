@@ -40,8 +40,20 @@ lookupMax n xs
     | isJust (lookup n xs) = lookup n xs
     | otherwise            = lookupMax (n - 1) xs
 
-takeWhiles :: ([a] -> Bool) -> [a] -> [a]
-takeWhiles f = translateList g
+takeWhiles :: Eq a => ([a] -> Bool) -> [a] -> [a]
+takeWhiles f = fold []
+    where
+        g accum x = if f accum then (x:accum) else accum
+        fold accum (x:xs) =
+            let accum' = g accum x
+            in  if f accum then
+                    fold accum' xs
+                else
+                    accum
+
+-- strict version of takeWhiles
+takeWhiles' :: ([a] -> Bool) -> [a] -> [a]
+takeWhiles' f = translateList g
     where g accum x = if f accum then (x:accum) else accum
 
 translateList :: ([a] -> b -> [a]) -> [b] -> [a]
