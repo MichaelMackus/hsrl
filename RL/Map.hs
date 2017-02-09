@@ -69,6 +69,11 @@ toTile '.' = Floor
 toTile '#' = Cavern
 toTile otherwise = Rock
 
+getStairLvl :: Tile -> Maybe DLevel
+getStairLvl (StairUp   lvl) = Just lvl
+getStairLvl (StairDown lvl) = Just lvl
+getStairLvl otherwise = Nothing
+
 isStair :: Tile -> Bool
 isStair t = isDownStair t || isUpStair t
 

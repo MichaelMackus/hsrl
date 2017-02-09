@@ -5,7 +5,7 @@ import RL.State
 import RL.Random
 
 import Control.Monad (when)
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, isJust, fromJust)
 
 -- commands, which produce events
 class Command c where
@@ -40,7 +40,6 @@ instance Command AttackCommand where
                     hurtMob  dmg m = if m == target then target' else m
                     target' = target { hp = (hp target) - dmg }
 
-type Offset = Point
 data MoveCommand = MovePlayer Offset | MoveMob Mob Point
 
 instance Command MoveCommand where
@@ -63,3 +62,22 @@ instance Command MoveCommand where
             else
                 setMob (moveMobTo loc m)
             send (Moved m loc)
+
+data ChangeLevelCommand = TakeStairs VerticalDirection | MobTakeStairs Mob VerticalDirection
+
+instance Command ChangeLevelCommand where
+    dispatch (TakeStairs v) = getPlayer >>= (\p -> dispatch (MobTakeStairs p v))
+
+    dispatch (MobTakeStairs m v) = do
+        t <- getTileAt (at m)
+        let lvl = do
+            t'   <- t
+            lvl' <- getStairLvl t'
+            if (v == Up && isUpStair t') || (v == Down && isDownStair t') then
+                Just lvl'
+            else
+                Nothing
+
+        when (isJust lvl) $ do
+            send (StairsTaken v)
+            changeLevel (fromJust lvl)

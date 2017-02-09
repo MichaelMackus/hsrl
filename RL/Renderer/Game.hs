@@ -53,6 +53,8 @@ toMessage (Died m)
     | isPlayer m = Just $ "You died!"
     -- TODO different event for killed
     | otherwise  = Just $ "You killed the " ++ mobName m
+toMessage (StairsTaken Up) = Just $ "You've gone up stairs."
+toMessage (StairsTaken Down) = Just $ "You've gone down stairs."
 toMessage otherwise = Nothing
 
 mkSprites :: Point -> [String] -> [Sprite]

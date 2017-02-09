@@ -25,7 +25,7 @@ data UserInput = UserInput Action
 user           = UserInput None
 
 -- specific actions that can have inputs on the keyboard
-data Action = Move Dir | Restart | Quit | Up | Down | None
+data Action = Move Dir | MoveV VerticalDirection | Restart | Quit | None
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 
 -- user input
@@ -33,9 +33,8 @@ instance Client UserInput where
     tick (UserInput a) = do
         p <- getPlayer
         when (not (isDead p)) $ do
-            case a of Move d    -> moveDir d
-                      Up        -> takeStairs a
-                      Down      -> takeStairs a
+            case a of Move  d   -> moveDir d
+                      MoveV v   -> dispatch (TakeStairs v)
                       otherwise -> return ()
 
 -- is user playing?
@@ -55,8 +54,8 @@ charToAction 'y'       = Move NW
 charToAction 'b'       = Move SW
 charToAction 'n'       = Move SE
 charToAction 'r'       = Restart
-charToAction '>'       = Down
-charToAction '<'       = Up
+charToAction '>'       = MoveV Down
+charToAction '<'       = MoveV Up
 charToAction 'q'       = Quit
 charToAction otherwise = None
 
@@ -70,17 +69,6 @@ moveDir SE    = movePlayer ( 1,  1)
 moveDir South = movePlayer ( 0,  1)
 moveDir SW    = movePlayer (-1,  1)
 moveDir West  = movePlayer (-1,  0)
-
-takeStairs :: Action -> Game ()
-takeStairs a = do
-    lvl <- getLevel
-    p   <- getPlayer
-    let t = findTileAt (at p) lvl
-
-    case (t, a) of
-        (Just (StairUp   lvl), Up)   -> changeLevel lvl
-        (Just (StairDown lvl), Down) -> changeLevel lvl
-        otherwise                    -> return ()
 
 -- move player (or attack if mob present)
 --            offset
