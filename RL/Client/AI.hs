@@ -5,6 +5,7 @@ module RL.Client.AI ( AI(..), module RL.Client ) where
 -- basic AI
 
 import RL.Game
+import RL.Command
 import RL.Client
 import RL.Pathfinder
 import RL.State
@@ -60,21 +61,13 @@ instance Client AI where
                                   isJust t && isPassable (fromJust t)
 
                 if (smelling || seeing) && isValidPath then
-                    if next == at p && not (isDead p) then
-                        attackPlayer m
+                    if next == at p && not (isDead p) then do
+                        dispatch (AttackPlayer m)
+                        maybe (fail "Uh oh! Error attacking player!") return =<< getMob (mobId m)
                     else
                         return (moveMobTo next m)
                 else
                     return m
-
-attackPlayer attacker = do
-    p         <- getPlayer
-    (dmg, p') <- attack p attacker
-
-    send (Attacked attacker p' dmg)
-    when (isDead p') (send (Died p'))
-
-    return attacker
 
 canSee :: Mob -> Mob -> Game Bool
 canSee m1 m2 = do

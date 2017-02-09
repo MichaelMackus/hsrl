@@ -14,6 +14,7 @@ module RL.Client.Input (
 -- see movePlayer & attack for movement/attack logic
 
 import RL.Game
+import RL.Command
 import RL.Client
 import RL.State
 
@@ -88,19 +89,10 @@ movePlayer (0, 0) = return ()
 movePlayer off    = do
         newloc <- getloc
         target <- getMobAt newloc
-        maybe (moveToTile newloc) attackMob target
+        maybe (moveToTile newloc) (dispatch . AttackMob) target
     where
         getloc = fmap addoff getPlayer
         addoff = addOffset off . at
-
--- basic attack function
-attackMob :: Mob -> Game ()
-attackMob target = do
-    p <- getPlayer
-    (dmg, target') <- attack target p
-
-    send (Attacked p target' dmg)
-    when (isDead target') (send (Died target'))
 
 -- move player to a given tile offset
 moveToTile :: Point -> Game ()

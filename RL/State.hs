@@ -62,6 +62,11 @@ setPlayer p = do
 getMobs :: Game [Mob]
 getMobs = fmap mobs getLevel
 
+getMob :: Int -> Game (Maybe Mob)
+getMob id = do
+    ms <- getMobs
+    return (find ((== id) . mobId) ms)
+
 setMobs :: [Mob] -> Game ()
 setMobs ms = do
     lvl <- getLevel
