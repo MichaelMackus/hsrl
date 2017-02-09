@@ -44,6 +44,7 @@ takeWhiles :: Eq a => ([a] -> Bool) -> [a] -> [a]
 takeWhiles f = fold []
     where
         g accum x = if f accum then (x:accum) else accum
+        fold accum [] = accum
         fold accum (x:xs) =
             let accum' = g accum x
             in  if f accum then
