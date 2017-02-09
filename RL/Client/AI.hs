@@ -26,7 +26,7 @@ instance Client AI where
 
             let ms' = zipWith3 (,,) ms smelling seeing
 
-            setMobs =<< forM ms' automate
+            forM_ ms' automate
 
             -- send message for dead mobs
             dead <- deadMobs <$> getMobs
@@ -43,10 +43,7 @@ instance Client AI where
                     lvl <- getLevel
                     let neighbors = dneighbors lvl (at m)
                     p   <- pick neighbors
-
-                    case p of
-                        Just p    -> return (m { at = p })
-                        otherwise -> return m
+                    maybe (return ()) (dispatch . MoveMob m) p
 
             moveCloser (m, smelling, seeing) = do
                 p   <- getPlayer
@@ -60,14 +57,11 @@ instance Client AI where
                     isValidPath = isJust path && length (fromJust path) > 1 &&
                                   isJust t && isPassable (fromJust t)
 
-                if (smelling || seeing) && isValidPath then
+                when ((smelling || seeing) && isValidPath) $ do
                     if next == at p && not (isDead p) then do
                         dispatch (AttackPlayer m)
-                        maybe (fail "Uh oh! Error attacking player!") return =<< getMob (mobId m)
                     else
-                        return (moveMobTo next m)
-                else
-                    return m
+                        dispatch (MoveMob m next)
 
 canSee :: Mob -> Mob -> Game Bool
 canSee m1 m2 = do

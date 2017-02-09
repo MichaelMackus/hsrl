@@ -85,19 +85,4 @@ takeStairs a = do
 -- move player (or attack if mob present)
 --            offset
 movePlayer :: Point -> Game ()
-movePlayer (0, 0) = return ()
-movePlayer off    = do
-        newloc <- getloc
-        target <- getMobAt newloc
-        maybe (moveToTile newloc) (dispatch . AttackMob) target
-    where
-        getloc = fmap addoff getPlayer
-        addoff = addOffset off . at
-
--- move player to a given tile offset
-moveToTile :: Point -> Game ()
-moveToTile xy = do
-        p <- getPlayer
-        t <- getTileAt xy
-        maybe (return ()) (\t -> when (isPassable t) (movePlayer p)) t
-    where movePlayer = setPlayer . moveMobTo xy
+movePlayer = dispatch . MovePlayer

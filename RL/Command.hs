@@ -5,6 +5,7 @@ import RL.State
 import RL.Random
 
 import Control.Monad (when)
+import Data.Maybe (isNothing)
 
 -- commands, which produce events
 class Command c where
@@ -39,3 +40,26 @@ instance Command AttackCommand where
                     hurtMob  dmg m = if m == target then target' else m
                     target' = target { hp = (hp target) - dmg }
 
+type Offset = Point
+data MoveCommand = MovePlayer Offset | MoveMob Mob Point
+
+instance Command MoveCommand where
+    dispatch (MovePlayer (0, 0)) = return ()
+    dispatch (MovePlayer off)    = do
+            player <- getPlayer
+            let newloc = addoff off player
+            target <- getMobAt newloc
+            maybe (dispatch $ MoveMob player newloc) (dispatch . AttackMob) target
+        where
+            addoff off = addOffset off . at
+
+    dispatch (MoveMob m loc) = do
+        target <- getMobAt loc
+        t      <- getTileAt loc
+        when (isNothing target && maybe False isPassable t) $ do
+            p <- getPlayer
+            if m == p then
+                setPlayer (moveMobTo loc m)
+            else
+                setMob (moveMobTo loc m)
+            send (Moved m loc)

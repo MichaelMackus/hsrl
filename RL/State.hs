@@ -72,6 +72,12 @@ setMobs ms = do
     lvl <- getLevel
     setLevel $ lvl { mobs = filter (not . isPlayer) ms, player = maybe (player lvl) id (find isPlayer ms) }
 
+setMob :: Mob -> Game ()
+setMob m = do
+    ms <- getMobs
+    let ms' = map (\m' -> if m == m' then m else m') ms
+    setMobs ms'
+
 isGameWon :: Game Bool
 isGameWon = do
     lvl <- getLevel
