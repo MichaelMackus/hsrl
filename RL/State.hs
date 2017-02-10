@@ -7,7 +7,6 @@ module RL.State (module RL.State, get, gets) where
 -- TODO look into lenses
 
 import RL.Game
-import RL.Random (roll)
 
 import Control.Monad.State
 import Data.Maybe
@@ -127,27 +126,3 @@ send :: Event -> Game ()
 send e = do
     env <- get
     put (env { events = (e:events env) })
-
--- simple attack function
-attack :: Mob -> Mob -> Game (Int, Mob)
-attack target attacker = do
-    dmg     <- roll (dmgd attacker)
-    target' <- hurtMob target dmg
-
-    return (dmg, target')
-
--- hurt    mob    dmg
-hurtMob :: Mob -> Int -> Game Mob
-hurtMob target dmg = do
-        p  <- getPlayer
-        if target == p then do
-            let p' = hurtMob dmg p
-            setPlayer p'
-            return p'
-        else do
-            ms <- getMobs
-            setMobs (map (hurtMob dmg) ms)
-            return target'
-    where
-        hurtMob  dmg m = if m == target then target' else m
-        target' = target { hp = (hp target) - dmg }
