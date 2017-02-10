@@ -60,7 +60,6 @@ levelGenerator = do
         comparing' f = \a b -> comparing f (cpoint a) (cpoint b)
 
         errPlayer = "No player generated"
-        errTile   = "Player is not standing on a tile!"
 
 toLevel conf depth cs ps player = lvl { player = player }
     where lvl = iterMap fillDng (blankDng depth conf)

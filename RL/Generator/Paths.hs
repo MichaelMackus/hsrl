@@ -11,12 +11,6 @@ import Data.Maybe (listToMaybe)
 
 data Path = P Point Point deriving Eq
 
-start :: Path -> Point
-start (P p _) = p
-
-end :: Path -> Point
-end (P _ p) = p
-
 -- generate list of paths between cells
 paths :: [Cell] -> Generator c [Path] [Path]
 paths cs = do
@@ -33,23 +27,12 @@ paths cs = do
         when (length ps' > length ps) $ setGData ps'
         return ps'
 
-allCellsReachable :: [Cell] -> [Path] -> Bool
-allCellsReachable [] _ = False
-allCellsReachable (c:[]) [] = True
-allCellsReachable _ [] = False
-allCellsReachable (c:cs) ps = length (c:cs) == length (reachableCells (c:cs) ps)
-
 reachableCells :: [Cell] -> [Path] -> [Cell]
 reachableCells [] _ = []
 reachableCells (c:[]) _ = [c]
 reachableCells (c:_ ) [] = [c]
 reachableCells (c:cs) ps = (c:filter isReachable cs)
     where isReachable c' = not . null . filter (\p -> within (cpoint c') p && intersects (cpoint c') p) $ ps
--- TODO fix performance
--- reachableCells (c:cs) ps = (c:filter isReachable cs)
---     where isReachable    = isJust . pathBetween
---           pathBetween c' = findPath finder distance (cpoint c') (cpoint c)
---           finder         = dfinder (toDungeon (c:cs) ps)
 
 unreachableCells :: [Cell] -> [Path] -> [Cell]
 unreachableCells cs ps =

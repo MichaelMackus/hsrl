@@ -1,5 +1,6 @@
 module RL.Mob (module RL.Mob, module RL.Types) where
 
+import RL.Item
 import RL.Types
 import RL.Util (enumerate1)
 
@@ -11,15 +12,16 @@ type Radius = Double
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
-    mobId   :: Int,
-    mobName :: String,
-    symbol  :: Char,
-    at      :: Point,
-    hp      :: HP,
-    mhp     :: HP,
-    dmgd    :: Dice,
-    flags   :: [MobFlag],
-    fov     :: Radius
+    mobId     :: Int,
+    mobName   :: String,
+    symbol    :: Char,
+    at        :: Point,
+    hp        :: HP,
+    mhp       :: HP,
+    baseDmg   :: Dice,
+    fov       :: Radius,
+    flags     :: [MobFlag],
+    inventory :: [Item]
 }
 
 data MobFlag = Sleeping deriving Eq
@@ -40,16 +42,14 @@ isSleeping (Sleeping) = True
 isSleeping otherwise  = False
 
 -- configure default player
-mkPlayer :: HP -> Dice -> Point -> Radius -> Player
-mkPlayer hp d at fov = Mob {
+mkPlayer :: HP -> Point -> Radius -> Player
+mkPlayer hp at fov = mob {
     mobId  = 0,
     mobName = "Player", -- TODO configurable name
     symbol = '@',
     hp = hp,
     mhp = hp,
-    dmgd = d,
     at = at,
-    flags = [],
     fov = fov
 }
 
@@ -65,9 +65,10 @@ mob = Mob {
     at = (-1,-1),
     hp = 0,
     mhp = 0,
-    dmgd = 1 `d` 2,
+    baseDmg = 1 `d` 3,
+    fov = 5,
     flags = [],
-    fov = 5
+    inventory = []
 }
 
 -- helper functions for mob management

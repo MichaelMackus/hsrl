@@ -63,9 +63,9 @@ main = do
             },
             playerConfig = PlayerConfig {
                 playerHp = 12,
-                playerDmg = 1 `d` 6,
                 playerFov = 5
             }
+            -- TODO ItemConfig
         }
 
 

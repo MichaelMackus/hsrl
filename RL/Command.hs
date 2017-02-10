@@ -19,7 +19,8 @@ instance Command AttackCommand where
 
     -- any mob attacking another mob
     dispatch (Attack attacker target) = when (canAttack target) $ do
-            dmg     <- roll (dmgd attacker)
+            -- TODO take into account inventory
+            dmg     <- roll (baseDmg attacker)
             target' <- hurtMob target dmg
             when (isDead target') (send (Died target'))
             send (Attacked attacker target' dmg)

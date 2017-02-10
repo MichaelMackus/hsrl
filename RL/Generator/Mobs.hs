@@ -12,7 +12,6 @@ import Data.Maybe (catMaybes)
 
 data PlayerConfig = PlayerConfig {
     playerHp :: Int,
-    playerDmg :: Dice,
     playerFov :: Radius
 }
 
@@ -29,12 +28,12 @@ instance GenConfig MobConfig where
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
-    (PlayerConfig hp dmg fov) <- ask
+    (PlayerConfig hp fov) <- ask
     cs <- getGData
     if not (null cs) then
         -- TODO place player randomly around dungeon
         let p = cmid (cs !! 0)
-        in  markGDone >> return (Just (mkPlayer hp dmg p fov))
+        in  markGDone >> return (Just (mkPlayer hp p fov))
     else
         return Nothing
 
@@ -80,27 +79,27 @@ generateMob diff = do
                       symbol = 'k',
                       hp = 5,
                       mhp = 5,
-                      dmgd = 1 `d` 4
+                      baseDmg = 1 `d` 4
                   },
                   mob {
                       mobName = "Goblin",
                       symbol = 'g',
                       hp = 4,
                       mhp = 4,
-                      dmgd = 1 `d` 3
+                      baseDmg = 1 `d` 3
                   },
                   mob {
                       mobName = "Grid Bug",
                       symbol = 'x',
                       hp = 3,
                       mhp = 3,
-                      dmgd = 1 `d` 2
+                      baseDmg = 1 `d` 2
                   }
                ]), (2, [ mob {
                       mobName = "Orc",
                       symbol = 'o',
                       hp = 6,
                       mhp = 6,
-                      dmgd = 1 `d` 6
+                      baseDmg = 1 `d` 6
                    }
                ]) ]

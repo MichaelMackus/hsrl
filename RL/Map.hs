@@ -1,5 +1,6 @@
 module RL.Map (module RL.Map, module RL.Mob, module RL.Types) where
 
+import RL.Item
 import RL.Mob
 import RL.Types
 import RL.Util (enumerate)
@@ -35,7 +36,7 @@ data DLevel  = DLevel {
     depth :: Int,
     tiles :: Map Point Tile,
     player :: Player,
-    items :: [()],
+    items :: [Item],
     mobs :: [Mob]
 }
 

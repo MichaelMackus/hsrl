@@ -15,18 +15,11 @@ import Data.Maybe (catMaybes)
 instance Renderable Env where
     getSprites e = getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
 
--- -- dungeon is renderable
--- instance Renderable Level where
---     getSprites lvl = getMobSprite (player lvl) : map getMobSprite (mobs lvl) ++ getMapSprites (tiles lvl)
-
 -- dungeon is renderable
 instance Renderable DLevel where
     getSprites d = getMapSprites d
 
 -- helper functions since map/mob isn't renderable without context
-
-getMobSprite :: Mob -> Sprite
-getMobSprite m = (at m, symbol m : [])
 
 getMapSprites :: DLevel -> [Sprite]
 getMapSprites lvl = map getRowSprite . enumerate . map (map fromTile) . toTiles $ iterMap sym lvl
