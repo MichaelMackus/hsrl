@@ -59,7 +59,8 @@ main = do
             maxDepth  = 5,
             mobConfig = MobConfig {
                 maxMobs   = 5,
-                maxMTries = 5
+                maxMTries = 5,
+                difficultyRange = (2, 0)
             },
             playerConfig = PlayerConfig {
                 playerHp = 12,

@@ -40,7 +40,8 @@ instance Client Time where
             g   <- getSplit
             lvl <- getLevel
             let s = mkGenState lvl g
-                (spawned, _) = runGenerator mobGenerator (MobConfig (length healed + 1) maxMTries) s
+                -- TODO save config somewhere..
+                (spawned, _) = runGenerator mobGenerator (MobConfig (length healed + 1) maxMTries (2,0)) s
             setMobs spawned
 
         -- mark as end of turn

@@ -20,7 +20,8 @@ instance GenConfig PlayerConfig where
 
 data MobConfig = MobConfig {
     maxMobs :: Int,
-    maxMTries :: Int
+    maxMTries :: Int,
+    difficultyRange :: (Int, Int) -- min - fst, max + snd
 }
 
 instance GenConfig MobConfig where
@@ -57,9 +58,12 @@ generateMob diff = do
             dwidth  = if length ts > 0 then length (ts !! 0) else 0
         p    <- randomPoint dwidth dheight
 
+        -- choose a random difficulty - this way we have more variation of mobs
+        conf  <- ask
+        diff' <- max 1 <$> getRandomR (diff - fst (difficultyRange conf), diff + snd (difficultyRange conf))
+
         let t  = maybe Nothing (\t -> if isPassable t then Just t else Nothing) (findTileAt p lvl)
-            -- TODO randomly choose smaller difficulties
-            ms = maybe [] (const . maybe [] id $ lookupMax diff mobs) t
+            ms = maybe [] (const . maybe [] id $ lookupMax diff' mobs) t
 
         if length ms > 0 then do
             m <- pick ms
