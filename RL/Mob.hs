@@ -1,10 +1,11 @@
-module RL.Mob (module RL.Mob, module RL.Types) where
+module RL.Mob (module RL.Mob, module RL.Types, module RL.Item) where
 
 import RL.Item
 import RL.Types
 import RL.Util (enumerate1)
 
 import Data.List (find)
+import Data.Maybe (listToMaybe, catMaybes)
 
 -- player/mobs
 type HP     = Int
@@ -19,9 +20,12 @@ data Mob = Mob {
     hp        :: HP,
     mhp       :: HP,
     baseDmg   :: Dice,
+    baseAC    :: AC,   -- default to 10 in AD&D
+    thac0     :: Int,  -- traditional D&D combat rules
     fov       :: Radius,
     flags     :: [MobFlag],
-    inventory :: [Item]
+    inventory :: [Item],
+    equipment :: [Item]
 }
 
 data MobFlag = Sleeping deriving Eq
@@ -40,6 +44,27 @@ canMove m = not (isDead m) && length (filter isSleeping (flags m)) == 0
 isSleeping :: MobFlag -> Bool
 isSleeping (Sleeping) = True
 isSleeping otherwise  = False
+
+getWielding :: Mob -> Maybe Item
+getWielding m =
+    let weapons = filter isWeapon (equipment m)
+    in  listToMaybe weapons
+
+getEquipped :: Mob -> [Item]
+getEquipped m = filter isArmor (equipment m)
+
+-- does a simple foldr over the equipped armor, subtracting each of its defense
+-- from the default AC of the Mob (default to 10 in AD&D)
+mobAC :: Mob -> AC
+mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties . getEquipped $ m
+
+isWeapon :: Item -> Bool
+isWeapon (Item _ (Weapon _)) = True
+isWeapon otherwise           = False
+
+isArmor :: Item -> Bool
+isArmor (Item _ (Armor _)) = True
+isArmor otherwise          = False
 
 -- configure default player
 mkPlayer :: HP -> Point -> Radius -> Player
@@ -66,9 +91,12 @@ mob = Mob {
     hp = 0,
     mhp = 0,
     baseDmg = 1 `d` 3,
+    baseAC = 10,
+    thac0 = 20,
     fov = 5,
     flags = [],
-    inventory = []
+    inventory = [],
+    equipment = []
 }
 
 -- helper functions for mob management

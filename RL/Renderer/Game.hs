@@ -42,6 +42,10 @@ toMessage (Attacked attacker target dmg)
     | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
     | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
     | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
+toMessage (Missed attacker target)
+    | isPlayer attacker = Just $ "You missed the " ++ mobName target
+    | isPlayer target = Just $ "The " ++ mobName attacker ++ " missed"
+    | otherwise = Just $ "The " ++ mobName attacker ++ " missed the " ++ mobName target
 toMessage (Died m)
     | isPlayer m = Just $ "You died!"
     -- TODO different event for killed

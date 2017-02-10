@@ -86,20 +86,24 @@ generateMob diff = do
                       symbol = 'g',
                       hp = 4,
                       mhp = 4,
-                      baseDmg = 1 `d` 3
+                      baseDmg = 1 `d` 3,
+                      baseAC  = 8
                   },
                   mob {
                       mobName = "Grid Bug",
                       symbol = 'x',
                       hp = 3,
                       mhp = 3,
-                      baseDmg = 1 `d` 2
+                      baseDmg = 1 `d` 4,
+                      thac0   = 22
                   }
                ]), (2, [ mob {
                       mobName = "Orc",
                       symbol = 'o',
                       hp = 6,
                       mhp = 6,
-                      baseDmg = 1 `d` 6
+                      baseDmg = 1 `d` 6,
+                      thac0   = 18,
+                      baseAC  = 8
                    }
                ]) ]

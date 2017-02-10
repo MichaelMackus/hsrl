@@ -5,7 +5,7 @@ import RL.State
 import RL.Random
 
 import Control.Monad (when)
-import Data.Maybe (isNothing, isJust, fromJust)
+import Data.Maybe (isNothing, isJust, fromJust, fromMaybe)
 
 -- commands, which produce events
 class Command c where
@@ -19,11 +19,18 @@ instance Command AttackCommand where
 
     -- any mob attacking another mob
     dispatch (Attack attacker target) = when (canAttack target) $ do
-            -- TODO take into account inventory
-            dmg     <- roll (baseDmg attacker)
-            target' <- hurtMob target dmg
-            when (isDead target') (send (Died target'))
-            send (Attacked attacker target' dmg)
+            let weap = weaponProperties =<< getWielding attacker
+
+            -- attack roll
+            atk     <- roll (1 `d` 20)
+            if atk + (fromMaybe 0 (bonus <$> weap)) >= thac0 attacker - mobAC target then do
+                -- hit!
+                dmg     <- roll (maybe (baseDmg attacker) dmgd weap)
+                target' <- hurtMob target dmg
+                when (isDead target') (send (Died target'))
+                send (Attacked attacker target' dmg)
+            else
+                send (Missed attacker target)
         where
             -- hurt    mob    dmg
             hurtMob :: Mob -> Int -> Game Mob

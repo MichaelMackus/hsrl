@@ -5,7 +5,7 @@ import RL.Util (takeWhiles)
 
 -- Represents Game events
 
-data Event = Attacked Mob Mob Int | Died Mob | EndOfTurn | Moved Mob Point | StairsTaken VerticalDirection | Waken Mob | Slept Mob deriving Eq
+data Event = Attacked Mob Mob Int | Missed Mob Mob | Died Mob | EndOfTurn | Moved Mob Point | StairsTaken VerticalDirection | Waken Mob | Slept Mob deriving Eq
 
 getEventsNTurns :: Int -> [Event] -> [Event]
 getEventsNTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
