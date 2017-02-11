@@ -127,3 +127,9 @@ send :: Event -> Game ()
 send e = do
     env <- get
     put (env { events = (e:events env) })
+
+-- convenience function to perform Game () action
+whenEnv :: (Env -> Bool) -> Game () -> Game ()
+whenEnv f k = do
+    env <- get
+    when (f env) k

@@ -18,7 +18,7 @@ import Data.Maybe (isJust, fromJust)
 data AI = AI
 
 instance Client AI where
-    tick ai = do
+    tick ai = whenEnv isTicking $ do
             player   <- getPlayer
             ms       <- aliveMobs <$> getMobs
             smelling <- forM ms (`canSmell` player)

@@ -10,10 +10,11 @@ import RL.Renderer
 import RL.Util (enumerate)
 
 import Data.Maybe (catMaybes)
+import qualified Data.List as L
 
 -- game is renderable
 instance Renderable Env where
-    getSprites e = getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
+    getSprites e = getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
 
 -- dungeon is renderable
 instance Renderable DLevel where
@@ -33,6 +34,15 @@ getStatusSprites lvl =
         statusLine = [ "HP: " ++ show (hp p) ++ "/" ++ show (mhp p),
                        "Depth: " ++ show (depth lvl) ]
     in  mkSprites (60, 15) statusLine
+
+otherWindows :: Env -> [Sprite]
+otherWindows e
+    | isViewingInventory e =
+        let lvl = level e
+            inv = L.groupBy itemType (inventory (player lvl))
+            eq  = L.groupBy itemType (equipment (player lvl))
+        in  mkSprites (0, 0) (map show (eq ++ inv))
+    | otherwise = []
 
 getMsgSprites :: [Event] -> [Sprite]
 getMsgSprites = mkSprites (0, 15) . reverse . take 10 . catMaybes . map toMessage

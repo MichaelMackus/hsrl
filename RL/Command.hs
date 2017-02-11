@@ -105,3 +105,14 @@ instance Command SleepCommand where
         when (length fs == length (flags m)) $ do
             setMob (m { flags = (Sleeping:fs) })
             send (Slept m)
+
+-- User Interface commands
+data UICommand = ToggleInventory
+
+instance Command UICommand where
+    dispatch ToggleInventory = do
+        env <- get
+        if isTicking env then
+            send (Inventory ViewInventory)
+        else
+            send UIClosed

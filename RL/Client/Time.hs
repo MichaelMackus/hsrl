@@ -20,13 +20,12 @@ data Time = Ticks Int
 end = Ticks 1
 
 instance Client Time where
-    tick (Ticks i) = replicateM_ i $ do
+    tick (Ticks i) = whenEnv isTicking . replicateM_ i $ do
         -- cleanup dead mobs
         ms <- aliveMobs <$> getMobs
         setMobs ms
 
         -- heal wounds if not attacked
-        -- FIXME not properly doing anything
         ms' <- allMobs <$> getLevel
         evs <- getEvents
         let healed = map (healDamaged evs (floor (1 / fromIntegral i))) ms'

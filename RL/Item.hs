@@ -7,6 +7,9 @@ data Item = Item ItemName ItemType
 type ItemName = String
 data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion | Tool
 
+instance Show Item where
+    show (Item n _) = n
+
 data WeaponProperties = WeaponProperties {
     dmgd :: Dice,
     bonus :: Int -- positive OR negative bonus to attack & damage rolls
@@ -26,3 +29,9 @@ armorProperties :: Item -> Maybe ArmorProperties
 armorProperties (Item _ (Armor prop)) = Just prop
 armorProperties otherwise             = Nothing
 
+itemType :: Item -> Item -> Bool
+itemType (Item _ (Weapon _)) (Item _ (Weapon _)) = True
+itemType (Item _ (Armor _)) (Item _ (Armor _)) = True
+itemType (Item _ Potion) (Item _ Potion) = True
+itemType (Item _ Tool) (Item _ Tool) = True
+itemType _ _ = False

@@ -25,7 +25,7 @@ data UserInput = UserInput Action
 user           = UserInput None
 
 -- specific actions that can have inputs on the keyboard
-data Action = Move Dir | MoveV VerticalDirection | Restart | Quit | None
+data Action = Move Dir | MoveV VerticalDirection | InventoryA | Restart | Quit | None
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 
 -- user input
@@ -33,9 +33,10 @@ instance Client UserInput where
     tick (UserInput a) = do
         p <- getPlayer
         when (not (isDead p)) $ do
-            case a of Move  d   -> moveDir d
-                      MoveV v   -> dispatch (TakeStairs v)
-                      otherwise -> return ()
+            case a of Move  d    -> moveDir d
+                      MoveV v    -> dispatch (TakeStairs v)
+                      InventoryA -> dispatch ToggleInventory
+                      otherwise  -> return ()
 
 -- is user playing?
 isPlaying :: Action -> Bool
@@ -56,6 +57,7 @@ charToAction 'n'       = Move SE
 charToAction 'r'       = Restart
 charToAction '>'       = MoveV Down
 charToAction '<'       = MoveV Up
+charToAction 'i'       = InventoryA
 charToAction 'q'       = Quit
 charToAction otherwise = None
 

@@ -1,4 +1,4 @@
-module RL.Game (Game, Env(..), Event(..), runGame, withEnv, withRng, iterLevel, module RL.Map) where
+module RL.Game (Game, Env(..), isTicking, isViewingInventory, runGame, withEnv, withRng, iterLevel, module RL.Map, module RL.Event) where
 
 import RL.Event
 import RL.Map
@@ -17,6 +17,17 @@ data Env    = Env {
 
 runGame :: Game a -> Env -> (a, Env)
 runGame (GameState pr) e = pr e
+
+-- detects if we're ticking (i.e. AI and other things should be active)
+isTicking :: Env -> Bool
+isTicking = not . isViewingInventory
+
+-- detects if we're ticking (i.e. AI and other things should be active)
+isViewingInventory :: Env -> Bool
+isViewingInventory = isViewingInventory' . events
+    where
+        isViewingInventory' (Inventory _:xs) = True
+        isViewingInventory' otherwise = False
 
 -- get/setters
 withEnv :: (Env -> Game a) -> Game a
