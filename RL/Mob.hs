@@ -75,7 +75,8 @@ mkPlayer hp at fov = mob {
     hp = hp,
     mhp = hp,
     at = at,
-    fov = fov
+    fov = fov,
+    equipment = [mace, leather]
 }
 
 isPlayer :: Mob -> Bool

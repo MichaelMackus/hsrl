@@ -35,3 +35,8 @@ itemType (Item _ (Armor _)) (Item _ (Armor _)) = True
 itemType (Item _ Potion) (Item _ Potion) = True
 itemType (Item _ Tool) (Item _ Tool) = True
 itemType _ _ = False
+
+
+-- some simple items
+mace = Item "Mace" (Weapon $ WeaponProperties (1 `d` 6) 0)
+leather = Item "Leather" (Armor $ ArmorProperties 2 Chest)

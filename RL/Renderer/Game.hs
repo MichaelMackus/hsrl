@@ -14,7 +14,7 @@ import qualified Data.List as L
 
 -- game is renderable
 instance Renderable Env where
-    getSprites e = getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
+    getSprites e = otherWindows e ++ getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
 
 -- dungeon is renderable
 instance Renderable DLevel where
@@ -41,8 +41,9 @@ otherWindows e
         let lvl = level e
             inv = L.groupBy itemType (inventory (player lvl))
             eq  = L.groupBy itemType (equipment (player lvl))
-        in  mkSprites (0, 0) (map show (eq ++ inv))
+        in  mkSprites (0, 0) (map showItem (concat eq ++ concat inv))
     | otherwise = []
+        where showItem i = " - " ++ show i
 
 getMsgSprites :: [Event] -> [Sprite]
 getMsgSprites = mkSprites (0, 15) . reverse . take 10 . catMaybes . map toMessage
