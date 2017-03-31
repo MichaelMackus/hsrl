@@ -37,7 +37,7 @@ changeLevel lvl = do
             lvl'    = atDepth (depth lvl) dng
             isStair = if depth lvl > depth (level game) then isUpStair else isDownStair
 
-        when (lvl /= level game) $ do
+        when (depth lvl /= depth (level game)) $ do
             setLevel (maybe lvl (placeOnStair isStair) lvl')
             setDungeon . insertLevel (level game) . (`insertLevel` dng) =<< getLevel
     where

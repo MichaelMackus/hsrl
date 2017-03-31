@@ -43,10 +43,6 @@ data DLevel  = DLevel {
 allMobs :: DLevel -> [Mob]
 allMobs lvl = (player lvl:mobs lvl)
 
-instance Eq DLevel where
-    -- TODO this won't work with different dungeon branches
-    d == d' = depth d == depth d'
-
 data Tile = Floor | Cavern | Rock | StairUp DLevel | StairDown DLevel | Other Char
 
 instance Eq Tile where
