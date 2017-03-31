@@ -5,7 +5,7 @@ import RL.Generator.Cells (Cell(..), cpoint)
 import RL.Map
 import qualified RL.Generator.Cells as C
 
-import Control.Monad (forM, when)
+import Control.Monad (forM)
 import Data.List (sortBy, deleteBy, filter, nub)
 import Data.Maybe (listToMaybe)
 
@@ -24,7 +24,7 @@ paths cs = do
         return ps
     else do
         ps' <- nub . (ps ++) . concat <$> forM reachable (`generatePath` unreachable)
-        when (length ps' > length ps) $ setGData ps'
+        setGData ps'
         return ps'
 
 reachableCells :: [Cell] -> [Path] -> [Cell]

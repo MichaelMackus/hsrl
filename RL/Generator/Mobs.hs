@@ -45,7 +45,7 @@ mobGenerator = do
     let diff = depth lvl
     mobs' <- withMobIds . (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs conf - length (mobs lvl)) (generateMob diff)
     when (length mobs' == maxMobs conf) markGDone
-    when (length mobs' /= length (mobs lvl)) (setGData (lvl { mobs = mobs' }))
+    setGData (lvl { mobs = mobs' })
     return mobs'
 
 type Difficulty = Int

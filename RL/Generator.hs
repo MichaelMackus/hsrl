@@ -84,9 +84,12 @@ appendGData :: s -> Generator c [s] ()
 appendGData x = Generator $ \c s -> ((), appended s)
     where appended s = s { gdata = (x:gdata s), i = 0 }
 
--- set data to state
-setGData :: s -> Generator c s ()
-setGData gdata = Generator $ \c s -> ((), s { gdata = gdata, i = 0 })
+-- set data to state, only if the data is different than previous
+-- this also resets the try counter if the state is updated
+setGData :: Eq s => s -> Generator c s ()
+setGData gdata = do
+    gdata' <- getGData
+    when (gdata /= gdata') (Generator $ \c s -> ((), s { gdata = gdata, i = 0 }))
 
 -- increment try counter
 incCounter :: Generator c s ()
