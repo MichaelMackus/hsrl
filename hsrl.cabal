@@ -14,9 +14,23 @@ maintainer:          michaelmackus@gmail.com
 build-type:          Simple
 cabal-version:       >=1.8
 
+flag vty
+  description:       Use VTY library instead of curses for CLI renderer
+  default:           False
+  manual:            True
+
 executable hsrl
   main-is: roguelike.hs
   extensions: DoAndIfThenElse, MultiParamTypeClasses
-  ghc-options: -threaded -fwarn-unused-binds
+  ghc-options: -threaded -fwarn-unused-binds -cpp
   -- other-modules:
-  build-depends:       base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, vty >=5.4, time >=1.5, containers >=0.5
+  build-depends:       base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, time >=1.5, containers >=0.5
+
+  if flag(vty)
+    build-depends:
+      vty >= 5.4 && < 5.5
+    cpp-options: -Dvty
+  else
+    build-depends:
+      hscurses >=1.4.2.0
+    cpp-options: -Dhscurses

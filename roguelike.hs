@@ -8,7 +8,6 @@ import RL.Renderer.Game
 import RL.State
 
 import Data.Maybe (catMaybes)
-import Graphics.Vty
 import System.Random
 
 -- main game loop
@@ -36,11 +35,11 @@ gameLoop draw nextAction env = do
         return (won, env')
 
 main = do
-        vty       <- mkRenderer -- initialize VTY renderer
+        r         <- mkRenderer -- initialize display
         e         <- nextLevel conf
-        (won, e') <- gameLoop (`render` vty) (nextAction vty) e
+        (won, e') <- gameLoop (`render` r) (getAction r) e
 
-        shutdown vty
+        killRenderer r
 
         -- print latest status messages
         mapM_ putStrLn (catMaybes (reverse (take 9 (map toMessage (events e')))))
@@ -68,17 +67,6 @@ main = do
             }
             -- TODO ItemConfig
         }
-
-
-nextAction :: Vty -> Env -> IO Action
-nextAction vty env = do
-        e <- nextEvent vty
-        return (toAction e)
-    where
-        -- gets game Action from user input
-        toAction :: InputEvent -> Action
-        toAction (EvKey (KChar c) _) = charToAction c
-        toAction (EvKey otherwise _) = None
 
 -- generate a new level
 nextLevel :: DungeonConfig -> IO Env
