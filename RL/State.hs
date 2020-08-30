@@ -120,7 +120,7 @@ maxRow = do
 maxColumn :: Game Int
 maxColumn = do
     ts <- toTiles <$> getLevel
-    when (length ts < 1) (fail "Unable to find max column - tiles empty!")
+    when (length ts < 1) (error "Unable to find max column - tiles empty!")
     return (length $ ts !! 0)
 
 send :: Event -> Game ()
