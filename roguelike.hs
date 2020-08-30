@@ -68,6 +68,17 @@ main = do
             -- TODO ItemConfig
         }
 
+
+getAction :: Display -> Env -> IO Action
+getAction disp env = do
+        k <- getInput disp
+        return (toAction k)
+    where
+        -- gets game Action from user input
+        toAction :: Key -> Action
+        toAction (KeyChar c) = charToAction c
+        toAction otherwise   = None
+
 -- generate a new level
 nextLevel :: DungeonConfig -> IO Env
 nextLevel conf = do

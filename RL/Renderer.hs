@@ -6,7 +6,8 @@ module RL.Renderer (
     render,
     killRenderer,
     mkRenderer,
-    getAction
+    getInput,
+    Key(..)
 ) where
 
 -- Basic VTY (virtual terminal) renderer.
@@ -25,11 +26,12 @@ import Control.Monad.Reader
 #if defined(vty)
 import Graphics.Vty
 #else
-import UI.HSCurses.Curses as Curses
+import qualified UI.HSCurses.Curses as Curses
 #endif
 
 type Renderer = ReaderT Display IO
 type Sprite   = (Point, String) -- string somewhere on the screen
+data Key      = KeyChar Char | KeyUnknown
 
 class Renderable r where
     getSprites :: r -> [Sprite]
@@ -45,8 +47,8 @@ render :: Renderable r => r -> Display -> IO ()
 mkRenderer :: IO Display
 -- shut down
 killRenderer :: Display -> IO ()
--- wait on user input & return the action chosen
-getAction :: Display -> Env -> IO Action
+-- wait on input from keyboard and return the single key inputted
+getInput :: Display -> IO Key
 
 #if defined(vty)
 type Display = Vty
@@ -63,16 +65,16 @@ getImage :: Sprite -> Image
 getImage ((0, 0), str) = string defAttr str
 getImage ((x, y), str) = translate x y $ getImage ((0, 0), str)
 
-getAction vty env = do
+getInput vty = do
         e <- nextEvent vty
-        return (toAction e)
+        return (toKey e)
     where
         -- gets game Action from user input
-        toAction :: Event -> Action
-        toAction (EvKey (KChar c) _) = charToAction c
-        toAction (EvKey otherwise _) = None
+        toKey :: Event -> Action
+        toKey (EvKey (KChar c) _) = KeyChar c
+        toKey (EvKey otherwise _) = KeyUnknown
 #else
-type Display = Window -- curses window
+type Display = Curses.Window -- curses window
 mkRenderer = do
     Curses.initCurses
     Curses.echo False
@@ -80,14 +82,14 @@ mkRenderer = do
     return Curses.stdScr
 render r w = do
     let sprites = getSprites r
-    wclear w
+    Curses.wclear w
     forM_ sprites $ \((x,y), str) -> do
         Curses.mvWAddStr w y x str
     Curses.refresh
 killRenderer w = Curses.endWin
-getAction w env = do
+getInput w = do
     ch <- Curses.getCh
     case ch of
-        (Curses.KeyChar ch) -> return (charToAction ch)
-        otherwise           -> return None
+        (Curses.KeyChar ch) -> return (KeyChar ch)
+        otherwise           -> return KeyUnknown
 #endif
