@@ -22,5 +22,16 @@ instance UI Curses.Window where
     uiInput w = do
         ch <- Curses.getCh
         case ch of
-            (Curses.KeyChar ch) -> return (KeyChar ch)
+            (Curses.KeyChar ch) -> if fromEnum ch == 27 then return KeyEscape
+                                   else if ch == '\DEL' then return KeyBackspace
+                                   else if ch == '\b'   then return KeyBackspace
+                                   else if ch == '\n'   then return KeyEnter
+                                   else return (KeyChar ch)
+            Curses.KeyUp        -> return KeyUp
+            Curses.KeyDown      -> return KeyDown
+            Curses.KeyRight     -> return KeyRight
+            Curses.KeyLeft      -> return KeyLeft
+            Curses.KeyEnter     -> return KeyEnter
+            Curses.KeyBackspace -> return KeyBackspace
+            -- Curses.KeyMouse     -> TODO
             otherwise           -> return KeyUnknown

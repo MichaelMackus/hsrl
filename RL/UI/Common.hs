@@ -3,7 +3,9 @@ module RL.UI.Common where
 type Sprite   = (Point, String) -- horizontal string somewhere on the screen
 type Point    = (Int, Int)
 data Key      = KeyChar Char | KeyUp | KeyDown | KeyRight | KeyLeft |
-                KeyEnter | KeyEscape | KeyBackspace | KeyMouse Point | KeyUnknown
+                KeyEnter | KeyEscape | KeyBackspace |
+                KeyMouseLeft Point | KeyMouseRight Point | KeyUnknown
+    deriving (Show)
 
 class Renderable r where
     getSprites :: r -> [Sprite]
