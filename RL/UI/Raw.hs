@@ -10,7 +10,7 @@ import qualified Data.List as L
 
 -- fallback terminal UI
 instance UI () where
-    uiInit = hSetBuffering stdin NoBuffering
+    uiInit _ = hSetBuffering stdin NoBuffering
     uiRender w r =
         let sprites         = getSprites r
             (lenX, lenY)    = (maxX sprites + 1, maxY sprites + 1)

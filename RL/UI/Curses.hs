@@ -3,12 +3,15 @@ module RL.UI.Curses where
 
 import RL.UI.Common
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import qualified UI.HSCurses.Curses as Curses
 
 instance UI Curses.Window where
-    uiInit = do
+    uiInit cfg = do
         Curses.initCurses
+        (curRows, curCols) <- Curses.scrSize
+        when (curRows < rows cfg || curCols < columns cfg)
+            $ error "Terminal too small for curses window!"
         Curses.echo False
         Curses.cursSet Curses.CursorInvisible
         return Curses.stdScr

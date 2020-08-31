@@ -2,12 +2,18 @@ module RL.UI.Vty where
 
 import RL.UI.Common
 
+import Control.Monad (when)
 import Graphics.Vty
 
 instance UI Vty where
-    uiInit = do
-        cfg <- standardIOConfig
-        mkVty cfg
+    uiInit cfg = do
+        vtyCfg <- standardIOConfig
+        out    <- outputForConfig vtyCfg
+        (curCols, curRows) <- displayBounds out
+        print (curRows, curCols)
+        when (curRows < rows cfg || curCols < columns cfg)
+            $ error "Terminal too small for VTY window!"
+        mkVty vtyCfg
     uiRender disp r =
         let layers = map getImage $ getSprites r
         in  update disp $ picForLayers layers

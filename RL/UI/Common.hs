@@ -15,9 +15,18 @@ class Renderable r where
     -- getSprites g = getSprites (level g) ++ getMsgSprites (messages g)
     -- getSprites g = [((0, 0), show $ gets dungeon)]
 
+data UIConfig = UIConfig { columns :: Int
+                         , rows :: Int
+
+                         -- below is for GUI/SDL config
+                         , initMouse :: Bool -- TODO VTY
+                         , fontPath :: FilePath
+                         , fontSize :: Int
+                         , fullscreen :: Bool }
+
 class UI ui where
     -- initialize rendering
-    uiInit   :: IO ui
+    uiInit   :: UIConfig -> IO ui
     -- shut down
     uiEnd    :: ui -> IO ()
     -- main render function

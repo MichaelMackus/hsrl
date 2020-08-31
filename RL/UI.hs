@@ -39,4 +39,10 @@ type DefaultUI = Window
 type DefaultUI = ()
 #endif
 
-uiInitDefault = uiInit :: IO DefaultUI
+defaultUIConfig = UIConfig { columns = 80
+                           , rows = 24
+                           , initMouse = False
+                           , fontPath = ""
+                           , fontSize = 16
+                           , fullscreen = False }
+uiInitDefault = uiInit defaultUIConfig :: IO DefaultUI
