@@ -28,7 +28,7 @@ executable hsrl
 
   if flag(vty)
     build-depends:
-      vty >= 5.4 && < 5.5
+      vty >= 5.4 && < 6
     cpp-options: -Dvty
   else
     build-depends:

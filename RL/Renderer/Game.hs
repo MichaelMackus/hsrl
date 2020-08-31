@@ -2,11 +2,12 @@ module RL.Renderer.Game (
     Env(..),
     DLevel(..),
     toMessage,
-    module RL.Renderer
+    module RL.UI.Common
 ) where
 
 import RL.Game
-import RL.Renderer
+import RL.UI
+import RL.UI.Common hiding (Point)
 import RL.Util (enumerate)
 
 import Data.Maybe (catMaybes)

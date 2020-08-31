@@ -5,6 +5,7 @@ import RL.Game
 import RL.Generator.Dungeon
 import RL.Generator.Mobs
 import RL.Renderer.Game
+import RL.UI
 import RL.State
 
 import Data.Maybe (catMaybes)
@@ -35,11 +36,11 @@ gameLoop draw nextAction env = do
         return (won, env')
 
 main = do
-        r         <- mkRenderer -- initialize display
+        ui        <- uiInitDefault -- initialize display
         e         <- nextLevel conf
-        (won, e') <- gameLoop (`render` r) (getAction r) e
+        (won, e') <- gameLoop (uiRender ui) (getAction ui) e
 
-        killRenderer r
+        uiEnd ui
 
         -- print latest status messages
         mapM_ putStrLn (catMaybes (reverse (take 9 (map toMessage (events e')))))
@@ -69,9 +70,9 @@ main = do
         }
 
 
-getAction :: Display -> Env -> IO Action
+getAction :: UI ui => ui -> Env -> IO Action
 getAction disp env = do
-        k <- getInput disp
+        k <- uiInput disp
         return (toAction k)
     where
         -- gets game Action from user input
