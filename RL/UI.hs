@@ -1,9 +1,8 @@
 module RL.UI (
     UI(..),
-    DefaultUI(..),
-    uiInitDefault,
+    defaultUI,
+    defaultUIConfig,
     Sprite,
-    Renderable(..),
     Key(..)
 ) where
 
@@ -20,6 +19,9 @@ import RL.UI.Common
 -- See RL.UI.Common for the abstraction, or RL.UI.* for the
 -- implementations.
 
+#if defined(sdl)
+import RL.UI.SDL
+#endif
 #if defined(hscurses)
 import RL.UI.Curses
 import UI.HSCurses.Curses (Window)
@@ -31,18 +33,22 @@ import Graphics.Vty (Vty)
 import RL.UI.Raw
 
 -- default display implementation
-#if defined(vty)
-type DefaultUI = Vty
+defaultUI :: UIConfig -> IO UI
+#if defined(sdl)
+defaultUI = sdlUI
+#elif defined(vty)
+defaultUI = vtyUI
 #elif defined(hscurses)
-type DefaultUI = Window
+defaultUI = cursesUI
 #else
-type DefaultUI = ()
+-- fallback using putStrLn
+defaultUI = rawUI
 #endif
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
                            , initMouse = False
-                           , fontPath = ""
+                           , uiTitle = "RogueLike Demo"
+                           , fontPath = "res/fonts/16x16x.fnt"
                            , fontSize = 16
                            , fullscreen = False }
-uiInitDefault = uiInit defaultUIConfig :: IO DefaultUI

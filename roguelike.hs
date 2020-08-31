@@ -2,9 +2,9 @@ import RL.Client.AI
 import RL.Client.Input
 import RL.Client.Time
 import RL.Game
+import RL.Game.Sprites
 import RL.Generator.Dungeon
 import RL.Generator.Mobs
-import RL.Renderer.Game
 import RL.UI
 import RL.State
 
@@ -36,9 +36,9 @@ gameLoop draw nextAction env = do
         return (won, env')
 
 main = do
-        ui        <- uiInitDefault -- initialize display
+        ui        <- defaultUI defaultUIConfig -- initialize display
         e         <- nextLevel conf
-        (won, e') <- gameLoop (uiRender ui) (getAction ui) e
+        (won, e') <- gameLoop (uiRender ui . getSprites) (getAction ui) e
 
         uiEnd ui
 
@@ -70,7 +70,7 @@ main = do
         }
 
 
-getAction :: UI ui => ui -> Env -> IO Action
+getAction :: UI -> Env -> IO Action
 getAction disp env = do
         k <- uiInput disp
         return (toAction k)

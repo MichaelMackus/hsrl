@@ -1,25 +1,22 @@
-module RL.Renderer.Game (
+module RL.Game.Sprites (
     Env(..),
     DLevel(..),
     toMessage,
-    module RL.UI.Common
+    getSprites
 ) where
 
 import RL.Game
-import RL.UI
-import RL.UI.Common hiding (Point)
+import RL.UI.Common as UI
 import RL.Util (enumerate)
 
 import Data.Maybe (catMaybes)
 import qualified Data.List as L
 
 -- game is renderable
-instance Renderable Env where
-    getSprites e = otherWindows e ++ getSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
-
--- dungeon is renderable
-instance Renderable DLevel where
-    getSprites d = getMapSprites d
+getSprites e = otherWindows e ++ getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
+    where
+        -- dungeon is renderable
+        getSprites' d = getMapSprites d
 
 -- helper functions since map/mob isn't renderable without context
 
@@ -68,7 +65,7 @@ toMessage (Waken m) = Just $ "The " ++ mobName m ++ " has waken up."
 toMessage (Slept m) = Just $ "The " ++ mobName m ++ " has fell asleep."
 toMessage otherwise = Nothing
 
-mkSprites :: Point -> [String] -> [Sprite]
+mkSprites :: UI.Point -> [String] -> [Sprite]
 mkSprites (offx, offy) = map toSprite . enumerate
     where
         toSprite (i, s) = ((offx, i + offy), s)

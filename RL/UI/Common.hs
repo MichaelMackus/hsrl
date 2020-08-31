@@ -7,29 +7,16 @@ data Key      = KeyChar Char | KeyUp | KeyDown | KeyRight | KeyLeft |
                 KeyMouseLeft Point | KeyMouseRight Point | KeyUnknown
     deriving (Show)
 
-class Renderable r where
-    getSprites :: r -> [Sprite]
-
--- game is renderable
--- instance Renderable (Game a) where
-    -- getSprites g = getSprites (level g) ++ getMsgSprites (messages g)
-    -- getSprites g = [((0, 0), show $ gets dungeon)]
-
 data UIConfig = UIConfig { columns :: Int
-                         , rows :: Int
-
-                         -- below is for GUI/SDL config
-                         , initMouse :: Bool -- TODO VTY
-                         , fontPath :: FilePath
-                         , fontSize :: Int
+                         , rows    :: Int
+                         -- below is for GUI-based UIs (e.g. SDL)
+                         , initMouse  :: Bool
+                         , uiTitle    :: String
+                         , fontPath   :: FilePath
+                         , fontSize   :: Int
                          , fullscreen :: Bool }
 
-class UI ui where
-    -- initialize rendering
-    uiInit   :: UIConfig -> IO ui
-    -- shut down
-    uiEnd    :: ui -> IO ()
-    -- main render function
-    uiRender :: Renderable r => ui -> r -> IO ()
-    -- wait on input from keyboard and return the single key inputted
-    uiInput  :: ui -> IO Key
+data UI = UI { uiEnd    :: IO () -- shut down
+             , uiRender :: [Sprite] -> IO () -- main render function
+             , uiInput  :: IO Key -- wait on input from keyboard and return the single key inputted
+             }
