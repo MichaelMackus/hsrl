@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TupleSections #-}
 module RL.UI.Raw (rawUI) where
 
 import RL.UI.Common
@@ -25,7 +25,7 @@ rawUI cfg = do
                                   in  if y < length l then replaceAt l y row else l
             in  putStr (unlines rows)
         , uiEnd = hSetBuffering stdin initialBuffering >> hSetEcho stdin True
-        , uiInput = getChar >>= return . KeyChar }
+        , uiInput = getChar >>= return . (,[]) . KeyChar }
 
 maxY :: [Sprite] -> Int
 maxY = fromMaybe 0 . listToMaybe . reverse . L.sort . map toYs

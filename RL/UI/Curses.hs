@@ -4,7 +4,11 @@ module RL.UI.Curses (cursesUI) where
 import RL.UI.Common
 
 import Control.Monad (forM_, when)
+import Data.Char
 import qualified UI.HSCurses.Curses as Curses
+import UI.HSCurses.CursesHelper (displayKey)
+
+import Debug.Trace (trace)
 
 cursesUI :: UIConfig -> IO UI
 cursesUI cfg = do
@@ -22,19 +26,28 @@ cursesUI cfg = do
             Curses.refresh
       , uiEnd = Curses.endWin
       , uiInput = do
-            ch <- Curses.getCh
-            case ch of
-                (Curses.KeyChar ch) -> if fromEnum ch == 27 then return KeyEscape
-                                       else if ch == '\DEL' then return KeyBackspace
-                                       else if ch == '\b'   then return KeyBackspace
-                                       else if ch == '\n'   then return KeyEnter
-                                       else return (KeyChar ch)
-                Curses.KeyUp        -> return KeyUp
-                Curses.KeyDown      -> return KeyDown
-                Curses.KeyRight     -> return KeyRight
-                Curses.KeyLeft      -> return KeyLeft
-                Curses.KeyEnter     -> return KeyEnter
-                Curses.KeyBackspace -> return KeyBackspace
-                -- Curses.KeyMouse     -> TODO
-                otherwise           -> return KeyUnknown
+            ch <- Curses.getch
+            let k = case ch of
+                    (Curses.KeyChar ch) -> if fromEnum ch == 27 then KeyEscape
+                                           else if ch == '\DEL' then KeyBackspace
+                                           else if ch == '\b'   then KeyBackspace
+                                           else if ch == '\n'   then KeyEnter
+                                           else KeyChar ch
+                    -- TODO navigation keys not working
+                    Curses.KeyUp        -> KeyUp
+                    Curses.KeyDown      -> KeyDown
+                    Curses.KeyRight     -> KeyRight
+                    Curses.KeyLeft      -> KeyLeft
+                    Curses.KeyEnter     -> KeyEnter
+                    Curses.KeyBackspace -> KeyBackspace
+                    -- Curses.KeyMouse     -> TODO
+                    otherwise           -> KeyUnknown
+            return (toKeyMods k)
       }
+
+toKeyMods :: Key -> (Key, [KeyMod])
+toKeyMods (KeyChar ch) = case displayKey (Curses.KeyChar ch) of
+                            ('^':k:_) -> (KeyChar (toLower k), [KeyModCtrl])
+                            otherwise -> let mods = if isUpper ch then [KeyModShift] else []
+                                         in  (KeyChar ch, mods)
+toKeyMods k = (k, [])

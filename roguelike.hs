@@ -73,7 +73,7 @@ main = do
 getAction :: UI -> Env -> IO Action
 getAction disp env = do
         k <- uiInput disp
-        return (toAction k)
+        return (toAction $ fst k)
     where
         -- gets game Action from user input
         toAction :: Key -> Action

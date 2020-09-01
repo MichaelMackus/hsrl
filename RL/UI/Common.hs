@@ -6,7 +6,8 @@ data Key      = KeyChar Char | KeyUp | KeyDown | KeyRight | KeyLeft |
                 KeyEnter | KeyEscape | KeyBackspace |
                 KeyMouseLeft Point | KeyMouseRight Point | KeyQuit |
                 KeyUnknown
-    deriving (Show)
+    deriving (Show, Eq)
+data KeyMod   = KeyModAlt | KeyModCtrl | KeyModShift | KeyModSuper deriving (Show, Eq)
 
 data UIConfig = UIConfig { columns :: Int
                          , rows    :: Int
@@ -19,5 +20,5 @@ data UIConfig = UIConfig { columns :: Int
 
 data UI = UI { uiEnd    :: IO ()              -- shut down
              , uiRender :: [Sprite] -> IO ()  -- main render function
-             , uiInput  :: IO (Key) -- wait on input from keyboard and return the single key inputted
+             , uiInput  :: IO (Key, [KeyMod]) -- wait on input from keyboard and return the single key inputted
              }

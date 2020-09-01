@@ -21,18 +21,24 @@ vtyUI cfg = do
         , uiInput = do
             e <- nextEvent disp
             case e of
-                (EvKey (KChar c)        _) -> return (KeyChar c)
-                (EvKey KUp              _) -> return KeyUp
-                (EvKey KDown            _) -> return KeyDown
-                (EvKey KRight           _) -> return KeyRight
-                (EvKey KLeft            _) -> return KeyLeft
-                (EvKey KEnter           _) -> return KeyEnter
-                (EvKey KEsc             _) -> return KeyEscape
-                (EvKey KBS              _) -> return KeyBackspace
-                (EvMouseDown x y BLeft  _) -> return (KeyMouseLeft (x, y))
-                (EvMouseDown x y BRight _) -> return (KeyMouseRight (x, y))
-                otherwise                  -> return KeyUnknown
+                (EvKey (KChar c)        mods) -> return ((KeyChar c), toKeyMods mods)
+                (EvKey KUp              mods) -> return (KeyUp, toKeyMods mods)
+                (EvKey KDown            mods) -> return (KeyDown, toKeyMods mods)
+                (EvKey KRight           mods) -> return (KeyRight, toKeyMods mods)
+                (EvKey KLeft            mods) -> return (KeyLeft, toKeyMods mods)
+                (EvKey KEnter           mods) -> return (KeyEnter, toKeyMods mods)
+                (EvKey KEsc             mods) -> return (KeyEscape, toKeyMods mods)
+                (EvKey KBS              mods) -> return (KeyBackspace, toKeyMods mods)
+                (EvMouseDown x y BLeft  mods) -> return ((KeyMouseLeft (x, y)), toKeyMods mods)
+                (EvMouseDown x y BRight mods) -> return ((KeyMouseRight (x, y)), toKeyMods mods)
+                otherwise                     -> return (KeyUnknown, [])
         }
+
+toKeyMods = map toKeyMod
+    where toKeyMod MShift = KeyModShift -- TODO no shift
+          toKeyMod MCtrl  = KeyModCtrl
+          toKeyMod MMeta  = KeyModAlt
+          toKeyMod MAlt   = KeyModSuper
 
 getImage :: Sprite -> Image
 getImage ((0, 0), str) = string defAttr str
