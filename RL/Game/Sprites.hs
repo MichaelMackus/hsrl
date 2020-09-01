@@ -44,7 +44,7 @@ otherWindows e
         where showItem i = " - " ++ show i
 
 getMsgSprites :: [Event] -> [Sprite]
-getMsgSprites = mkSprites (0, 15) . reverse . take 10 . catMaybes . map toMessage
+getMsgSprites = mkSprites (0, 15) . reverse . take 9 . catMaybes . map toMessage
 
 toMessage :: Event -> Maybe String
 toMessage (Attacked attacker target dmg)
