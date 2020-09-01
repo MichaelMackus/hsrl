@@ -14,8 +14,18 @@ maintainer:          michaelmackus@gmail.com
 build-type:          Simple
 cabal-version:       >=1.8
 
+flag sdl
+  description:       Use SDL library for UI
+  default:           True
+  manual:            True
+
+flag curses
+  description:       Use curses for CLI renderer (less dependencies)
+  default:           False
+  manual:            True
+
 flag vty
-  description:       Use VTY library instead of curses for CLI renderer
+  description:       Use VTY library for CLI renderer
   default:           False
   manual:            True
 
@@ -24,13 +34,19 @@ executable hsrl
   extensions: DoAndIfThenElse, MultiParamTypeClasses
   ghc-options: -threaded -fwarn-unused-binds -cpp
   -- other-modules:
-  build-depends:       base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, time >=1.5, containers >=0.5
+  build-depends: base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, time >=1.5, containers >=0.5
+
+  if flag(sdl)
+    build-depends:
+      sdl2 >= 2.5, sdl2-ttf >= 2.1, text
+    cpp-options: -Dsdl
 
   if flag(vty)
     build-depends:
       vty >= 5.4 && < 6
     cpp-options: -Dvty
-  else
+
+  if flag(curses)
     build-depends:
       hscurses >=1.4.2.0
     cpp-options: -Dhscurses
