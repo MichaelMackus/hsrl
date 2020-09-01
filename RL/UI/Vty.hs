@@ -10,13 +10,12 @@ vtyUI cfg = do
     vtyCfg <- standardIOConfig
     out    <- outputForConfig vtyCfg
     (curCols, curRows) <- displayBounds out
-    print (curRows, curCols)
     when (curRows < rows cfg || curCols < columns cfg)
         $ error "Terminal too small for VTY window!"
     disp   <- mkVty vtyCfg
     return UI
         { uiRender = \sprites ->
-            let layers = map getImage sprites
+            let layers = reverse $ map getImage sprites
             in  update disp $ picForLayers layers
         , uiEnd = shutdown disp
         , uiInput = do

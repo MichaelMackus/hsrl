@@ -36,7 +36,7 @@ sdlUI cfg = do
             rendererDrawColor renderer $= black
             -- draw sprites
             forM_ sprites $ \((x,y), str) -> do
-                s    <- blended font white (T.pack str)
+                s    <- shaded font white black (T.pack str)
                 tex  <- createTextureFromSurface renderer s
                 (TextureInfo _ _ w h) <- queryTexture tex
                 let fwidth = fontSize cfg

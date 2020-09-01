@@ -13,7 +13,7 @@ import Data.Maybe (catMaybes)
 import qualified Data.List as L
 
 -- game is renderable
-getSprites e = otherWindows e ++ getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e)
+getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
     where
         -- dungeon is renderable
         getSprites' d = getMapSprites d
