@@ -2,13 +2,13 @@ import RL.Client.AI
 import RL.Client.Input
 import RL.Client.Time
 import RL.Game
+import RL.Game.Sprites
 import RL.Generator.Dungeon
 import RL.Generator.Mobs
-import RL.Renderer.Game
+import RL.UI
 import RL.State
 
 import Data.Maybe (catMaybes)
-import Graphics.Vty
 import System.Random
 
 -- main game loop
@@ -36,11 +36,11 @@ gameLoop draw nextAction env = do
         return (won, env')
 
 main = do
-        vty       <- mkRenderer -- initialize VTY renderer
+        ui        <- initUI defaultUIConfig -- initialize display
         e         <- nextLevel conf
-        (won, e') <- gameLoop (`render` vty) (nextAction vty) e
+        (won, e') <- gameLoop (uiRender ui . getSprites) (getAction ui) e
 
-        shutdown vty
+        uiEnd ui
 
         -- print latest status messages
         mapM_ putStrLn (catMaybes (reverse (take 9 (map toMessage (events e')))))
@@ -70,15 +70,15 @@ main = do
         }
 
 
-nextAction :: Vty -> Env -> IO Action
-nextAction vty env = do
-        e <- nextEvent vty
-        return (toAction e)
+getAction :: UI -> Env -> IO Action
+getAction disp env = do
+        k <- uiInput disp
+        return (toAction k)
     where
         -- gets game Action from user input
-        toAction :: InputEvent -> Action
-        toAction (EvKey (KChar c) _) = charToAction c
-        toAction (EvKey otherwise _) = None
+        toAction :: Key -> Action
+        toAction (KeyChar c) = charToAction c
+        toAction otherwise   = None
 
 -- generate a new level
 nextLevel :: DungeonConfig -> IO Env
