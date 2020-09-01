@@ -78,6 +78,10 @@ getAction disp env = do
         -- gets game Action from user input
         toAction :: Key -> Action
         toAction (KeyChar c) = charToAction c
+        toAction  KeyUp      = Move North
+        toAction  KeyRight   = Move East
+        toAction  KeyLeft    = Move West
+        toAction  KeyDown    = Move South
         toAction  KeyQuit    = Quit
         toAction otherwise   = None
 
