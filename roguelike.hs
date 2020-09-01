@@ -78,6 +78,7 @@ getAction disp env = do
         -- gets game Action from user input
         toAction :: Key -> Action
         toAction (KeyChar c) = charToAction c
+        toAction  KeyQuit    = Quit
         toAction otherwise   = None
 
 -- generate a new level

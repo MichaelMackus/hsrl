@@ -96,8 +96,9 @@ eventToKey e = case e of
         | mouseButtonEventMotion ed == Released && mouseButtonEventButton ed == ButtonRight ->
             let (P (V2 x y)) = mouseButtonEventPos ed
             in  Just $ KeyMouseRight (fromIntegral x, fromIntegral y)
+    (Event _ QuitEvent)        -> Just KeyQuit
     otherwise                  -> Nothing -- don't advance turn for non-user input events (such as window events)
 
 textToKey :: T.Text -> Key
-textToKey t  = let str = T.unpack t
-           in  if null str then KeyChar '\0' else KeyChar (head str)
+textToKey t = let str = T.unpack t
+              in  if null str then KeyUnknown else KeyChar (head str)

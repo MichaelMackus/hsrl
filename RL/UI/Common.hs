@@ -4,7 +4,8 @@ type Sprite   = (Point, String) -- horizontal string somewhere on the screen
 type Point    = (Int, Int)
 data Key      = KeyChar Char | KeyUp | KeyDown | KeyRight | KeyLeft |
                 KeyEnter | KeyEscape | KeyBackspace |
-                KeyMouseLeft Point | KeyMouseRight Point | KeyUnknown
+                KeyMouseLeft Point | KeyMouseRight Point | KeyQuit |
+                KeyUnknown
     deriving (Show)
 
 data UIConfig = UIConfig { columns :: Int
@@ -16,7 +17,7 @@ data UIConfig = UIConfig { columns :: Int
                          , fontSize   :: Int
                          , fullscreen :: Bool }
 
-data UI = UI { uiEnd    :: IO () -- shut down
-             , uiRender :: [Sprite] -> IO () -- main render function
-             , uiInput  :: IO Key -- wait on input from keyboard and return the single key inputted
+data UI = UI { uiEnd    :: IO ()              -- shut down
+             , uiRender :: [Sprite] -> IO ()  -- main render function
+             , uiInput  :: IO (Key) -- wait on input from keyboard and return the single key inputted
              }
