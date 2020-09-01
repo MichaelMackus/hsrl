@@ -36,7 +36,7 @@ gameLoop draw nextAction env = do
         return (won, env')
 
 main = do
-        ui        <- defaultUI defaultUIConfig -- initialize display
+        ui        <- initUI defaultUIConfig -- initialize display
         e         <- nextLevel conf
         (won, e') <- gameLoop (uiRender ui . getSprites) (getAction ui) e
 

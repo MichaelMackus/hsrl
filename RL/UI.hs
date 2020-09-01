@@ -1,6 +1,6 @@
 module RL.UI (
     UI(..),
-    defaultUI,
+    initUI,
     defaultUIConfig,
     Sprite,
     Key(..)
@@ -33,16 +33,16 @@ import Graphics.Vty (Vty)
 import RL.UI.Raw
 
 -- default display implementation
-defaultUI :: UIConfig -> IO UI
+initUI :: UIConfig -> IO UI
 #if defined(sdl)
-defaultUI = sdlUI
+initUI = initSdlUI
 #elif defined(vty)
-defaultUI = vtyUI
+initUI = vtyUI
 #elif defined(hscurses)
-defaultUI = cursesUI
+initUI = cursesUI
 #else
 -- fallback using putStrLn
-defaultUI = rawUI
+initUI = rawUI
 #endif
 
 defaultUIConfig = UIConfig { columns = 80
