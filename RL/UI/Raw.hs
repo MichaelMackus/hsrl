@@ -12,6 +12,7 @@ import qualified Data.List as L
 rawUI cfg = do
     initialBuffering <- hGetBuffering stdin
     hSetBuffering stdin NoBuffering
+    hSetEcho stdin False
     return UI
         { uiRender = \sprites ->
             let (lenX, lenY)    = (maxX sprites + 1, maxY sprites + 1)
@@ -23,7 +24,7 @@ rawUI cfg = do
                                                     && i < length str then str !! (i - x) else ch
                                   in  if y < length l then replaceAt l y row else l
             in  putStr (unlines rows)
-        , uiEnd = hSetBuffering stdin initialBuffering
+        , uiEnd = hSetBuffering stdin initialBuffering >> hSetEcho stdin True
         , uiInput = getChar >>= return . KeyChar }
 
 maxY :: [Sprite] -> Int
