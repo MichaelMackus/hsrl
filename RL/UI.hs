@@ -49,6 +49,6 @@ defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
                            , initMouse = False
                            , uiTitle = "RogueLike Demo"
-                           , fontPath = "res/fonts/16x16x.fnt"
+                           , fontPath = "res/fonts/16x16xw.woff"
                            , fontSize = 16
                            , fullscreen = False }
