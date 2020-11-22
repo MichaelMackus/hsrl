@@ -1,7 +1,14 @@
 module RL.UI.Common where
 
-type Sprite   = (Point, String) -- horizontal string somewhere on the screen
+data Sprite   = Sprite {
+    spritePos :: Point,
+    spriteStr :: String,
+    spriteFgColor :: Color,
+    spriteBgColor :: Color
+}
 type Point    = (Int, Int)
+type Color    = (Int, Int, Int) -- RGB color value
+
 data Key      = KeyChar Char | KeyUp | KeyDown | KeyRight | KeyLeft |
                 KeyEnter | KeyEscape | KeyBackspace |
                 KeyMouseLeft Point | KeyMouseRight Point | KeyQuit |

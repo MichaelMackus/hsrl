@@ -46,20 +46,18 @@ allMobs lvl = (player lvl:mobs lvl)
 instance Eq DLevel where
     d == d' = depth d == depth d' && mobs d == mobs d' && tiles d == tiles d'
 
-data Tile = Floor | Cavern | Rock | StairUp DLevel | StairDown DLevel | Other Char
+data Tile = Floor | Cavern | Rock | StairUp DLevel | StairDown DLevel
 
 instance Eq Tile where
     Floor         == Floor         = True
     Cavern        == Cavern        = True
     (StairUp _)   == (StairUp _)   = True
     (StairDown _) == (StairDown _) = True
-    (Other c)     == (Other c')    = c == c'
     _ == _ = False
 
 fromTile :: Tile -> Char
 fromTile Floor     = '.'
 fromTile Cavern    = '#'
-fromTile (Other c) = c
 fromTile (StairUp _) = '<'
 fromTile (StairDown _) = '>'
 fromTile otherwise = ' '
@@ -121,13 +119,13 @@ findTileAt p lvl = M.lookup p (tiles lvl)
 findTile :: ((Point, Tile) -> Bool) -> DLevel -> Maybe (Point, Tile)
 findTile f lvl = L.find f (M.toList (tiles lvl))
 
-findPoint :: Point -> DLevel -> Char
-findPoint p lvl =
+findTileOrMob :: Point -> DLevel -> Either Tile Mob
+findTileOrMob p lvl =
     let t = M.lookup p (tiles lvl)
         m = if at (player lvl) == p then Just (player lvl)
             else L.find ((== p) . at) (mobs lvl)
         err = error ("Error during finding " ++ show p)
-    in  maybe (maybe err fromTile t) symbol m
+    in  maybe (maybe err Left t) Right m
 
 dneighbors :: DLevel -> Point -> [Point]
 dneighbors d p = neighbors d p f

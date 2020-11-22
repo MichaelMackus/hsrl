@@ -14,9 +14,6 @@ import SDL.Font
 import qualified Data.Text as T
 import qualified SDL.Raw as Raw
 
-black = V4 0   0   0   255
-white = V4 255 255 255 255
-
 initSdlUI :: UIConfig -> IO UI
 initSdlUI cfg = do
     SDL.initialize [InitVideo]
@@ -33,15 +30,17 @@ initSdlUI cfg = do
     font     <- load (fontPath cfg) (fontSize cfg)
     return (sdlUI window renderer font cfg)
 
+fromColor (r,g,b) = V4 (fromIntegral r) (fromIntegral g) (fromIntegral b) 255
+
 sdlUI :: Window -> Renderer -> Font -> UIConfig -> UI
 sdlUI window renderer font cfg = UI
     { uiRender = \sprites -> do
         -- clear
         clear renderer
-        rendererDrawColor renderer $= black
+        rendererDrawColor renderer $= V4 0 0 0 255
         -- draw sprites
-        forM_ sprites $ \((x,y), str) -> do
-            s    <- shaded font white black (T.pack str)
+        forM_ sprites $ \(Sprite (x,y) str fg bg) -> do
+            s    <- shaded font (fromColor fg) (fromColor bg) (T.pack str)
             tex  <- createTextureFromSurface renderer s
             (TextureInfo _ _ w h) <- queryTexture tex
             let fwidth = fontSize cfg

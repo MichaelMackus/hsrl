@@ -30,7 +30,6 @@ import UI.HSCurses.Curses (Window)
 import RL.UI.Vty
 import Graphics.Vty (Vty)
 #endif
-import RL.UI.Raw
 
 -- default display implementation
 initUI :: UIConfig -> IO UI
@@ -41,8 +40,7 @@ initUI = vtyUI
 #elif defined(hscurses)
 initUI = cursesUI
 #else
--- fallback using putStrLn
-initUI = rawUI
+initUI = undefined
 #endif
 
 defaultUIConfig = UIConfig { columns = 80

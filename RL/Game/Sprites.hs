@@ -13,6 +13,10 @@ import Data.Maybe (catMaybes)
 import qualified Data.List as L
 import qualified Data.Map as M
 
+white = (255, 255, 255)
+grey  = (125, 125, 125)
+black = (0, 0, 0)
+
 -- game is renderable
 getSprites :: Env -> [Sprite]
 getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
@@ -23,13 +27,22 @@ getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSpr
 -- helper functions since map/mob isn't renderable without context
 
 getMapSprites :: DLevel -> [Sprite]
-getMapSprites lvl = 
-       let allSprites = unenumerate2d (map sym (M.toList (tiles lvl)))
-       in  map getRowSprite (enumerate allSprites)
+getMapSprites lvl = map sprite (M.toList (tiles lvl))
     where
-        sym (p, t) = (p, if canPlayerSee p then findPoint p lvl else ' ')
+        sprite (p, t) = if canPlayerSee p then tileSprite lvl p
+                        else Sprite p " " black black
         canPlayerSee = canSee lvl (player lvl)
-        getRowSprite ((y), ts) = ((0, y), ts)
+
+        tileColor Floor = white
+        tileColor Cavern = grey
+        tileColor Rock = grey
+        tileColor (StairUp _) = white
+        tileColor (StairDown _) = white
+
+        tileSprite :: DLevel -> (Int, Int) -> Sprite
+        tileSprite lvl p = case findTileOrMob p lvl of
+                               Left  t -> Sprite p (fromTile t:"") (tileColor t) black
+                               Right m -> Sprite p (symbol m:"")   white black
 
 getStatusSprites :: DLevel -> [Sprite]
 getStatusSprites lvl =
@@ -73,4 +86,4 @@ toMessage otherwise = Nothing
 mkSprites :: UI.Point -> [String] -> [Sprite]
 mkSprites (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, s) = ((offx, i + offy), s)
+        toSprite (i, s) = Sprite (offx, i + offy) s white black
