@@ -22,10 +22,6 @@ import RL.UI.Common
 #if defined(sdl)
 import RL.UI.SDL
 #endif
-#if defined(hscurses)
-import RL.UI.Curses
-import UI.HSCurses.Curses (Window)
-#endif
 #if defined(vty)
 import RL.UI.Vty
 import Graphics.Vty (Vty)
@@ -37,8 +33,6 @@ initUI :: UIConfig -> IO UI
 initUI = initSdlUI
 #elif defined(vty)
 initUI = vtyUI
-#elif defined(hscurses)
-initUI = cursesUI
 #else
 initUI = undefined
 #endif

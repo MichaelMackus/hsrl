@@ -19,11 +19,6 @@ flag sdl
   default:           True
   manual:            True
 
-flag curses
-  description:       Use curses for CLI renderer (less dependencies)
-  default:           False
-  manual:            True
-
 flag vty
   description:       Use VTY library for CLI renderer
   default:           False
@@ -45,8 +40,3 @@ executable hsrl
     build-depends:
       vty >= 5.4 && < 6
     cpp-options: -Dvty
-
-  if flag(curses)
-    build-depends:
-      hscurses >=1.4.2.0
-    cpp-options: -Dhscurses
