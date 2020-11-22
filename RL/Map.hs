@@ -3,7 +3,7 @@ module RL.Map (module RL.Map, module RL.Mob, module RL.Types) where
 import RL.Item
 import RL.Mob
 import RL.Types
-import RL.Util (enumerate)
+import RL.Util (enumerate, enumerate2d, unenumerate2d)
 
 import Data.Map (Map)
 import Data.Maybe (catMaybes, isNothing)
@@ -173,18 +173,11 @@ isPassable otherwise = True
 
 -- helper function for map construction
 enumerateMap :: [[Tile]] -> [(Point, Tile)]
-enumerateMap = concat . map toPoints . enumerate . map enumerate
-    where toPoints (y, ts)   = map (toPoint y) ts
-          toPoint   y (x, t) = ((x, y), t)
+enumerateMap = enumerate2d
 
 -- helper function for map deconstruction
 toTiles :: DLevel -> [[Tile]]
-toTiles lvl = justTiles . mtiles . sortYs $ M.toList (tiles lvl)
-    where sortYs    ts = L.sortBy compareTs ts
-          mtiles    ts = L.groupBy (\t t' -> (compare (pointY t) (pointY t')) == EQ) ts
-          justTiles ts = map (map snd) ts
-          pointY    t  = snd (fst t)
-          compareTs    = (\((x, y), _) ((x', y'), _) -> compare y y' `mappend` compare x x')
+toTiles lvl = unenumerate2d (M.toList (tiles lvl))
 
 -- draw straight line from point to point to test seen
 isObstructed :: DLevel -> Point -> Point -> Bool
@@ -192,3 +185,11 @@ isObstructed lvl p p' =
     let l = line p p'
         f p = maybe False isPassable (findTileAt p lvl)
     in  not (length (filter f l) == length l)
+
+-- can mob see a point on the map?
+canSee :: DLevel -> Mob -> Point -> Bool
+canSee lvl m p =
+    if distance (at m) p > fov m then
+        False
+    else
+        not (isObstructed lvl (at m) p)

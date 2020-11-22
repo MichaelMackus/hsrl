@@ -7,12 +7,14 @@ module RL.Game.Sprites (
 
 import RL.Game
 import RL.UI.Common as UI
-import RL.Util (enumerate)
+import RL.Util (enumerate, unenumerate2d)
 
 import Data.Maybe (catMaybes)
 import qualified Data.List as L
+import qualified Data.Map as M
 
 -- game is renderable
+getSprites :: Env -> [Sprite]
 getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
     where
         -- dungeon is renderable
@@ -21,9 +23,12 @@ getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSpr
 -- helper functions since map/mob isn't renderable without context
 
 getMapSprites :: DLevel -> [Sprite]
-getMapSprites lvl = map getRowSprite . enumerate . map (map fromTile) . toTiles $ iterMap sym lvl
+getMapSprites lvl = 
+       let allSprites = unenumerate2d (map sym (M.toList (tiles lvl)))
+       in  map getRowSprite (enumerate allSprites)
     where
-        sym p t = Other (findPoint p lvl)
+        sym (p, t) = (p, if canPlayerSee p then findPoint p lvl else ' ')
+        canPlayerSee = canSee lvl (player lvl)
         getRowSprite ((y), ts) = ((0, y), ts)
 
 getStatusSprites :: DLevel -> [Sprite]

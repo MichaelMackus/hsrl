@@ -70,16 +70,9 @@ automate m = do
                     let p' = if length (tail path) > 1 then tail path else []
                     modifyMob (mobId m') (\m -> m { mobPath = p' })
 
-canSee :: DLevel -> Mob -> Mob -> Bool
-canSee lvl m1 m2 =
-    if distance (at m1) (at m2) > fov m1 then
-        False
-    else
-        not (isObstructed lvl (at m1) (at m2))
-
 seenPath :: DLevel -> Mob -> Mob -> Maybe [Point]
 seenPath lvl m1 m2 =
-    if canSee lvl m1 m2 then
+    if canSee lvl m1 (at m2) then
         findPath (dfinder lvl) distance (at m2) (at m1)
     else
         Nothing

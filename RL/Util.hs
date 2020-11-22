@@ -2,6 +2,7 @@ module RL.Util where
 
 import Data.Maybe (isJust)
 import Data.Foldable (foldl')
+import qualified Data.List as L
 
 -- helper functions
 
@@ -21,9 +22,9 @@ unenumerate [] = error "unenumerate requires a list"
 unenumerate it = snd $ unzip it
 
 unenumerate2d :: [((Int, Int), a)] -> [[a]]
-unenumerate2d [] = error "unenumerate2 requires a list"
-unenumerate2d it = splitEvery maxX . snd $ unzip it
-    where maxX = (+1) . fst . fst $ last it
+unenumerate2d = map (map snd) . L.groupBy groupYs . L.sortBy comparePs
+    where groupYs ((_,y), _) ((_,y'), _) = y == y'
+          comparePs ((x,y), _) ((x',y'), _) = compare y y' `mappend` compare x x'
 
 splitEvery :: Int -> [a] -> [[a]]
 splitEvery _ [] = []
