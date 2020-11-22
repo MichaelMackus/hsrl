@@ -185,3 +185,10 @@ toTiles lvl = justTiles . mtiles . sortYs $ M.toList (tiles lvl)
           justTiles ts = map (map snd) ts
           pointY    t  = snd (fst t)
           compareTs    = (\((x, y), _) ((x', y'), _) -> compare y y' `mappend` compare x x')
+
+-- draw straight line from point to point to test seen
+isObstructed :: DLevel -> Point -> Point -> Bool
+isObstructed lvl p p' =
+    let l = line p p'
+        f p = maybe False isPassable (findTileAt p lvl)
+    in  not (length (filter f l) == length l)

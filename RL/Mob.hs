@@ -23,9 +23,11 @@ data Mob = Mob {
     baseAC    :: AC,   -- default to 10 in AD&D
     thac0     :: Int,  -- traditional D&D combat rules
     fov       :: Radius,
+    hearing   :: Radius,
     flags     :: [MobFlag],
     inventory :: [Item],
-    equipment :: [Item]
+    equipment :: [Item],
+    mobPath   :: [Point] -- current path for AI pathfinding
 }
 
 data MobFlag = Sleeping deriving Eq
@@ -95,9 +97,11 @@ mob = Mob {
     baseAC = 10,
     thac0 = 20,
     fov = 5,
+    hearing = 10.0,
     flags = [],
     inventory = [],
-    equipment = []
+    equipment = [],
+    mobPath = []
 }
 
 -- helper functions for mob management

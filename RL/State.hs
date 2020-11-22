@@ -77,6 +77,11 @@ setMob m = do
     let ms' = map (\m' -> if m == m' then m else m') ms
     setMobs ms'
 
+modifyMob :: Int -> (Mob -> Mob) -> Game ()
+modifyMob id f = do
+    m <- getMob id
+    when (isJust m) $ setMob (f (fromJust m))
+
 isGameWon :: Game Bool
 isGameWon = do
     lvl <- getLevel
