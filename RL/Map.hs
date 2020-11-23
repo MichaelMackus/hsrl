@@ -35,7 +35,7 @@ atDepth d (DungeonLevel start rest) =
 data DLevel  = DLevel {
     depth :: Int,
     tiles :: Map Point Tile,
-    player :: Player,
+    player :: Player, -- TODO move to env?
     seen  :: [Point], -- seen tiles
     items :: [Item],
     mobs :: [Mob]

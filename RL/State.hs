@@ -35,17 +35,18 @@ setDungeon dng = do
 changeLevel :: DLevel -> Game ()
 changeLevel lvl = do
         game <- get
+        pl   <- getPlayer
         let dng     = dungeon game
             lvl'    = atDepth (depth lvl) dng
             isStair = if depth lvl > depth (level game) then isUpStair else isDownStair
 
         when (depth lvl /= depth (level game)) $ do
-            setLevel (maybe lvl (placeOnStair isStair) lvl')
+            setLevel $ (maybe lvl (placeOnStair isStair pl) lvl')
             setDungeon . insertLevel (level game) . (`insertLevel` dng) =<< getLevel
     where
-        placeOnStair isStair lvl' =
+        placeOnStair isStair pl lvl' =
             let t         = findTile (isStair . snd) lvl'
-                f  (p, _) = lvl' { player = (player lvl') { at = p } }
+                f  (p, _) = lvl' { player = pl { at = p } }
             in  maybe lvl' f t
 
 getEvents :: Game [Event]
