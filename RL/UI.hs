@@ -1,7 +1,8 @@
 module RL.UI (
     UI(..),
-    initUI,
     defaultUIConfig,
+    initDefaultUI,
+    initTTYUI,
     Sprite,
     Key(..)
 ) where
@@ -28,13 +29,19 @@ import Graphics.Vty (Vty)
 #endif
 
 -- default display implementation
-initUI :: UIConfig -> IO UI
+initDefaultUI :: UIConfig -> IO UI
 #if defined(sdl)
-initUI = initSdlUI
+initDefaultUI = initSdlUI
 #elif defined(vty)
-initUI = vtyUI
+initDefaultUI = vtyUI
 #else
-initUI = undefined
+initDefaultUI = const (error "No display implementation found!")
+#endif
+
+#if defined(vty)
+initTTYUI = vtyUI
+#else
+initTTYUI = const (error "Terminal UI is unsupported! Game is not compiled with the `vty` flag.")
 #endif
 
 defaultUIConfig = UIConfig { columns = 80

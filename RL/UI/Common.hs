@@ -5,7 +5,7 @@ data Sprite   = Sprite {
     spriteStr :: String,
     spriteFgColor :: Color,
     spriteBgColor :: Color
-}
+} deriving Show
 type Point    = (Int, Int)
 type Color    = (Int, Int, Int) -- RGB color value
 

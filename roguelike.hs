@@ -8,7 +8,9 @@ import RL.Generator.Mobs
 import RL.UI
 import RL.State
 
+import Data.List (isInfixOf)
 import Data.Maybe (catMaybes)
+import System.Environment
 import System.Random
 
 -- main game loop
@@ -36,7 +38,13 @@ gameLoop draw nextAction env = do
         return (won, env')
 
 main = do
-        ui        <- initUI defaultUIConfig -- initialize display
+        -- allow user to customize display if supported
+        flags <- getFlags
+        let initUI = if "vty" `elem` flags || "tty" `elem` flags then initTTYUI
+                     else initDefaultUI
+
+        -- initialize game & launch game loop
+        ui        <- initUI defaultUIConfig
         e         <- nextLevel conf
         (won, e') <- gameLoop (uiRender ui . getSprites) (getAction ui) e
 
@@ -68,6 +76,9 @@ main = do
             }
             -- TODO ItemConfig
         }
+
+        getFlags =
+            map (dropWhile (== '-')) . filter ("-" `isInfixOf`) <$> getArgs
 
 
 getAction :: UI -> Env -> IO Action
