@@ -44,28 +44,22 @@ toKeyMods = map toKeyMod
           toKeyMod MMeta  = KeyModAlt
           toKeyMod MAlt   = KeyModSuper
 
--- faster version but no colors
--- condenseSprites :: [Sprite] -> [Sprite]
--- condenseSprites = map getRowSprite . enumerate . unenumerate2d . map sym
---     where
---         sym spr = (spritePos spr, head (spriteStr spr))
---         getRowSprite ((y), ts) = Sprite (0, y) ts (255,255,255) (0,0,0)
-
 -- helper function to condense sprites on the same row & attributes together
--- TODO improve performance
-condenseSprites = concat . map (map spriteConcat . L.groupBy g) . groupBy2 f
-    where f spr spr'  = let (x,  y ) = spritePos spr
-                            (x', y') = spritePos spr'
-                        in  y == y' && spriteFgColor spr == spriteFgColor spr' && spriteBgColor spr == spriteBgColor spr'
-          g spr spr'  = let (x,  y ) = spritePos spr
-                            (x', y') = spritePos spr'
-                        in  x + 1 == x' && spriteFgColor spr == spriteFgColor spr' && spriteBgColor spr == spriteBgColor spr'
+condenseSprites = concat . map spriteConcat . reverse . groupBy2 f
+    where f spr spr'           = spriteY spr == spriteY spr' && colorsMatch spr spr'
+          g spr spr'           = spriteX spr + 1 == spriteX spr' && colorsMatch spr spr'
+          spriteX              = fst . spritePos
+          spriteY              = snd . spritePos
+          colorsMatch spr spr' = spriteFgColor spr == spriteFgColor spr' && spriteBgColor spr == spriteBgColor spr'
 
--- concat sprite strings discarding positions of tails
-spriteConcat :: [Sprite] -> Sprite
-spriteConcat [] = error "Empty sprite list for sprite concat"
-spriteConcat (spr:xs) = foldr f spr xs
-    where f spr' spr = spr { spriteStr = spriteStr spr ++ spriteStr spr' }
+spriteConcat :: [Sprite] -> [Sprite]
+spriteConcat [] = []
+spriteConcat (s:xs) = reverse (go [] s xs)
+    where go acc s [] = s:acc
+          go acc s (s':xs) = if comp s s' then go acc (s { spriteStr = spriteStr s ++ spriteStr s' }) xs
+                             else go (s:acc) s' xs
+          comp spr spr' = spriteX spr + length (spriteStr spr) == spriteX spr'
+          spriteX = fst . spritePos
 
 getImage :: Sprite -> Image
 getImage spr = let (x, y) = spritePos spr
@@ -82,3 +76,13 @@ groupBy2 = go [] where
   go acc comp (h:t) =
     let (hs, nohs) = L.partition (comp h) t
     in go ((h:hs):acc) comp nohs
+
+groupSequential :: (a -> a -> Bool) -> [a] -> [[a]]
+groupSequential comp = go [] where
+    go acc [] = acc
+    go acc xs@(p:ps) =
+        let h = reverse (L.foldl' f [p] ps)
+            t = drop (length h) xs
+            f xs@(x:_) x' = if comp x x' then x':xs
+                            else xs
+        in  go (acc ++ [h]) t
