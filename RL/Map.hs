@@ -36,6 +36,7 @@ data DLevel  = DLevel {
     depth :: Int,
     tiles :: Map Point Tile,
     player :: Player,
+    seen  :: [Point], -- seen tiles
     items :: [Item],
     mobs :: [Mob]
 }
@@ -89,7 +90,7 @@ instance Show DLevel where
 
 -- Map constructor
 mkLevel :: Int -> [[Tile]] -> DLevel
-mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] []
+mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] [] []
     where p = mob
 
 -- blank map

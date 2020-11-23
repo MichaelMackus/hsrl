@@ -10,7 +10,9 @@ import RL.Game
 
 import Control.Monad.State
 import Data.Maybe
-import Data.List (find)
+import Data.List (find, nub)
+import Debug.Trace
+import qualified Data.Map as M
 
 getLevel :: Game DLevel
 getLevel = gets level
@@ -138,3 +140,11 @@ whenEnv :: (Env -> Bool) -> Game () -> Game ()
 whenEnv f k = do
     env <- get
     when (f env) k
+
+updateSeen :: Game ()
+updateSeen = do
+    lvl <- getLevel
+    let p = player lvl
+        points = M.keys (tiles lvl)
+        seen'  = filter (canSee lvl p) points
+    setLevel (lvl { seen = nub (seen' ++ seen lvl) })

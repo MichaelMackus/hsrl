@@ -14,7 +14,8 @@ import qualified Data.List as L
 import qualified Data.Map as M
 
 white = (255, 255, 255)
-grey  = (125, 125, 125)
+grey  = (200, 200, 200)
+dgrey = (125, 125, 125)
 black = (0, 0, 0)
 
 -- game is renderable
@@ -26,11 +27,17 @@ getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSpr
 
 -- helper functions since map/mob isn't renderable without context
 
+-- OLD faster func
+-- getMapSprites lvl = map getRowSprite . enumerate . unenumerate2d . map sym $ M.toList (tiles lvl)
+--     where
+--         sym (p, t) = (p, head (spriteStr (sprite (p, t))))
+--         getRowSprite ((y), ts) = Sprite (0, y) ts white black
+
 getMapSprites :: DLevel -> [Sprite]
 getMapSprites lvl = map sprite (M.toList (tiles lvl))
     where
-        sprite (p, t) = if canPlayerSee p then tileSprite lvl p
-                        else Sprite p " " black black
+        sprite (p, t) = if canPlayerSee p then tileOrMobSprite lvl p
+                        else seenTileSprite lvl p
         canPlayerSee = canSee lvl (player lvl)
 
         tileColor Floor = white
@@ -40,9 +47,16 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
         tileColor (StairDown _) = white
 
         tileSprite :: DLevel -> (Int, Int) -> Sprite
-        tileSprite lvl p = case findTileOrMob p lvl of
+        tileSprite lvl p = case findTileAt p lvl of
+                               Just  t -> Sprite p (fromTile t:"") (tileColor t) black
+                               Nothing -> Sprite p " " black black
+        tileOrMobSprite :: DLevel -> (Int, Int) -> Sprite
+        tileOrMobSprite lvl p = case findTileOrMob p lvl of
                                Left  t -> Sprite p (fromTile t:"") (tileColor t) black
                                Right m -> Sprite p (symbol m:"")   white black
+
+        seenTileSprite lvl p = if p `elem` seen lvl then (tileSprite lvl p) { spriteFgColor = dgrey, spriteBgColor = black }
+                               else Sprite p " " black black
 
 getStatusSprites :: DLevel -> [Sprite]
 getStatusSprites lvl =

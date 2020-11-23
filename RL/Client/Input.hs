@@ -31,6 +31,7 @@ data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 -- user input
 instance Client UserInput where
     tick (UserInput a) = do
+        updateSeen -- update seen tiles for player
         p <- getPlayer
         when (not (isDead p)) $ do
             case a of Move  d    -> moveDir d
