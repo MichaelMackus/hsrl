@@ -58,15 +58,11 @@ instance Eq Tile where
 
 fromTile :: Tile -> Char
 fromTile Floor     = '.'
-fromTile Cavern    = '#'
+fromTile Cavern    = '.'
 fromTile (StairUp _) = '<'
 fromTile (StairDown _) = '>'
+fromTile Rock = '#'
 fromTile otherwise = ' '
-
-toTile :: Char -> Tile
-toTile '.' = Floor
-toTile '#' = Cavern
-toTile otherwise = Rock
 
 getStairLvl :: Tile -> Maybe DLevel
 getStairLvl (StairUp   lvl) = Just lvl
@@ -95,12 +91,12 @@ mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] [] []
 
 -- blank map
 blankMap :: Int -> Int -> [[Tile]]
-blankMap w h = map (map toTile) . replicate (h - 1) $ " " ++ floor ++ " "
+blankMap w h = map (map (const Rock)) . replicate (h - 1) $ " " ++ floor ++ " "
     where floor = replicate (w - 1) ' '
 
 -- Quick Tile generator
 blankBox :: Dimension -> [[Tile]]
-blankBox (w,h) = map (map toTile) ([top] ++ space ++ [bot])
+blankBox (w,h) = map (map (const Rock)) ([top] ++ space ++ [bot])
     where top   = replicate w ' '
           bot   = top
           space = replicate (h - 2) $ " " ++ floor ++ " "
@@ -181,7 +177,7 @@ toTiles lvl = unenumerate2d (M.toList (tiles lvl))
 -- draw straight line from point to point to test seen
 isObstructed :: DLevel -> Point -> Point -> Bool
 isObstructed lvl p p' =
-    let l = line p p'
+    let l = filter (\p'' -> p'' /= p && p'' /= p') (line p p')
         f p = maybe False isPassable (findTileAt p lvl)
     in  not (length (filter f l) == length l)
 
