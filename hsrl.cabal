@@ -28,15 +28,42 @@ executable hsrl
   main-is: roguelike.hs
   extensions: DoAndIfThenElse, MultiParamTypeClasses
   ghc-options: -threaded -fwarn-unused-binds -cpp
-  -- other-modules:
+  other-modules:
+    RL.Client
+    RL.Client.AI
+    RL.Client.Input
+    RL.Client.Time
+    RL.Command
+    RL.Event
+    RL.Game
+    RL.Game.Sprites
+    RL.Generator
+    RL.Generator.Cells
+    RL.Generator.Dungeon
+    RL.Generator.Mobs
+    RL.Generator.Paths
+    RL.Item
+    RL.Map
+    RL.Mob
+    RL.Pathfinder
+    RL.Random
+    RL.State
+    RL.Types
+    RL.UI
+    RL.UI.Common
+    RL.Util
   build-depends: base >=4.6, transformers >=0.4, random >=1.1, mtl >=2.2, MonadRandom >=0.4, time >=1.5, containers >=0.5
 
   if flag(sdl)
     build-depends:
       sdl2 >= 2.5, sdl2-ttf >= 2.1, text
+    other-modules:
+      RL.UI.SDL
     cpp-options: -Dsdl
 
   if flag(vty)
     build-depends:
       vty >= 5.4 && < 6
+    other-modules:
+      RL.UI.Vty
     cpp-options: -Dvty
