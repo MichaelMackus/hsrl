@@ -20,6 +20,7 @@ black  = (0, 0, 0)
 purple = (204,0,204)
 green  = (0,204,0)
 yellow = (255,255,0)
+red    = (255,0,0)
 
 -- game is renderable
 getSprites :: Env -> [Sprite]
@@ -70,9 +71,14 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
 getStatusSprites :: DLevel -> [Sprite]
 getStatusSprites lvl =
     let p = player lvl
-        statusLine = [ "HP: " ++ show (hp p) ++ "/" ++ show (mhp p),
-                       "Depth: " ++ show (depth lvl) ]
-    in  mkSprites (60, 15) statusLine
+        hpSprite = (mkSprite (64, 15) (show (hp p))) { spriteFgColor = hpColor }
+        hpPercent = fromIntegral (hp p) / fromIntegral (mhp p)
+        hpColor = if hpPercent >= 1.0 then white
+                  else if hpPercent >= 0.7 then green
+                  else if hpPercent >= 0.4 then yellow
+                  else red
+    in [ mkSprite (60, 15) "HP: ", hpSprite, mkSprite (66, 15) ("/" ++ show (mhp p)),
+         mkSprite (60, 16) ("Depth: " ++ show (depth lvl)) ]
 
 otherWindows :: Env -> [Sprite]
 otherWindows e
@@ -110,3 +116,6 @@ mkSprites :: UI.Point -> [String] -> [Sprite]
 mkSprites (offx, offy) = map toSprite . enumerate
     where
         toSprite (i, s) = Sprite (offx, i + offy) s white black
+
+mkSprite :: UI.Point -> String -> Sprite
+mkSprite xy s = Sprite xy s white black
