@@ -13,10 +13,13 @@ import Data.Maybe (catMaybes)
 import qualified Data.List as L
 import qualified Data.Map as M
 
-white = (255, 255, 255)
-grey  = (200, 200, 200)
-dgrey = (125, 125, 125)
-black = (0, 0, 0)
+white  = (255, 255, 255)
+grey   = (200, 200, 200)
+dgrey  = (125, 125, 125)
+black  = (0, 0, 0)
+purple = (204,0,204)
+green  = (0,204,0)
+yellow = (255,255,0)
 
 -- game is renderable
 getSprites :: Env -> [Sprite]
@@ -46,6 +49,12 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
         tileColor (StairUp _) = white
         tileColor (StairDown _) = white
 
+        mobColor "Kobold" = purple
+        mobColor "Goblin" = green
+        mobColor "Grid Bug" = purple
+        mobColor "Orc" = yellow
+        mobColor otherwise = white
+
         tileSprite :: DLevel -> (Int, Int) -> Sprite
         tileSprite lvl p = case findTileAt p lvl of
                                Just  t -> Sprite p (fromTile t:"") (tileColor t) black
@@ -53,7 +62,7 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
         tileOrMobSprite :: DLevel -> (Int, Int) -> Sprite
         tileOrMobSprite lvl p = case findTileOrMob p lvl of
                                Left  t -> Sprite p (fromTile t:"") (tileColor t) black
-                               Right m -> Sprite p (symbol m:"")   white black
+                               Right m -> Sprite p (symbol m:"")   (mobColor (mobName m)) black
 
         seenTileSprite lvl p = if p `elem` seen lvl then (tileSprite lvl p) { spriteFgColor = dgrey, spriteBgColor = black }
                                else Sprite p " " black black
