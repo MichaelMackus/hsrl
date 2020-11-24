@@ -22,11 +22,6 @@ instance Client AI where
             player   <- getPlayer
             ms       <- aliveMobs <$> getMobs
             forM_ ms automate
-
-            -- send message for dead mobs
-            dead <- deadMobs <$> getMobs
-            forM_ dead (\t -> when (isDead t) (send (Died t)))
-
             -- cleanup dead mobs
             setMobs =<< aliveMobs <$> getMobs
 
