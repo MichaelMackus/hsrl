@@ -42,6 +42,7 @@ executable hsrl
     RL.Generator.Dungeon
     RL.Generator.Mobs
     RL.Generator.Paths
+    RL.Generator.Items
     RL.Item
     RL.Map
     RL.Mob

@@ -37,7 +37,7 @@ data DLevel  = DLevel {
     tiles :: Map Point Tile,
     player :: Player, -- TODO move to env?
     seen  :: [Point], -- seen tiles
-    items :: [Item],
+    items :: [(Point, Item)],
     mobs :: [Mob]
 }
 
@@ -115,6 +115,10 @@ findTileAt p lvl = M.lookup p (tiles lvl)
 
 findTile :: ((Point, Tile) -> Bool) -> DLevel -> Maybe (Point, Tile)
 findTile f lvl = L.find f (M.toList (tiles lvl))
+
+findItemsAt :: Point -> DLevel -> [Item]
+findItemsAt p lvl = map snd (filter f (items lvl))
+    where f (p', _) = p == p'
 
 findTileOrMob :: Point -> DLevel -> Either Tile Mob
 findTileOrMob p lvl =

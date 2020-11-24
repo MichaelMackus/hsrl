@@ -60,14 +60,6 @@ getEquipped m = filter isArmor (equipment m)
 mobAC :: Mob -> AC
 mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties . getEquipped $ m
 
-isWeapon :: Item -> Bool
-isWeapon (Item _ (Weapon _)) = True
-isWeapon otherwise           = False
-
-isArmor :: Item -> Bool
-isArmor (Item _ (Armor _)) = True
-isArmor otherwise          = False
-
 -- configure default player
 mkPlayer :: HP -> Point -> Radius -> Player
 mkPlayer hp at fov = mob {

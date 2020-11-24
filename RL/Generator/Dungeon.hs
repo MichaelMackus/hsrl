@@ -1,10 +1,11 @@
-module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), levelGenerator, module RL.Generator) where
+module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), ItemConfig(..), levelGenerator, module RL.Generator) where
 
 import RL.Map
 import RL.Generator
 import RL.Generator.Cells (cells, cmid, cpoint, CellConfig(CellConfig))
 import RL.Generator.Paths (paths, getTileAt)
 import RL.Generator.Mobs (playerGenerator, mobGenerator, MobConfig(..), PlayerConfig(..))
+import RL.Generator.Items
 import RL.Random (StdGen)
 import RL.Util (comparing)
 
@@ -20,6 +21,7 @@ data DungeonConfig = DungeonConfig {
     prevLevel :: Maybe DLevel,
     maxDepth :: Int,
     mobConfig :: MobConfig,
+    itemConfig :: ItemConfig,
     playerConfig :: PlayerConfig
 }
 
@@ -48,7 +50,10 @@ levelGenerator = do
             lastP   = cmid <$> listToMaybe (reverse (L.sortBy (comparing' (distance (at player))) cs))
             nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl' }) (initState g))
 
-        return (lvl' { mobs = mobs })
+        -- generate items
+        items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl')
+
+        return (lvl' { mobs = mobs, items = items })
     where
         runGenerator' :: GenConfig c => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
         runGenerator' gen conf f = do

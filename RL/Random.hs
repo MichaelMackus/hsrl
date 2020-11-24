@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, pick, randomPoint, Roller(..), module System.Random, module Control.Monad.Random) where
+module RL.Random (roll, pick, pickRarity, randomPoint, Roller(..), module System.Random, module Control.Monad.Random) where
 
 import RL.Types
 
@@ -20,10 +20,23 @@ pick :: MonadRandom m => [a] -> m (Maybe a)
 pick [] = return Nothing
 pick xs = getRandomR (0, length xs - 1) >>= return . Just . (xs !!)
 
+-- pick randomly from a list using a rarity function
+pickRarity :: MonadRandom m => (a -> Rational) -> [a] -> m (Maybe a)
+pickRarity f l = do
+        res <- roll (1 `d` 100)
+        pick (filter (\x -> res <= percentage (f x)) l)
+    where
+        percentage :: Rational -> Int
+        percentage r = floor (fromRational r * 100)
+
 -- generates random point
 -- between     maxX   maxY
 randomPoint :: MonadRandom m => Int -> Int -> m Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
+
+-- generates random point
+-- randomPointBetween :: MonadRandom m => Int -> Int -> m Point
+-- randomPointBetween x y x' y' = liftM2 (,) (roll $ x `d` x') (roll $ y `d` y')
 
 instance Monad m => Monad (Roller m) where
     return x = Roller $ \s -> return (x, s)

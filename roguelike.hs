@@ -70,6 +70,9 @@ main = do
                 maxMTries = 5,
                 difficultyRange = (2, 0)
             },
+            itemConfig = ItemConfig {
+                maxItems = 10
+            },
             playerConfig = PlayerConfig {
                 playerHp = 12,
                 playerFov = 5

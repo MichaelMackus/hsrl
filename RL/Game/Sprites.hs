@@ -9,7 +9,7 @@ import RL.Game
 import RL.UI.Common as UI
 import RL.Util (enumerate, unenumerate2d)
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
 import qualified Data.Map as M
 
@@ -21,6 +21,7 @@ purple = (204,0,204)
 green  = (0,204,0)
 yellow = (255,255,0)
 red    = (255,0,0)
+blue   = (0, 0, 255)
 
 -- game is renderable
 getSprites :: Env -> [Sprite]
@@ -56,17 +57,26 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
         mobColor "Orc" = yellow
         mobColor otherwise = white
 
-        tileSprite :: DLevel -> (Int, Int) -> Sprite
+        tileSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         tileSprite lvl p = case findTileAt p lvl of
-                               Just  t -> Sprite p (fromTile t:"") (tileColor t) black
-                               Nothing -> Sprite p " " black black
+                               Just  t -> Just (Sprite p (fromTile t:"") (tileColor t) black)
+                               Nothing -> Nothing
+        itemSprite :: DLevel -> (Int, Int) -> Maybe Sprite
+        itemSprite lvl p = case findItemsAt p lvl of
+                               (i:_) -> Just (Sprite p (itemSymbol i:"") blue black)
+                               []    -> Nothing
+        mobSprite :: DLevel -> (Int, Int) -> Maybe Sprite
+        mobSprite lvl p = case findTileOrMob p lvl of
+                               Right m -> Just (Sprite p (symbol m:"")   (mobColor (mobName m)) black)
+                               Left _  -> Nothing
         tileOrMobSprite :: DLevel -> (Int, Int) -> Sprite
-        tileOrMobSprite lvl p = case findTileOrMob p lvl of
-                               Left  t -> Sprite p (fromTile t:"") (tileColor t) black
-                               Right m -> Sprite p (symbol m:"")   (mobColor (mobName m)) black
-
-        seenTileSprite lvl p = if p `elem` seen lvl then (tileSprite lvl p) { spriteFgColor = dgrey, spriteBgColor = black }
+        tileOrMobSprite lvl p = let sprites = [mobSprite lvl p, itemSprite lvl p, tileSprite lvl p]
+                                    sprite  = listToMaybe (catMaybes sprites)
+                                in  if isJust sprite then fromJust sprite
+                                    else Sprite p " " black black
+        seenTileSprite lvl p = if p `elem` seen lvl then stale (fromJust (listToMaybe (catMaybes [itemSprite lvl p, tileSprite lvl p])))
                                else Sprite p " " black black
+        stale spr = spr { spriteFgColor = dgrey, spriteBgColor = black }
 
 getStatusSprites :: DLevel -> [Sprite]
 getStatusSprites lvl =
