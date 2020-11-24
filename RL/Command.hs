@@ -11,6 +11,7 @@ import Data.Maybe (isNothing, isJust, fromJust, fromMaybe)
 class Command c where
     dispatch :: c -> Game ()
 
+-- TODO change to use IDs so we don't have to worry about state
 data AttackCommand = AttackMob Mob | AttackPlayer Player | Attack Mob Mob
 
 instance Command AttackCommand where
@@ -27,8 +28,8 @@ instance Command AttackCommand where
                 -- hit!
                 dmg     <- roll (maybe (baseDmg attacker) dmgd weap)
                 target' <- hurtMob target dmg
-                when (isDead target') (send (Died target'))
                 send (Attacked attacker target' dmg)
+                when (isDead target') (send (Died target'))
             else
                 send (Missed attacker target)
         where
