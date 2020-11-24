@@ -14,7 +14,7 @@ d n ns = D n ns
 type Point  = (Int, Int)
 type Offset = Point
 
-data VerticalDirection = Up | Down deriving Eq
+data VerticalDirection = Up | Down deriving (Eq, Show)
 
 -- dungeon cell box (w x h)
 type Dimension = (Width, Height)
