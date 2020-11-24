@@ -148,3 +148,11 @@ updateSeen = do
         points = M.keys (tiles lvl)
         seen'  = filter (canSee lvl p) points
     setLevel (lvl { seen = nub (seen' ++ seen lvl) })
+
+setMenu :: Menu -> Game ()
+setMenu m = do
+    env <- get
+    put (env { menu = m })
+
+getMenu :: Game Menu
+getMenu = menu <$> get

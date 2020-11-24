@@ -5,10 +5,10 @@ import RL.Util (takeWhiles, dropWhiles)
 
 -- Represents Game events
 
-data Event = Attacked Mob Mob Int | Missed Mob Mob | Died Mob | EndOfTurn | Moved Mob Point | StairsTaken VerticalDirection | Waken Mob | Slept Mob | Inventory InventoryAction | UIClosed
-    | StairsSeen VerticalDirection | ItemsSeen String Int | ItemPickedUp String deriving (Eq, Show)
+data Event = Attacked Mob Mob Int | Missed Mob Mob | Died Mob | EndOfTurn | Moved Mob Point | StairsTaken VerticalDirection | Waken Mob | Slept Mob
+    | MenuChange Menu | StairsSeen VerticalDirection | ItemsSeen String Int | ItemPickedUp String deriving (Eq, Show)
 
-data InventoryAction = ViewInventory deriving (Eq, Show)
+data Menu = Inventory | Equip | NoMenu deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]
 getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
@@ -47,5 +47,6 @@ toMessage (StairsSeen Down) = Just $ "You see stairs going down."
 toMessage (ItemsSeen item n) = let suffix = if n > 1 then "There are " ++ show (n - 1) ++ " more items here." else ""
                                in  Just $ "You see a " ++ item ++ ". " ++ suffix
 toMessage (ItemPickedUp item) = Just $ "You have picked up a " ++ item ++ "."
+toMessage (MenuChange Equip) = Just $ "Pick an item to equip."
 toMessage otherwise = Nothing
 

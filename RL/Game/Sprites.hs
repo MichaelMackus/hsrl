@@ -95,8 +95,9 @@ otherWindows e
     | isViewingInventory e =
         let lvl = level e
             inv = L.groupBy itemType (inventory (player lvl))
-            eq  = L.groupBy itemType (equipment (player lvl))
-        in  mkSprites (0, 0) (map showItem (concat eq ++ concat inv))
+            eq  = L.groupBy itemType (equipmentToList (equipment (player lvl)))
+        in  mkSprites (0,  0) ([ "Inventory:", " " ] ++ map showItem (concat inv)) ++
+            mkSprites (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
     | otherwise = []
         where showItem i = " - " ++ show i
 

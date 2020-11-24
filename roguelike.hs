@@ -22,10 +22,7 @@ gameLoop draw nextAction env = do
     a <- nextAction env -- wait for user input, and transform into Action
 
     let turn = do
-            tick (UserInput a) -- user movement
-            tick AI            -- AI
-            tick end           -- mob cleanup, new spawns, healing, etc.
-
+            tick (nextTurn a)
             dead <- isDead <$> getPlayer
             return (isPlaying a && not dead)
 
@@ -77,7 +74,6 @@ main = do
                 playerHp = 12,
                 playerFov = 5
             }
-            -- TODO ItemConfig
         }
 
         getFlags =
@@ -111,5 +107,6 @@ nextLevel conf = do
             dungeon = DTip lvl,
             level   = lvl,
             rng     = g,
-            events  = []
+            events  = [],
+            menu    = NoMenu
         }

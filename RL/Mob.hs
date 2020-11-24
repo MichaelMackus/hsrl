@@ -5,7 +5,7 @@ import RL.Types
 import RL.Util (enumerate1)
 
 import Data.List (find)
-import Data.Maybe (listToMaybe, catMaybes)
+import Data.Maybe (listToMaybe, catMaybes, maybeToList)
 
 -- player/mobs
 type HP     = Int
@@ -26,14 +26,21 @@ data Mob = Mob {
     hearing   :: Radius,
     flags     :: [MobFlag],
     inventory :: [Item],
-    equipment :: [Item],
+    equipment :: MobEquipment,
     mobPath   :: [Point] -- current path for AI pathfinding
 }
-
 data MobFlag = Sleeping deriving Eq
+
+data MobEquipment = MobEquipment {
+    wielding :: Maybe Item,
+    wearing :: [Item]
+}
+equipmentToList eq = maybeToList (wielding eq) ++ wearing eq
 
 instance Eq Mob where
     m == m' = mobId m == mobId m'
+instance Show Mob where
+    show = mobName
 
 type Player = Mob
 
@@ -47,18 +54,10 @@ isSleeping :: MobFlag -> Bool
 isSleeping (Sleeping) = True
 isSleeping otherwise  = False
 
-getWielding :: Mob -> Maybe Item
-getWielding m =
-    let weapons = filter isWeapon (equipment m)
-    in  listToMaybe weapons
-
-getEquipped :: Mob -> [Item]
-getEquipped m = filter isArmor (equipment m)
-
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
 mobAC :: Mob -> AC
-mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties . getEquipped $ m
+mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties . wearing . equipment $ m
 
 -- configure default player
 mkPlayer :: HP -> Point -> Radius -> Player
@@ -70,7 +69,7 @@ mkPlayer hp at fov = mob {
     mhp = hp,
     at = at,
     fov = fov,
-    equipment = [mace, leather]
+    equipment = MobEquipment (Just mace) [leather]
 }
 
 isPlayer :: Mob -> Bool
@@ -92,7 +91,7 @@ mob = Mob {
     hearing = 10.0,
     flags = [],
     inventory = [],
-    equipment = [],
+    equipment = MobEquipment Nothing [],
     mobPath = []
 }
 

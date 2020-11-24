@@ -21,11 +21,11 @@ import RL.State
 import Control.Monad (when)
 
 -- user client             last action
-data UserInput = UserInput Action
+data UserInput = UserInput Action | MenuInput Menu Action
 user           = UserInput None
 
 -- specific actions that can have inputs on the keyboard
-data Action = Move Dir | MoveV VerticalDirection | InventoryA | Restart | Quit | None | PickupA
+data Action = Move Dir | MoveV VerticalDirection | InventoryA | Restart | Quit | None | PickupA | EquipA
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 
 -- user input
@@ -37,8 +37,14 @@ instance Client UserInput where
             case a of Move  d    -> moveDir d
                       MoveV v    -> dispatch (TakeStairs v)
                       InventoryA -> dispatch ToggleInventory
+                      EquipA     -> dispatch ToggleEquip
                       PickupA    -> dispatch Pickup
                       otherwise  -> return ()
+    tick (MenuInput m a) = do
+        case m of
+            Equip     -> dispatch ToggleEquip -- TODO equip item
+            Inventory -> dispatch ToggleInventory
+            otherwise -> return ()
 
 -- is user playing?
 isPlaying :: Action -> Bool
@@ -63,6 +69,9 @@ charToAction 'i'       = InventoryA
 charToAction 'q'       = Quit
 charToAction 'g'       = PickupA
 charToAction ','       = PickupA
+charToAction 'w'       = EquipA
+charToAction 'W'       = EquipA
+charToAction 'e'       = EquipA
 charToAction otherwise = None
 
 -- move dir in map

@@ -20,7 +20,7 @@ instance Command AttackCommand where
 
     -- any mob attacking another mob
     dispatch (Attack attacker target) = when (canAttack target) $ do
-            let weap = weaponProperties =<< getWielding attacker
+            let weap = weaponProperties =<< wielding (equipment attacker)
 
             -- attack roll
             atk     <- roll (1 `d` 20)
@@ -108,15 +108,20 @@ instance Command SleepCommand where
             send (Slept m)
 
 -- User Interface commands
-data UICommand = ToggleInventory | Pickup
+data UICommand = ToggleInventory | ToggleEquip | Pickup
 
 instance Command UICommand where
-    dispatch ToggleInventory = do
-        env <- get
-        if isTicking env then
-            send (Inventory ViewInventory)
-        else
-            send UIClosed
+    dispatch ToggleInventory = withEnv $ \env -> do
+        let m = if isTicking env then Inventory
+                else NoMenu
+        setMenu m
+        send (MenuChange m)
+
+    dispatch ToggleEquip = withEnv $ \env -> do
+        let m = if isTicking env then Equip
+                else NoMenu
+        setMenu m
+        send (MenuChange m)
 
     dispatch Pickup = do
         lvl <- getLevel

@@ -12,7 +12,8 @@ data Env    = Env {
     dungeon  :: Dungeon,
     level    :: DLevel,
     rng      :: StdGen,
-    events   :: [Event]
+    events   :: [Event],
+    menu     :: Menu
 }
 
 runGame :: Game a -> Env -> (a, Env)
@@ -20,14 +21,12 @@ runGame (GameState pr) e = pr e
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: Env -> Bool
-isTicking = not . isViewingInventory
+isTicking = (== NoMenu) . menu
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isViewingInventory :: Env -> Bool
-isViewingInventory = isViewingInventory' . events
-    where
-        isViewingInventory' (Inventory _:xs) = True
-        isViewingInventory' otherwise = False
+isViewingInventory e = let m = menu e
+                       in  m == Inventory || m == Equip
 
 -- get/setters
 withEnv :: (Env -> Game a) -> Game a
