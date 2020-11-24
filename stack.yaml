@@ -41,8 +41,7 @@ packages:
 - '.'
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps:
-  - hscurses-1.4.2.0@sha256:185f294036aaced6a4cf72c994339286e8e7886f5a327c3ccac898066985c528,2118
+extra-deps: []
 
 # Override default flag values for local packages and extra-deps
 flags: {}
