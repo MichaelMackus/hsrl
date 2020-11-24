@@ -25,7 +25,7 @@ data UserInput = UserInput Action
 user           = UserInput None
 
 -- specific actions that can have inputs on the keyboard
-data Action = Move Dir | MoveV VerticalDirection | InventoryA | Restart | Quit | None
+data Action = Move Dir | MoveV VerticalDirection | InventoryA | Restart | Quit | None | PickupA
 data Dir    = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 
 -- user input
@@ -37,6 +37,7 @@ instance Client UserInput where
             case a of Move  d    -> moveDir d
                       MoveV v    -> dispatch (TakeStairs v)
                       InventoryA -> dispatch ToggleInventory
+                      PickupA    -> dispatch Pickup
                       otherwise  -> return ()
 
 -- is user playing?
@@ -60,6 +61,8 @@ charToAction '>'       = MoveV Down
 charToAction '<'       = MoveV Up
 charToAction 'i'       = InventoryA
 charToAction 'q'       = Quit
+charToAction 'g'       = PickupA
+charToAction ','       = PickupA
 charToAction otherwise = None
 
 -- move dir in map

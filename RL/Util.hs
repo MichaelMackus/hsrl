@@ -42,21 +42,24 @@ lookupMax n xs
     | otherwise            = lookupMax (n - 1) xs
 
 takeWhiles :: Eq a => ([a] -> Bool) -> [a] -> [a]
-takeWhiles f = fold []
+takeWhiles f = go []
     where
-        g accum x = if f accum then (x:accum) else accum
-        fold accum [] = accum
-        fold accum (x:xs) =
-            let accum' = g accum x
-            in  if f accum then
-                    fold accum' xs
-                else
-                    accum
+        go accum [] = accum
+        go accum (x:xs) =
+           if f accum then
+               go (accum ++ [x]) xs
+           else
+               accum
 
--- strict version of takeWhiles
-takeWhiles' :: ([a] -> Bool) -> [a] -> [a]
-takeWhiles' f = translateList g
-    where g accum x = if f accum then (x:accum) else accum
+dropWhiles :: Eq a => ([a] -> Bool) -> [a] -> [a]
+dropWhiles f = go []
+    where
+        go accum [] = []
+        go accum (x:xs) =
+            if f (x:accum) then
+                go (x:accum) xs
+            else
+                x:xs
 
 translateList :: ([a] -> b -> [a]) -> [b] -> [a]
 translateList = flip foldl' []

@@ -107,7 +107,7 @@ instance Command SleepCommand where
             send (Slept m)
 
 -- User Interface commands
-data UICommand = ToggleInventory
+data UICommand = ToggleInventory | Pickup
 
 instance Command UICommand where
     dispatch ToggleInventory = do
@@ -116,3 +116,14 @@ instance Command UICommand where
             send (Inventory ViewInventory)
         else
             send UIClosed
+
+    dispatch Pickup = do
+        lvl <- getLevel
+        let is = findItemsAt (at (player lvl)) lvl
+        when (not (null is)) $ do
+            let i = head is
+                inv = inventory (player lvl) ++ [i]
+                p = (player lvl) { inventory = inv }
+                lvl' = replaceItemsAt (at p) lvl (drop 1 is)
+            setLevel $ lvl' { player = p }
+            send (ItemPickedUp (show i))

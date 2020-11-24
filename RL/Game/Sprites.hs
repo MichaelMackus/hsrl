@@ -1,7 +1,6 @@
 module RL.Game.Sprites (
     Env(..),
     DLevel(..),
-    toMessage,
     getSprites
 ) where
 
@@ -41,6 +40,7 @@ getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSpr
 getMapSprites :: DLevel -> [Sprite]
 getMapSprites lvl = map sprite (M.toList (tiles lvl))
     where
+        -- sprite (p, t) = tileOrMobSprite lvl p
         sprite (p, t) = if canPlayerSee p then tileOrMobSprite lvl p
                         else seenTileSprite lvl p
         canPlayerSee = canSee lvl (player lvl)
@@ -101,31 +101,20 @@ otherWindows e
         where showItem i = " - " ++ show i
 
 getMsgSprites :: [Event] -> [Sprite]
-getMsgSprites = mkSprites (0, 15) . reverse . take 9 . catMaybes . map toMessage
-
-toMessage :: Event -> Maybe String
-toMessage (Attacked attacker target dmg)
-    | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
-    | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
-    | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
-toMessage (Missed attacker target)
-    | isPlayer attacker = Just $ "You missed the " ++ mobName target
-    | isPlayer target = Just $ "The " ++ mobName attacker ++ " missed"
-    | otherwise = Just $ "The " ++ mobName attacker ++ " missed the " ++ mobName target
-toMessage (Died m)
-    | isPlayer m = Just $ "You died!"
-    -- TODO different event for killed
-    | otherwise  = Just $ "You killed the " ++ mobName m
-toMessage (StairsTaken Up) = Just $ "You've gone up stairs."
-toMessage (StairsTaken Down) = Just $ "You've gone down stairs."
-toMessage (Waken m) = Just $ "The " ++ mobName m ++ " has waken up."
-toMessage (Slept m) = Just $ "The " ++ mobName m ++ " has fell asleep."
-toMessage otherwise = Nothing
+getMsgSprites evs = let recentMsgs = catMaybes (map toMessage (getEventsAfterTurns 2 evs))
+                        staleMsgs  = catMaybes (map toMessage (getEventsAfterTurns 6 (getEventsBeforeTurns 2 evs)))
+                        msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
+                    in  mkColoredSprites (0, 15) . reverse . take 9 $ msgs
 
 mkSprites :: UI.Point -> [String] -> [Sprite]
 mkSprites (offx, offy) = map toSprite . enumerate
     where
         toSprite (i, s) = Sprite (offx, i + offy) s white black
+
+mkColoredSprites :: UI.Point -> [(String, Color)] -> [Sprite]
+mkColoredSprites (offx, offy) = map toSprite . enumerate
+    where
+        toSprite (i, (s, fg)) = Sprite (offx, i + offy) s fg black
 
 mkSprite :: UI.Point -> String -> Sprite
 mkSprite xy s = Sprite xy s white black

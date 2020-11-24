@@ -11,7 +11,6 @@ import RL.Game
 import Control.Monad.State
 import Data.Maybe
 import Data.List (find, nub)
-import Debug.Trace
 import qualified Data.Map as M
 
 getLevel :: Game DLevel

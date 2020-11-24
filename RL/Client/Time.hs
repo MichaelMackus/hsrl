@@ -13,13 +13,14 @@ import RL.Generator
 import RL.Generator.Mobs
 
 import Control.Monad (replicateM_, when)
+import Data.Maybe (fromJust)
 
 data Time = Ticks Int
 
--- end of 1 turn
-end = Ticks 1
+end = Ticks 1 -- end of 1 turn
 
 instance Client Time where
+    -- ticks have passed (end of turn)
     tick (Ticks i) = whenEnv isTicking . replicateM_ i $ do
         -- cleanup dead mobs
         ms <- aliveMobs <$> getMobs
@@ -43,6 +44,15 @@ instance Client Time where
                 (spawned, _) = runGenerator mobGenerator (MobConfig (length healed + 1) maxMTries (2,0)) s
             setMobs spawned
 
+        -- check what is on the current tile
+        lvl <- getLevel
+        let t = findTileAt (at (player lvl)) lvl 
+        when (isDownStair (fromJust t)) $ send (StairsSeen Down)
+        when (isUpStair   (fromJust t)) $ send (StairsSeen Up)
+        -- check if there are items here
+        let is = findItemsAt (at (player lvl)) lvl
+        when (length is > 0) $ send (ItemsSeen (show (head is)) (length is))
+
         -- mark as end of turn
         send EndOfTurn
 
@@ -52,7 +62,7 @@ healDamaged events amt m
     | hp m + amt > mhp m = m                     -- can't heal more than max
     | length (filter isEndOfTurn events) < 5 = m -- hasn't been 5 turns
     | otherwise =
-        let events' = getEventsNTurns 5 events
+        let events' = getEventsAfterTurns 5 events
         in  if not (isAttacked m events') then
                 m { hp = hp m + amt }
             else

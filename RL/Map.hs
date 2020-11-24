@@ -120,6 +120,11 @@ findItemsAt :: Point -> DLevel -> [Item]
 findItemsAt p lvl = map snd (filter f (items lvl))
     where f (p', _) = p == p'
 
+replaceItemsAt :: Point -> DLevel -> [Item] -> DLevel
+replaceItemsAt p lvl is =
+    let dropped = filter (\(p',_) -> p /= p') (items lvl)
+    in  lvl { items = dropped ++ (zip (repeat p) is) }
+
 findTileOrMob :: Point -> DLevel -> Either Tile Mob
 findTileOrMob p lvl =
     let t = M.lookup p (tiles lvl)
