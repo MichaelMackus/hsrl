@@ -13,24 +13,25 @@ type Radius = Double
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
-    mobId       :: Int,
-    mobName     :: String,
-    symbol      :: Char,
-    at          :: Point,
-    hp          :: HP,
-    mhp         :: HP,
-    baseDmg     :: Dice,
-    baseAC      :: AC,   -- default to 10 in AD&D
-    thac0       :: Int,  -- traditional D&D combat rules
-    fov         :: Radius,
-    hearing     :: Radius,
-    flags       :: [MobFlag],
-    inventory   :: [Item],
-    equipment   :: MobEquipment,
-    destination :: Maybe Point, -- destination point
-    turnsToHeal :: Int
+    mobId          :: Int,
+    mobName        :: String,
+    symbol         :: Char,
+    at             :: Point,
+    hp             :: HP,
+    mhp            :: HP,
+    baseDmg        :: Dice,
+    baseAC         :: AC,   -- default to 10 in AD&D
+    thac0          :: Int,  -- traditional D&D combat rules
+    strength       :: Int,  -- bonus to damage
+    fov            :: Radius,
+    hearing        :: Radius,
+    flags          :: [MobFlag],
+    inventory      :: [Item],
+    equipment      :: MobEquipment,
+    destination    :: Maybe Point, -- destination point
+    isTelepathicOn :: [Int] -- dungeon levels mob is telepathic (can see all mobs) on
 }
-data MobFlag = Sleeping deriving Eq
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF deriving Eq
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -49,10 +50,19 @@ canAttack :: Mob -> Bool
 canAttack = canMove
 
 canMove :: Mob -> Bool
-canMove m = not (isDead m) && length (filter isSleeping (flags m)) == 0
+canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0
 
-isSleeping :: MobFlag -> Bool
-isSleeping (Sleeping) = True
+isSleeping :: Mob -> Bool
+isSleeping m = Sleeping `elem` flags m
+
+isBlinded :: Mob -> Bool
+isBlinded m = BlindedF `elem` flags m
+
+isConfused :: Mob -> Bool
+isConfused m = ConfusedF `elem` flags m
+
+isVisible :: Mob -> Bool
+isVisible m = not (Invisible `elem` flags m)
 
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
@@ -69,7 +79,7 @@ mkPlayer hp at fov = mob {
     mhp = hp,
     at = at,
     fov = fov,
-    equipment = MobEquipment (Just mace) [leather]
+    equipment = MobEquipment (findItemByName "Mace" weapons) (maybeToList $ findItemByName "Leather Armor" armors)
 }
 
 isPlayer :: Mob -> Bool
@@ -86,14 +96,15 @@ mob = Mob {
     mhp = 0,
     baseDmg = 1 `d` 3,
     baseAC = 10,
-    thac0 = 20,
+    thac0 = 19,
+    strength = 0,
     fov = 5,
     hearing = 10.0,
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing [],
     destination = Nothing,
-    turnsToHeal = 5
+    isTelepathicOn = []
 }
 
 -- helper functions for mob management
@@ -120,3 +131,9 @@ withMobIds = map withMobId . enumerate1
 
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)
+
+-- moves mob, resetting the destination if we have reached it
+moveMob :: Point -> Mob -> Mob
+moveMob p m = let dest = if destination m == Just p then Nothing else destination m
+              in  m { at = p, destination = dest }
+

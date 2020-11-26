@@ -6,7 +6,7 @@ import RL.Types
 import RL.Util (enumerate2d, unenumerate2d)
 
 import Data.Map (Map)
-import Data.Maybe (catMaybes, isNothing)
+import Data.Maybe (catMaybes, isNothing, isJust)
 import Data.Set (Set)
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -199,3 +199,26 @@ canSee lvl m p =
         False
     else
         not (isObstructed lvl (at m) p)
+
+-- can mob see a point on the map with telepathy?
+canSeeTelepathic :: DLevel -> Mob -> Point -> Bool
+canSeeTelepathic lvl m p =
+    -- test for telepathic sight
+    let m'           = findMobAt p lvl
+        isTelepathic = isJust m' && depth lvl `elem` isTelepathicOn m
+    in  canSee lvl m p || isTelepathic
+
+-- can mob see a point on the map if blind?
+canSeeBlind :: DLevel -> Mob -> Point -> Bool
+canSeeBlind lvl m p =
+    -- test for telepathic sight
+    let isBlind = BlindedF `elem` flags m
+    in  if isBlind then distance (at m) p < 2
+        else canSee lvl m p
+
+
+mapWidth :: DLevel -> Int
+mapWidth lvl = length (toTiles lvl !! 0)
+
+mapHeight :: DLevel -> Int
+mapHeight lvl = length (toTiles lvl)

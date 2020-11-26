@@ -63,22 +63,24 @@ automate m = do
 
 seenPath :: DLevel -> Mob -> Mob -> Maybe [Point]
 seenPath lvl m1 m2 =
-    if canSee lvl m1 (at m2) then
+    if isVisible m2 && canSee lvl m1 (at m2) then
+        findAIPath lvl distance (at m2) (at m1)
+    else if not (isVisible m2) && distance (at m1) (at m2) < 2 then
         findAIPath lvl distance (at m2) (at m1)
     else
         Nothing
 
 heardPath :: DLevel -> Mob -> Mob -> Maybe [Point]
 heardPath lvl m1 m2 =
-    if distance (at m1) (at m2) <= hearing m1 then
+    -- TODO should be able to still somewhat track if invisible
+    if isVisible m2 && distance (at m1) (at m2) <= hearing m1 then
         findPath (dfinder lvl) distance (at m2) (at m1)
     else
         Nothing
 
 
 mobPath :: DLevel -> Mob -> Maybe [Point]
-mobPath lvl m = let dist      = distance (at m) <$> destination m
-                in  (\p -> findPath (dfinder lvl) distance p (at m)) =<< destination m
+mobPath lvl m = (\p -> findPath (dfinder lvl) distance p (at m)) =<< destination m
 
 -- find AI path, first trying to find optimal path around mobs
 -- fallback is naive dfinder to allow mobs to bunch up

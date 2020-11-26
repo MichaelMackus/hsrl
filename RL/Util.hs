@@ -35,6 +35,9 @@ splitEvery x l
 comparing :: Ord o => (a -> o) -> a -> a -> Ordering
 comparing f = \a b -> compare (f a) (f b)
 
+equating :: Eq b => (a -> b) -> a -> a -> Bool
+equating f = \a b -> f a == f b
+
 -- lookup closest to int, fallback to int - 1 (repeatedly)
 lookupMax :: (Num a, Eq a) => a -> [(a, b)] -> Maybe b
 lookupMax n xs

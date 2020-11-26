@@ -2,22 +2,41 @@ module RL.Item where
 
 import RL.Types
 
+import Data.Maybe (isJust)
 import Data.Ratio
 import qualified Data.List as L
 
-data Item = Item ItemName ItemType ItemRarity deriving Eq
+data Item = Item {
+    itemDescription :: ItemName,
+    itemType :: ItemType
+} deriving Eq
 
 type ItemName = String
+type RandomName = String
 type ItemRarity = Rational
-data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion | Tool deriving Eq
+data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Tool deriving Eq
+data PotionType = Healing | Life | Acid | Strength | Invisibility | Confusion | Darkness deriving (Show, Eq)
+data ScrollType = Fire | Lightning | Teleport | Mapping | Telepathy deriving (Show, Eq)
 
 instance Show Item where
-    show (Item n _ _) = n
+    show (Item n (Potion _ )) = n ++ " Potion"
+    show (Item n (Scroll _ )) = "Scroll labeled \"" ++ n ++ "\""
+    show (Item n _) = n
 instance Show ItemType where
     show (Weapon _) = "weapon"
     show (Armor _) = "armor"
-    show (Potion) = "potion"
+    show (Potion _) = "potion"
+    show (Scroll _) = "scroll"
     show (Tool) = "tool"
+
+-- get true item name (after identified)
+itemTrueName :: Item -> String
+itemTrueName i = show (i { itemDescription = (typeTrueName (itemType i)) })
+    where typeTrueName (Weapon _) = itemDescription i
+          typeTrueName (Armor  _) = itemDescription i
+          typeTrueName (Potion t) = show t
+          typeTrueName (Scroll t) = show t
+          typeTrueName (Tool    ) = itemDescription i
 
 data WeaponProperties = WeaponProperties {
     dmgd :: Dice,
@@ -26,7 +45,7 @@ data WeaponProperties = WeaponProperties {
 } deriving Eq
 
 weaponProperties :: Item -> Maybe WeaponProperties
-weaponProperties (Item _ (Weapon prop) _) = Just prop
+weaponProperties (Item _ (Weapon prop)) = Just prop
 weaponProperties otherwise              = Nothing
 
 data ArmorProperties = ArmorProperties {
@@ -42,54 +61,84 @@ fromInventoryLetter :: Char -> [Item] -> Maybe Item
 fromInventoryLetter ch is = L.lookup ch (zip inventoryLetters is)
 
 armorProperties :: Item -> Maybe ArmorProperties
-armorProperties (Item _ (Armor prop) _) = Just prop
+armorProperties (Item _ (Armor prop)) = Just prop
 armorProperties otherwise             = Nothing
 
-itemType :: Item -> Item -> Bool
-itemType (Item _ (Weapon _) _) (Item _ (Weapon _) _) = True
-itemType (Item _ (Armor _) _) (Item _ (Armor _) _) = True
-itemType (Item _ Potion _) (Item _ Potion _) = True
-itemType (Item _ Tool _) (Item _ Tool _) = True
-itemType _ _ = False
+findItemByName :: String -> [Item] -> Maybe Item
+findItemByName n = L.find f
+    where f i = itemDescription i == n
 
 isWeapon :: Item -> Bool
-isWeapon (Item _ (Weapon _) _) = True
+isWeapon (Item _ (Weapon _)) = True
 isWeapon otherwise           = False
 
 isArmor :: Item -> Bool
-isArmor (Item _ (Armor _) _) = True
+isArmor (Item _ (Armor _)) = True
 isArmor otherwise          = False
 
-itemTypes = [ Weapon undefined, Armor undefined, Potion, Tool ]
+isEquippable :: Item -> Bool
+isEquippable i = isWeapon i || isArmor i
+
+isDrinkable :: Item -> Bool
+isDrinkable = isJust . potionType
+
+isReadable :: Item -> Bool
+isReadable = isJust . scrollType
+
+scrollType :: Item -> Maybe ScrollType
+scrollType (Item _ (Scroll t)) = Just t
+scrollType otherwise = Nothing
+
+potionType :: Item -> Maybe PotionType
+potionType (Item _ (Potion t)) = Just t
+potionType otherwise = Nothing
+
+itemTypes = [ Weapon undefined, Armor undefined, Potion undefined, Scroll undefined, Tool ]
 
 itemSymbol :: Item -> Char
-itemSymbol (Item _ (Weapon _) _) = ')'
-itemSymbol (Item _ (Armor _) _) = ']'
-itemSymbol (Item _ (Potion) _) = '!'
-itemSymbol (Item _ (Tool) _) = '/'
+itemSymbol (Item _ (Weapon _)) = ')'
+itemSymbol (Item _ (Armor _)) = ']'
+itemSymbol (Item _ (Potion _)) = '!'
+itemSymbol (Item _ (Scroll _)) = '?'
+itemSymbol (Item _ (Tool)) = '/'
 
--- rarity for item types
-typeRarity :: ItemType -> Rational
-typeRarity (Weapon _) = 1 % 5
-typeRarity (Armor _) = 1 % 7
-typeRarity (Potion) = 1 % 10
-typeRarity (Tool) = 1 % 10
+weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False),
+            weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False),
+            weapon "Quarterstaff" (WeaponProperties (1 `d` 8) 0 True),
+            weapon "Sword" (WeaponProperties (1 `d` 8) 0 False),
+            weapon "Two-Handed Sword" (WeaponProperties (1 `d` 10) 0 True) ]
 
-itemRarity :: Item -> Rational
-itemRarity (Item _ _ r) = r
+armors = [ armor "Leather Armor" (ArmorProperties 2 Chest),
+           armor "Chain Mail" (ArmorProperties 6 Chest),
+           armor "Plate Mail" (ArmorProperties 8 Chest),
+           armor "Full Plate" (ArmorProperties 10 Chest) ]
 
-weapons = [mace, dagger, quarterstaff, sword, twoHandedSword]
-armors = [leather, chainMail, plateMail, fullPlate]
-potions = []
+potions = [ potion "Blue" Healing,
+            potion "Yellow" Life,
+            potion "Black" Acid,
+            potion "Red" Strength,
+            potion "White" Invisibility,
+            potion "Grey" Confusion,
+            potion "Silver" Darkness ]
+
+scrolls = [ scroll "READ ME" Fire,
+            scroll "HEHE" Lightning,
+            scroll "ABRACADABRA" Teleport,
+            scroll "TRY THIS" Mapping,
+            scroll "LOREM IPSUM" Telepathy ]
+
 tools = []
 
--- some simple items
-mace = Item "Mace" (Weapon $ WeaponProperties (1 `d` 6) 0 False) (1 % 10)
-dagger = Item "Dagger" (Weapon $ WeaponProperties (1 `d` 6) 0 False) (4 % 10)
-quarterstaff = Item "Quarterstaff" (Weapon $ WeaponProperties (1 `d` 8) 0 True) (2 % 10)
-sword = Item "Sword" (Weapon $ WeaponProperties (1 `d` 8) 0 False) (1 % 10)
-twoHandedSword = Item "Two-Handed Sword" (Weapon $ WeaponProperties (1 `d` 10) 0 True) (1 % 20)
-leather = Item "Leather Armor" (Armor $ ArmorProperties 2 Chest) (4 % 10)
-chainMail = Item "Chain Mail" (Armor $ ArmorProperties 6 Chest) (2 % 10)
-plateMail = Item "Plate Mail" (Armor $ ArmorProperties 8 Chest) (1 % 10)
-fullPlate = Item "Plate Mail" (Armor $ ArmorProperties 10 Chest) (1 % 50)
+-- helpers to generate items
+
+weapon :: ItemName -> WeaponProperties -> Item
+weapon n prop = Item n (Weapon prop)
+
+armor :: ItemName -> ArmorProperties -> Item
+armor n prop = Item n (Armor prop)
+
+potion :: RandomName -> PotionType -> Item
+potion n t = Item n (Potion t)
+
+scroll :: RandomName -> ScrollType -> Item
+scroll n t = Item n (Scroll t)

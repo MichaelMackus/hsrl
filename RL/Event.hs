@@ -2,23 +2,29 @@ module RL.Event where
 
 import RL.Map
 import RL.Util (takeWhiles, dropWhiles)
+import qualified Data.List as L
 
 -- Represents Game events
 
 data Event = Attacked Mob Mob | Damaged Mob Mob Int | Missed Mob Mob | Died Mob | Moved Mob Point
+    | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
+    | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy DLevel
     | DestinationSet Mob Point | DestinationAbrupted Mob Point
     | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
     | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
     | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EndOfTurn | NewGame
     | MenuChange Menu | QuitGame deriving (Eq, Show)
 
-data Menu = Inventory | Equipment | NoMenu deriving (Eq, Show)
+data Menu = Inventory | Equipment | DrinkMenu | ReadMenu | NoMenu deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]
 getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
 
 getEventsBeforeTurns :: Int -> [Event] -> [Event]
 getEventsBeforeTurns n = dropWhiles ((< n) . length . filter isEndOfTurn)
+
+turnsSince :: (Event -> Bool) -> [Event] -> Int
+turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)
 
 isEndOfTurn :: Event -> Bool
 isEndOfTurn EndOfTurn = True
@@ -52,5 +58,23 @@ toMessage (ItemsSeen items) = let suffix = if length items > 1 then "There are "
                               in  Just $ "You see a " ++ show (head items) ++ ". " ++ suffix
 toMessage (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ show item ++ "."
 toMessage (Equipped m item) | isPlayer m = Just $ "You have equipped up a " ++ show item ++ "."
-toMessage (MenuChange Equipment) = Just $ "Pick an item to equip."
+-- toMessage (MenuChange Equipment) = Just $ "Pick an item to equip."
+-- toMessage (MenuChange DrinkMenu) = Just $ "Pick a potion to quaff."
+-- toMessage (MenuChange ReadMenu)  = Just $ "Pick a scroll to read."
+toMessage (MenuChange NoMenu) = Nothing
+toMessage (MenuChange otherwise) = Just $ "Pick an item to use or equip. Press space to cancel."
+toMessage (Drank           m p) | isPlayer m = Just $ "You drank the " ++ show p ++ "."
+toMessage (Healed          m n) | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
+toMessage (GainedLife      m n) | isPlayer m = Just $ "Praise the sun! You feel youthful."
+toMessage (GainedStrength  m n) | isPlayer m = Just $ "You feel empowered!"
+toMessage (DrankAcid       m  ) | isPlayer m = Just $ "It BURNS!"
+toMessage (Vanished        m  ) | isPlayer m = Just $ "You can no longer see yourself!"
+toMessage (Confused        m  ) | isPlayer m = Just $ "You feel drunk."
+toMessage (Blinded         m  ) | isPlayer m = Just $ "You can no longer see your surroundings!"
+toMessage (Read            m s) | isPlayer m = Just $ "You read the " ++ show s ++ "."
+toMessage (CastFire        m n) | isPlayer m = Just $ "Roaring flames erupt all around you!"
+toMessage (CastLightning   m n) | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
+toMessage (Teleported      m p) | isPlayer m = Just $ "You feel disoriented."
+toMessage (Mapped          lvl)              = Just $ "You suddenly understand the layout of the current level."
+toMessage (GainedTelepathy lvl)              = Just $ "You sense nearby danger."
 toMessage otherwise = Nothing

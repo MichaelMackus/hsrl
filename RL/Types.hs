@@ -14,9 +14,10 @@ d n ns = D n ns
 type Point  = (Int, Int)
 type Path   = [Point]
 type Offset = Point
+type Difficulty = Int
 
 data VerticalDirection = Up | Down deriving (Eq, Show)
-data Dir = North | East | South | West | NE | NW | SE | SW deriving (Eq)
+data Dir = North | East | South | West | NE | NW | SE | SW deriving (Eq, Enum, Show)
 
 -- dungeon cell box (w x h)
 type Dimension = (Width, Height)

@@ -5,21 +5,22 @@ import RL.Map
 import RL.Random
 
 import Control.Monad.Reader
-import Data.Maybe (fromMaybe, fromJust, isNothing, isJust, maybeToList)
+import Data.Maybe (fromMaybe, fromJust, isJust, maybeToList)
 import qualified Data.List as L
 import qualified Data.Map as M
 
 type GameEnv = ReaderT Env (Rand StdGen)
 data Env     = Env {
-    dungeon  :: Dungeon,
-    level    :: DLevel,
-    events   :: [Event],
-    menu     :: Menu
+    dungeon    :: Dungeon,
+    level      :: DLevel,
+    events     :: [Event],
+    menu       :: Menu
 }
 
 isPlaying :: Env -> Bool
 isPlaying env = not (isDead (player (level env)) || isQuit env)
 
+-- TODO win condition
 isWon :: Env -> Bool
 isWon = const False
 
@@ -30,7 +31,6 @@ isQuit e = isJust (L.find (== QuitGame) (events e))
 isAutomated :: Env -> Bool
 isAutomated env = let lvl = level env
                       p   = player lvl
-                      ms  = mobs lvl
                   in  isJust (destination p)
 
 -- checks if we are running to the destination and there are no mobs seen
@@ -46,8 +46,7 @@ isTicking = (== NoMenu) . menu
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isViewingInventory :: Env -> Bool
-isViewingInventory e = let m = menu e
-                       in  m == Inventory || m == Equipment
+isViewingInventory e = menu e /= NoMenu
 
 -- represents a client that does something to the state
 class Client c where
@@ -59,12 +58,14 @@ broadcastEvents c []    = c
 broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
+    broadcast env e@NewGame             = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
+    broadcast env e@EndOfTurn           = broadcast' (updateFlags . healDamaged $ updateSeen (canSee (level env) (player (level env))) env) e
     broadcast env e@(StairsTaken v lvl) = broadcast' (changeLevel env v lvl) e
     broadcast env e@(MenuChange  m)     = broadcast' (env { menu = m }) e
-    broadcast env e@NewGame             = broadcast' (updateSeen env) e
-    broadcast env e@EndOfTurn           = broadcast' (updateSeen env) e
     broadcast env e@(MobSpawned m)      = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
     broadcast env e@(ItemPickedUp m i)  = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(Teleported m to)   = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
+    broadcast env e@(Mapped lvl)        = broadcast' (updateSeen (const True) env) e
     broadcast env e                     = broadcast' env e
 
 broadcast' env e =
@@ -76,9 +77,9 @@ broadcast' env e =
                   events = e:events env }
 
 instance Client Mob where
-    broadcast m (Moved m' to)              | m == m' && canMove m = moveMob m to
-    broadcast m (Damaged _ m' dmg)         | m == m' = hurtMob m dmg
-    broadcast m (Waken m')                 | m == m' = let fs = filter (not . isSleeping) (flags m)
+    broadcast m (Moved m' to)              | m == m' && canMove m = moveMob to m
+    broadcast m (Damaged _ m' dmg)         | m == m' = m { hp = max 0 (hp m - dmg) }
+    broadcast m (Waken m')                 | m == m' = let fs = filter (/= Sleeping) (flags m)
                                                        in  m { flags = fs }
     broadcast m (Slept m')                 | m == m' = m { flags = L.nub (Sleeping:flags m) }
     broadcast m (MobSeen  m' p)            | m == m' = m { destination = Just (at p) }
@@ -87,20 +88,18 @@ instance Client Mob where
     broadcast m (DestinationAbrupted m' p) | m == m' = m { destination = Nothing }
     broadcast m (ItemPickedUp m' i)        | m == m' = m { inventory = inventory m ++ [i] }
     broadcast m (Equipped m' i)            | m == m' = equip m i
-    broadcast m EndOfTurn                       = healDamaged m
+    broadcast m (Read     m' i)            | m == m' = poofItem m i
+    broadcast m (Teleported m' to)         | m == m' = m { at = to }
+    broadcast m (GainedTelepathy lvl)   | isPlayer m = m { isTelepathicOn = depth lvl:isTelepathicOn m }
+    broadcast m (Drank    m' i)            | m == m' = poofItem m i
+    broadcast m (Healed m' amt)            | m == m' = m { hp = min (mhp m) (hp m + amt) }
+    broadcast m (GainedLife m' amt)        | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
+    broadcast m (GainedStrength m' str)    | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
+    broadcast m (Vanished m')              | m == m' = m { flags = L.nub (Invisible:flags m) }
+    broadcast m (Confused m')              | m == m' = m { flags = L.nub (ConfusedF:flags m) }
+    broadcast m (Blinded m')               | m == m' = m { flags = L.nub (BlindedF:flags m) }
 
     broadcast m otherwise = m
-
--- hurt    mob    dmg
-hurtMob :: Mob -> Int -> Mob
-hurtMob target dmg = target { hp = (hp target) - dmg, turnsToHeal = min 6 (turnsToHeal target + 1) }
-
--- heal damaged if mob not damaged 5 turns ago
-healDamaged :: Mob -> Mob
-healDamaged m
-    | turnsToHeal m > 1 = m { turnsToHeal = turnsToHeal m - 1 } -- hasn't been 5 turns
-    | hp m + 1 > mhp m  = m                                     -- can't heal more than max
-    | otherwise         = m { hp = hp m + 1, turnsToHeal = 5 }
 
 removePickedItem :: Mob -> Item -> DLevel -> DLevel
 removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)
@@ -116,6 +115,9 @@ equip m i = if isWeapon i then
                 let armor = wearing (equipment m)
                 in  m { equipment = (equipment m) { wearing = [i] },
                         inventory = armor ++ L.delete i (inventory m) }
+
+poofItem :: Mob -> Item -> Mob
+poofItem m i = m { inventory = L.delete i (inventory m) }
 
 -- use this to change to a different dungeon level
 changeLevel :: Env -> VerticalDirection -> DLevel -> Env
@@ -135,12 +137,22 @@ changeLevel env v lvl = do
                 f  (p, _) = lvl { player = pl { at = p } }
             in  f <$> t
 
-updateSeen :: Env -> Env
-updateSeen env =
+-- remove stale flags from mobs/player at end of turn
+updateFlags :: Env -> Env
+updateFlags env = let p                 = player (level env)
+                      isStale Invisible = turnsSince (== Vanished p) (events env) >= 100
+                      isStale ConfusedF = turnsSince (== Confused p) (events env) >= 10
+                      isStale BlindedF  = turnsSince (== Blinded  p) (events env) >= 50
+                      isStale otherwise = False
+                  in  env { level = (level env) { player = p { flags = L.filter (not . isStale) (flags p) } } }
+
+-- update newly seen things at end of turn
+updateSeen :: (Point -> Bool) -> Env -> Env
+updateSeen f env =
     let lvl    = level env
         p      = player lvl
         points = M.keys (tiles lvl)
-        seen'  = filter (canSee lvl p) points
+        seen'  = filter f points
         -- check what is on the current tile
         t      = findTileAt (at (player lvl)) lvl 
         stairE = if isDownStair (fromJust t) then [StairsSeen Down]
@@ -152,10 +164,19 @@ updateSeen env =
     in  env { level  = lvl { seen = L.nub (seen' ++ seen lvl) },
               events = if recentlyMoved p (events env) then stairE ++ itemE ++ events env else events env }
 
--- moves mob, resetting the destination if we have reached it
-moveMob :: Mob -> Point -> Mob
-moveMob m p = let dest = if destination m == Just p then Nothing else destination m
-              in  m { at = p, destination = dest }
+-- heal damaged mobs if mob not damaged 5 turns ago
+healDamaged :: Env -> Env
+healDamaged env =
+    let p            = player (level env)
+        healedP      = if isHealing p then p { hp = min (mhp p) (hp p + 1) } else p
+        healedMs     = map (\m -> m { hp = min (mhp m) (hp m + 1) }) msToHeal
+        msToHeal     = L.filter isHealing (mobs (level env))
+        sinceHit   m = turnsSince (isDamageE m) (events env)
+        isHealing  m = sinceHit m > 0 && sinceHit m `mod` 5 == 0
+        isDamageE m (Damaged _ m' _) = m == m'
+        isDamageE m otherwise        = False
+    in  env { level = (level env) { mobs   = L.nub (healedMs ++ mobs (level env))
+                                  , player = healedP} }
 
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool

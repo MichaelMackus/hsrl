@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, pick, pickRarity, randomPoint, Roller(..), module System.Random, module Control.Monad.Random) where
+module RL.Random (roll, pick, pickRarity, randomPoint, randomDir, Roller(..), module System.Random, module Control.Monad.Random) where
 
 import RL.Types
 
@@ -32,6 +32,9 @@ pickRarity f l = do
 -- between     maxX   maxY
 randomPoint :: MonadRandom m => Int -> Int -> m Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
+
+randomDir :: MonadRandom m => m Dir
+randomDir = toEnum <$> roll (1 `d` 7)
 
 -- generates random point
 -- randomPointBetween :: MonadRandom m => Int -> Int -> m Point

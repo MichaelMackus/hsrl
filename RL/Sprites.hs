@@ -6,7 +6,7 @@ module RL.Sprites (
 
 import RL.Game
 import RL.UI.Common as UI
-import RL.Util (enumerate)
+import RL.Util (enumerate, equating)
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
@@ -37,9 +37,9 @@ getSprites e = getMapSprites (level e) ++ getMsgSprites (events e) ++ getStatusS
 getMapSprites :: DLevel -> [Sprite]
 getMapSprites lvl = map sprite (M.toList (tiles lvl))
     where
-        sprite (p, t) = if canPlayerSee p then tileOrMobSprite lvl p
-                        else seenTileSprite lvl p
-        canPlayerSee = canSee lvl (player lvl)
+        sprite (p, t)  = if canPlayerSee p then tileOrMobSprite lvl p
+                         else seenTileSprite lvl p
+        canPlayerSee p = canSeeBlind lvl (player lvl) p && canSeeTelepathic lvl (player lvl) p
 
         tileColor Floor = white
         tileColor Cavern = grey
@@ -63,7 +63,12 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
                                []    -> Nothing
         mobSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         mobSprite lvl p = case findTileOrMob p lvl of
-                               Right m -> Just (Sprite p (symbol m:"")   (mobColor (mobName m)) black)
+                               Right m -> if isVisible m then
+                                            Just (Sprite p (symbol m:"")   (mobColor (mobName m)) black)
+                                          else if isPlayer m then
+                                            Just (Sprite p (" ") white (50,50,50))
+                                          else
+                                            Nothing
                                Left _  -> Nothing
         tileOrMobSprite :: DLevel -> (Int, Int) -> Sprite
         tileOrMobSprite lvl p = let sprites = [mobSprite lvl p, itemSprite lvl p, tileSprite lvl p]
@@ -90,8 +95,8 @@ otherWindows :: Env -> [Sprite]
 otherWindows e
     | isViewingInventory e =
         let lvl = level e
-            inv = L.groupBy itemType (inventory (player lvl))
-            eq  = L.groupBy itemType (equipmentToList (equipment (player lvl)))
+            inv = L.groupBy (equating itemType) (inventory (player lvl))
+            eq  = L.groupBy (equating itemType) (equipmentToList (equipment (player lvl)))
         in  mkSprites (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters (concat inv))) ++
             mkSprites (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
     | otherwise = []

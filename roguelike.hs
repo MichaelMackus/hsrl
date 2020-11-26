@@ -73,7 +73,7 @@ main = do
     -- initialize game & launch game loop
     ui        <- initUI defaultUIConfig
     e         <- (`broadcast` NewGame) <$> nextLevel defaultConf
-    (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
+    (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) $ broadcastEvents e [Vanished (player (level e))]
 
     uiEnd ui
 
@@ -98,13 +98,13 @@ defaultConf = DungeonConfig {
         difficultyRange = (2, 0)
     },
     itemConfig = ItemConfig {
-        maxItems = 10
+        maxItems = 10,
+        randomItemNames = []
     },
     playerConfig = PlayerConfig {
         playerHp = 12,
         playerFov = 5
     }
-    -- TODO ItemConfig
 }
 
 -- generate a new level
@@ -121,3 +121,7 @@ nextLevel conf = do
             events  = [],
             menu    = NoMenu
         }
+
+-- generate mobs if necessary
+-- mobSpawner :: Env -> Generator MobConfig DLevel [Mob]
+-- mobSpawner 

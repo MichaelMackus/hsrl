@@ -6,6 +6,7 @@ import RL.Event
 import RL.Types
 import RL.Game
 import RL.Pathfinder
+import RL.Random
 
 import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing)
 
@@ -19,7 +20,8 @@ keyToEvents k m = do
     env <- ask
     let lvl = level env
         p   = player lvl
-    if menu env == NoMenu && not (canAutomate env) then do
+        canInput = not (canAutomate env) && not (ConfusedF `elem` flags p)
+    if menu env == NoMenu && canInput then do
         es <- case k of
             (KeyChar 'k')     -> moveOrAttack North
             (KeyChar 'j')     -> moveOrAttack South
@@ -33,12 +35,14 @@ keyToEvents k m = do
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
             (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
             (KeyChar 'i')     -> return [MenuChange Inventory]
-            (KeyChar 'q')     -> return [QuitGame]
+            (KeyChar 'Q')     -> return [QuitGame]
             (KeyChar 'g')     -> return (maybeToList (pickup (level env)))
             (KeyChar ',')     -> return (maybeToList (pickup (level env)))
             (KeyChar 'w')     -> return [MenuChange Equipment]
             (KeyChar 'W')     -> return [MenuChange Equipment]
             (KeyChar 'e')     -> return [MenuChange Equipment]
+            (KeyChar 'q')     -> return [MenuChange DrinkMenu]
+            (KeyChar 'r')     -> return [MenuChange ReadMenu]
             (KeyMouseLeft to) -> if canSee lvl p to || to `elem` seen lvl then automatePlayer to else return []
             otherwise         -> return []
         -- stop automating if we've seen a mob
@@ -46,14 +50,15 @@ keyToEvents k m = do
             return $ DestinationAbrupted p (fromJust (destination p)):es
         else
             return es
+    else if ConfusedF `elem` flags p then do
+        if k == (KeyChar 'Q') then return [QuitGame]
+        else moveOrAttack =<< randomDir
     else if isAutomated env then automatePlayer (fromJust (destination p))
-    else if isViewingInventory env then
+    else if isViewingInventory env then do
         let ch = charFromKey k
-            e  = if isJust ch && fromJust ch `elem` inventoryLetters then
-                    let i = fromInventoryLetter (fromJust ch) (inventory p)
-                    in  Equipped p <$> maybeToList i
-                 else []
-        in  return (e ++ [MenuChange NoMenu])
+            i  = (`fromInventoryLetter` (inventory p)) =<< ch
+        e <- maybe (return []) (applyItem lvl p) i
+        return (e ++ [MenuChange NoMenu])
     else return []
 
 moveOrAttack :: Dir -> GameEnv [Event]
@@ -61,7 +66,6 @@ moveOrAttack dir = do
     env <- ask
     let lvl = level env
         p   = player lvl
-        to  = addDir dir (at p)
     moveOrAttackAt (addDir dir (at p))
 
 moveOrAttackAt :: Point -> GameEnv [Event]
