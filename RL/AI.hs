@@ -7,8 +7,10 @@ import RL.Pathfinder
 import RL.Random
 
 import Data.Maybe (isJust, isNothing, fromJust)
+import Data.Set (Set)
+import qualified Data.List as L
+import qualified Data.Set as Set
 
--- TODO mobs seem to get confused when running into other mobs
 automate :: Mob -> GameEnv [Event]
 automate m = do
         env <- ask
@@ -39,11 +41,10 @@ automate m = do
                 moveCloser m p (fromJust heard)
             else do
                 -- wander randomly
-                let neighbors = dneighbors lvl (at m)
+                let neighbors = aiNeighbors lvl (at m)
                 p <- pick neighbors
                 case p of
-                    Just p  -> if isNothing (findMobAt p lvl) then return [Moved m p]
-                               else return []
+                    Just p  -> return [Moved m p]
                     Nothing -> return []
         moveCloser :: Mob -> Mob -> [Point] -> GameEnv [Event]
         moveCloser m p path = do
@@ -63,7 +64,7 @@ automate m = do
 seenPath :: DLevel -> Mob -> Mob -> Maybe [Point]
 seenPath lvl m1 m2 =
     if canSee lvl m1 (at m2) then
-        findPath (dfinder lvl) distance (at m2) (at m1)
+        findAIPath lvl distance (at m2) (at m1)
     else
         Nothing
 
@@ -83,3 +84,16 @@ mobPath lvl m = let seenDist  = distance (at m) <$> lastSeen m
                                 else if seenDist > heardDist then lastHeard m
                                 else lastSeen m
                 in  (\p -> findPath (dfinder lvl) distance p (at m)) =<< curP
+
+-- find AI path, first trying to find optimal path around mobs
+-- fallback is naive dfinder to allow mobs to bunch up
+findAIPath lvl h end s = let optimal = findPath (aiFinder lvl) h end s
+                         in  if isNothing optimal then findPath (dfinder lvl) h end s else optimal
+
+aiFinder :: DLevel -> Point -> Set Point
+aiFinder d p = Set.fromList (aiNeighbors d p)
+
+aiNeighbors d p = L.filter f (dneighbors d p)
+    where f p = let m' = findMobAt p d
+                in  isNothing m' || isPlayer (fromJust m')
+
