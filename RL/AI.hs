@@ -77,13 +77,8 @@ heardPath lvl m1 m2 =
 
 
 mobPath :: DLevel -> Mob -> Maybe [Point]
-mobPath lvl m = let seenDist  = distance (at m) <$> lastSeen m
-                    heardDist = distance (at m) <$> lastHeard m
-                    curP      = if isNothing (lastSeen m) then lastHeard m
-                                else if isNothing (lastHeard m) then lastSeen m
-                                else if seenDist > heardDist then lastHeard m
-                                else lastSeen m
-                in  (\p -> findPath (dfinder lvl) distance p (at m)) =<< curP
+mobPath lvl m = let dist      = distance (at m) <$> destination m
+                in  (\p -> findPath (dfinder lvl) distance p (at m)) =<< destination m
 
 -- find AI path, first trying to find optimal path around mobs
 -- fallback is naive dfinder to allow mobs to bunch up

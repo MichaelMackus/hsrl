@@ -60,7 +60,7 @@ endTurn env =
 
 getEvents :: UI -> Env -> IO [Event]
 getEvents disp env = do
-    (k, m) <- uiInput disp
+    (k, m) <- if not (canAutomate env) then uiInput disp else return (KeyUnknown, [])
     g      <- newStdGen
     return $ evalRand (runReaderT (keyToEvents k m) env) g
 

@@ -1,4 +1,4 @@
-module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isWon, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
+module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, isWon, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Map
@@ -25,6 +25,20 @@ isWon = const False
 
 isQuit :: Env -> Bool
 isQuit e = isJust (L.find (== QuitGame) (events e))
+
+-- checks if we are running to the destination
+isAutomated :: Env -> Bool
+isAutomated env = let lvl = level env
+                      p   = player lvl
+                      ms  = mobs lvl
+                  in  isJust (destination p)
+
+-- checks if we are running to the destination and there are no mobs seen
+canAutomate :: Env -> Bool
+canAutomate env = let lvl = level env
+                      p   = player lvl
+                      ms  = mobs lvl
+                  in  isAutomated env && null (L.filter (canSee lvl p) (map at ms))
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: Env -> Bool
@@ -62,16 +76,18 @@ broadcast' env e =
                   events = e:events env }
 
 instance Client Mob where
-    broadcast m (Moved m' to)       | m == m' && canMove m = moveMob m to
-    broadcast m (Damaged _ m' dmg)  | m == m' = hurtMob m dmg
-    broadcast m (Waken m')          | m == m' = let fs = filter (not . isSleeping) (flags m)
-                                                in  m { flags = fs }
-    broadcast m (Slept m')          | m == m' = m { flags = L.nub (Sleeping:flags m) }
-    broadcast m (MobSeen  m' p)     | m == m' = m { lastSeen = Just (at p), lastHeard = Nothing }
-    broadcast m (MobHeard m' p)     | m == m' = if isNothing (lastHeard m) then m { lastHeard = Just (at p) } else m
-    broadcast m (ItemPickedUp m' i) | m == m' = m { inventory = inventory m ++ [i] }
-    broadcast m (Equipped m' i)     | m == m' = equip m i
-    broadcast m EndOfTurn                     = healDamaged m
+    broadcast m (Moved m' to)              | m == m' && canMove m = moveMob m to
+    broadcast m (Damaged _ m' dmg)         | m == m' = hurtMob m dmg
+    broadcast m (Waken m')                 | m == m' = let fs = filter (not . isSleeping) (flags m)
+                                                       in  m { flags = fs }
+    broadcast m (Slept m')                 | m == m' = m { flags = L.nub (Sleeping:flags m) }
+    broadcast m (MobSeen  m' p)            | m == m' = m { destination = Just (at p) }
+    broadcast m (MobHeard m' p)            | m == m' = m { destination = Just (at p) }
+    broadcast m (DestinationSet m' p)      | m == m' = m { destination = Just p }
+    broadcast m (DestinationAbrupted m' p) | m == m' = m { destination = Nothing }
+    broadcast m (ItemPickedUp m' i)        | m == m' = m { inventory = inventory m ++ [i] }
+    broadcast m (Equipped m' i)            | m == m' = equip m i
+    broadcast m EndOfTurn                       = healDamaged m
 
     broadcast m otherwise = m
 
@@ -136,11 +152,10 @@ updateSeen env =
     in  env { level  = lvl { seen = L.nub (seen' ++ seen lvl) },
               events = if recentlyMoved p (events env) then stairE ++ itemE ++ events env else events env }
 
--- moves mob, resetting the last seen & heard if we have reached the destination
+-- moves mob, resetting the destination if we have reached it
 moveMob :: Mob -> Point -> Mob
-moveMob m p = let seen  = if lastSeen m == Just p then Nothing else lastSeen m
-                  heard = if lastHeard m == Just p then Nothing else lastHeard m
-              in  m { at = p, lastSeen = seen, lastHeard = heard }
+moveMob m p = let dest = if destination m == Just p then Nothing else destination m
+              in  m { at = p, destination = dest }
 
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool

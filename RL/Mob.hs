@@ -27,8 +27,7 @@ data Mob = Mob {
     flags       :: [MobFlag],
     inventory   :: [Item],
     equipment   :: MobEquipment,
-    lastSeen    :: Maybe Point, -- last seen player point
-    lastHeard   :: Maybe Point, -- last heard player point
+    destination :: Maybe Point, -- destination point
     turnsToHeal :: Int
 }
 data MobFlag = Sleeping deriving Eq
@@ -93,8 +92,7 @@ mob = Mob {
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing [],
-    lastSeen = Nothing,
-    lastHeard = Nothing,
+    destination = Nothing,
     turnsToHeal = 5
 }
 

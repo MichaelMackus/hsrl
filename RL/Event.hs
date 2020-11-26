@@ -6,6 +6,7 @@ import RL.Util (takeWhiles, dropWhiles)
 -- Represents Game events
 
 data Event = Attacked Mob Mob | Damaged Mob Mob Int | Missed Mob Mob | Died Mob | Moved Mob Point
+    | DestinationSet Mob Point | DestinationAbrupted Mob Point
     | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
     | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
     | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EndOfTurn | NewGame
