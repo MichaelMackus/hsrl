@@ -1,12 +1,12 @@
 module RL.Pathfinder where
 
 import Control.Monad.State
-import Data.Maybe (catMaybes, listToMaybe)
 import Data.Set (Set)
-import qualified Data.List as L
+import Data.PQueue.Min (MinQueue)
 import qualified Data.Set as Set
+import qualified Data.PQueue.Min as PQ
 
--- Stolen from https://hackage.haskell.org/package/astar-0.3.0.0/docs/Data-Graph-AStar.html
+-- Modified from https://hackage.haskell.org/package/astar-0.3.0.0/docs/Data-Graph-AStar.html
 --
 -- In this case "a" would be "Tile". We could likely do away with the
 -- distance function for now.
@@ -24,43 +24,60 @@ import qualified Data.Set as Set
 -- -> a	                -- The vertex to start searching from.
 -- -> Maybe [a]	        -- An optimal path, if any path exists. This excludes the starting vertex.
 
--- TODO performance
-findPath :: (Ord a, Ord c, Num c, Show a)
+findPath :: (Ord a, Ord c, Num c, Show a, Show c)
          => (a -> Set a)     -- Tile -> Neighbors
-         -> (a -> a -> c)    -- distance function
-         -> a                -- end
-         -> a                -- start
+         -> (a -> a -> c)  -- heuristic distance between tiles
+         -> a              -- end
+         -> a              -- start
          -> Maybe [a]
-findPath f distance end start
-    = evalState (findPathM (finder f) distance end start) Set.empty
+findPath f h end start
+        = evalState (findPathM (finder f h (mkNode end)) h (mkNode end) (mkNode start)) $ AStar mempty mempty
+    where zero     = h start start
+          mkNode p = ANode zero p Nothing
 
--- TODO sort by distance of cur path to end + distance of start to cur path
--- TODO all a's should be wrapped in the monad
-findPathM :: (Monad m, Ord a, Ord c, Num c, Show a)
-         => (a -> m (Set a)) -- Tile -> Neighbors
-         -> (a -> a -> c)    -- distance function
-         -> a                -- end
-         -> a                -- start
+-- find optimal path using priority queue
+findPathM :: (Monad m, Ord a, Ord c, Num c, Show a, Show c)
+         => (ANode a c -> m (Maybe (ANode a c))) -- Tile -> Neighbors
+         -> (a -> a -> c)                       -- heuristic distance between tiles
+         -> ANode a c                           -- end
+         -> ANode a c                           -- start
          -> m (Maybe [a])
-findPathM f distance end start
-    | end == start = return (Just [end])
+findPathM f h end start
+    | val end == val start = return . Just . reverse . nodeToList $ start
     | otherwise    = do
-            neighbors <- L.sortBy sortf . Set.elems <$> f start
-            paths     <- mapM (findPathM f distance end) neighbors
-            return ((start:) <$> listToMaybe (catMaybes paths))
-        where
-            -- finder          = \a -> if a == start then return (Set.empty) else f a
-            sortf           = comparing distance end
-            -- TODO doesn't make much diff
-            -- distancef n end = distance n end + distance start n
-            comparing f end = \a b -> compare (f a end) (f b end)
+        next <- f start
+        case next of
+            Just next -> findPathM f h end next
+            otherwise -> return Nothing
 
--- simple finder implementation using queue
-finder :: (Ord a, Show a) => (a -> Set a) -> a -> State (Set a) (Set a)
-finder f a = do
-    queue <- get
-    put (Set.insert a queue)
-    if a `Set.member` queue then
-        return (Set.empty)
-    else
-        return (f a)
+data ANode a c = ANode { score :: c, val :: a, parent :: Maybe (ANode a c) }
+instance Ord c => Ord (ANode a c) where
+    compare n n' = compare (score n) (score n')
+instance Eq c => Eq (ANode a c) where
+    n == n' = score n == score n'
+instance (Show a, Show c) => Show (ANode a c) where
+    show (ANode s v _) = "Node { s = " ++ show s ++ ", v = " ++ show v ++ " }"
+
+nodeToList :: ANode a c -> [a]
+nodeToList (ANode _ v Nothing)  = [v]
+nodeToList (ANode _ v (Just n)) = v:nodeToList n
+
+data AStar a c = AStar { queue :: MinQueue (ANode a c), visited :: Set a }
+
+-- simple finder implementation using priority queue
+finder :: (Ord a, Ord c, Num c, Show a, Show c)
+    => (a -> Set a)
+    -> (a -> a -> c)
+    -> ANode a c
+    -> ANode a c
+    -> State (AStar a c) (Maybe (ANode a c))
+finder f h end node = do
+        queue <- gets queue
+        vis   <- gets visited
+        let neighbors = Set.filter (not . (`Set.member` vis)) $ f (val node)
+            queue'    = PQ.union (PQ.fromList (map mkNode (Set.toList neighbors))) queue
+            next      = PQ.getMin queue'
+        put $ AStar (PQ.deleteMin queue') (Set.union neighbors vis)
+        return next
+    where mkNode    v = ANode (calcScore v) v (Just node)
+          calcScore v = score node + h v (val end) + h (val node) v
