@@ -9,7 +9,7 @@ import qualified Data.List as L
 
 vtyUI :: UIConfig -> IO UI
 vtyUI cfg = do
-    vtyCfg <- standardIOConfig
+    vtyCfg <- (\c -> c { mouseMode = Just True }) <$> standardIOConfig
     out    <- outputForConfig vtyCfg
     (curCols, curRows) <- displayBounds out
     when (curRows < rows cfg || curCols < columns cfg)
@@ -17,26 +17,48 @@ vtyUI cfg = do
     disp   <- mkVty vtyCfg
     return UI
         { uiRender = \sprites ->
-            let layers  = reverse (map getImage (condenseSprites sprites))
-                picture = (picForLayers layers) { picBackground = bg }
-                bg      = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
-            in  update disp picture
+            let image         = vertCat (charsToImages rows)
+                bg            = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
+                (lenX, lenY)  = (maxX sprites, maxY sprites)
+                initRows      = replicate lenY (replicate lenX (' ', (0,0,0), (0,0,0)))
+                rows          = L.foldl' f initRows sprites
+                f l s         = let row      = map g (zip [0..] (l !! spriteY s))
+                                    g (x,ch) = let x' = x - spriteX s
+                                               in if x >= spriteX s && x' < length (spriteStr s) then
+                                                    (spriteStr s !! x', spriteFgColor s, spriteBgColor s)
+                                                  else ch
+                                in  replaceAt l (spriteY s) row
+
+            in  update disp $ (picForImage image) { picBackground = bg }
         , uiEnd = shutdown disp
         , uiInput = do
-            e <- nextEvent disp
-            case e of
-                (EvKey (KChar c)        mods) -> return ((KeyChar c), toKeyMods mods)
-                (EvKey KUp              mods) -> return (KeyUp, toKeyMods mods)
-                (EvKey KDown            mods) -> return (KeyDown, toKeyMods mods)
-                (EvKey KRight           mods) -> return (KeyRight, toKeyMods mods)
-                (EvKey KLeft            mods) -> return (KeyLeft, toKeyMods mods)
-                (EvKey KEnter           mods) -> return (KeyEnter, toKeyMods mods)
-                (EvKey KEsc             mods) -> return (KeyEscape, toKeyMods mods)
-                (EvKey KBS              mods) -> return (KeyBackspace, toKeyMods mods)
-                (EvMouseDown x y BLeft  mods) -> return ((KeyMouseLeft (x, y)), toKeyMods mods)
-                (EvMouseDown x y BRight mods) -> return ((KeyMouseRight (x, y)), toKeyMods mods)
-                otherwise                     -> return (KeyUnknown, [])
+            let f e = case e of
+                        (EvKey (KChar c)        mods) -> return ((KeyChar c), toKeyMods mods)
+                        (EvKey KUp              mods) -> return (KeyUp, toKeyMods mods)
+                        (EvKey KDown            mods) -> return (KeyDown, toKeyMods mods)
+                        (EvKey KRight           mods) -> return (KeyRight, toKeyMods mods)
+                        (EvKey KLeft            mods) -> return (KeyLeft, toKeyMods mods)
+                        (EvKey KEnter           mods) -> return (KeyEnter, toKeyMods mods)
+                        (EvKey KEsc             mods) -> return (KeyEscape, toKeyMods mods)
+                        (EvKey KBS              mods) -> return (KeyBackspace, toKeyMods mods)
+                        (EvMouseDown x y BLeft  mods) -> return ((KeyMouseLeft (x, y)), toKeyMods mods)
+                        (EvMouseDown x y BRight mods) -> return ((KeyMouseRight (x, y)), toKeyMods mods)
+                        otherwise                     -> nextEvent disp >>= f
+            nextEvent disp >>= f
         }
+
+type CharSprite = (Char, RL.UI.Common.Color, RL.UI.Common.Color)
+
+charsToImages :: [[CharSprite]] -> [Image]
+charsToImages = map (horizCat . map toImage)
+-- charsToImages = map (string defAttr . map ch) -- FIXME combining strings is faster
+    where toImage :: CharSprite -> Image
+          toImage spr        = char (color spr) (ch spr)
+          color  (ch, c, c') = withForeColor (withBackColor defAttr (uncurry3 rgbColor c')) (uncurry3 rgbColor c)
+          ch     (c , _, _ ) = c
+
+uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
+uncurry3 f (a,b,c) = f a b c
 
 toKeyMods = map toKeyMod
     where toKeyMod MShift = KeyModShift -- TODO no shift
@@ -44,12 +66,26 @@ toKeyMods = map toKeyMod
           toKeyMod MMeta  = KeyModAlt
           toKeyMod MAlt   = KeyModSuper
 
--- helper function to condense sprites on the same row & attributes together
+maxX :: [Sprite] -> Int
+maxX = foldr f 0
+    where f s x = let x' = spriteX s + length (spriteStr s)
+                  in  max x x'
+
+maxY :: [Sprite] -> Int
+maxY = foldr f 0
+    where f s y = let y' = spriteY s + 1
+                  in  max y y'
+
+replaceAt :: [a] -> Int -> a -> [a]
+replaceAt l i a | i >= length l = error "Index greater than or equal length"
+                | otherwise     = let (xs,_:ys) = splitAt i l
+                                  in  xs ++ a:ys
+
+spriteX = fst . spritePos
+spriteY = snd . spritePos
+
 condenseSprites = concat . map spriteConcat . reverse . groupBy2 f
     where f spr spr'           = spriteY spr == spriteY spr' && colorsMatch spr spr'
-          g spr spr'           = spriteX spr + 1 == spriteX spr' && colorsMatch spr spr'
-          spriteX              = fst . spritePos
-          spriteY              = snd . spritePos
           colorsMatch spr spr' = spriteFgColor spr == spriteFgColor spr' && spriteBgColor spr == spriteBgColor spr'
 
 spriteConcat :: [Sprite] -> [Sprite]
@@ -59,7 +95,6 @@ spriteConcat (s:xs) = reverse (go [] s xs)
           go acc s (s':xs) = if comp s s' then go acc (s { spriteStr = spriteStr s ++ spriteStr s' }) xs
                              else go (s:acc) s' xs
           comp spr spr' = spriteX spr + length (spriteStr spr) == spriteX spr'
-          spriteX = fst . spritePos
 
 getImage :: Sprite -> Image
 getImage spr = let (x, y) = spritePos spr
