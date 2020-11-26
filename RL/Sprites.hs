@@ -92,10 +92,11 @@ otherWindows e
         let lvl = level e
             inv = L.groupBy itemType (inventory (player lvl))
             eq  = L.groupBy itemType (equipmentToList (equipment (player lvl)))
-        in  mkSprites (0,  0) ([ "Inventory:", " " ] ++ map showItem (concat inv)) ++
+        in  mkSprites (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters (concat inv))) ++
             mkSprites (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
     | otherwise = []
-        where showItem i = " - " ++ show i
+        where showInvItem (ch, i) = ch:(showItem i)
+              showItem i = " - " ++ show i
 
 getMsgSprites :: [Event] -> [Sprite]
 getMsgSprites evs = let recentMsgs = catMaybes (map toMessage (getEventsAfterTurns 2 evs))

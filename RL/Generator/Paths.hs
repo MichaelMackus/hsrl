@@ -2,7 +2,7 @@ module RL.Generator.Paths (Path(..), paths, getTileAt) where
 
 import RL.Generator
 import RL.Generator.Cells (Cell(..), cpoint)
-import RL.Map
+import RL.Map hiding (Path)
 import qualified RL.Generator.Cells as C
 
 import Control.Monad (forM)

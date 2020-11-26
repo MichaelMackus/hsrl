@@ -50,5 +50,6 @@ toMessage (StairsSeen Down) = Just $ "You see stairs going down."
 toMessage (ItemsSeen items) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""
                               in  Just $ "You see a " ++ show (head items) ++ ". " ++ suffix
 toMessage (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ show item ++ "."
+toMessage (Equipped m item) | isPlayer m = Just $ "You have equipped up a " ++ show item ++ "."
 toMessage (MenuChange Equipment) = Just $ "Pick an item to equip."
 toMessage otherwise = Nothing

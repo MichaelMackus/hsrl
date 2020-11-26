@@ -36,7 +36,7 @@ data ArmorProperties = ArmorProperties {
 data ArmorSlot = Head | Chest | Legs | Feet | Hands deriving Eq
 
 inventoryLetters :: [Char]
-inventoryLetters = [fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z']
+inventoryLetters = map toEnum ([fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z'])
 
 fromInventoryLetter :: Char -> [Item] -> Maybe Item
 fromInventoryLetter ch is = L.lookup ch (zip inventoryLetters is)

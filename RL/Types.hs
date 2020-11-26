@@ -12,6 +12,7 @@ d :: Int -> Sides -> Dice
 d n ns = D n ns
 
 type Point  = (Int, Int)
+type Path   = [Point]
 type Offset = Point
 
 data VerticalDirection = Up | Down deriving (Eq, Show)

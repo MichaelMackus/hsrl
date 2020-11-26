@@ -1,11 +1,11 @@
-module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
+module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isWon, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Map
 import RL.Random
 
 import Control.Monad.Reader
-import Data.Maybe (fromMaybe, fromJust, isNothing, isJust)
+import Data.Maybe (fromMaybe, fromJust, isNothing, isJust, maybeToList)
 import qualified Data.List as L
 import qualified Data.Map as M
 
@@ -13,10 +13,15 @@ type GameEnv = ReaderT Env (Rand StdGen)
 data Env     = Env {
     dungeon  :: Dungeon,
     level    :: DLevel,
-    rng      :: StdGen,
     events   :: [Event],
     menu     :: Menu
 }
+
+isPlaying :: Env -> Bool
+isPlaying env = not (isDead (player (level env)) || isQuit env)
+
+isWon :: Env -> Bool
+isWon = const False
 
 isQuit :: Env -> Bool
 isQuit e = isJust (L.find (== QuitGame) (events e))
@@ -28,7 +33,7 @@ isTicking = (== NoMenu) . menu
 -- detects if we're ticking (i.e. AI and other things should be active)
 isViewingInventory :: Env -> Bool
 isViewingInventory e = let m = menu e
-                       in  m == Inventory || m == Equip
+                       in  m == Inventory || m == Equipment
 
 -- represents a client that does something to the state
 class Client c where
@@ -63,8 +68,9 @@ instance Client Mob where
                                                 in  m { flags = fs }
     broadcast m (Slept m')          | m == m' = m { flags = L.nub (Sleeping:flags m) }
     broadcast m (MobSeen  m' p)     | m == m' = m { lastSeen = Just (at p), lastHeard = Nothing }
-    broadcast m (MobHeard m' p)     | m == m' = updateLastHeard m (at p)
+    broadcast m (MobHeard m' p)     | m == m' = if isNothing (lastHeard m) then m { lastHeard = Just (at p) } else m
     broadcast m (ItemPickedUp m' i) | m == m' = m { inventory = inventory m ++ [i] }
+    broadcast m (Equipped m' i)     | m == m' = equip m i
     broadcast m EndOfTurn                     = healDamaged m
 
     broadcast m otherwise = m
@@ -83,6 +89,17 @@ healDamaged m
 removePickedItem :: Mob -> Item -> DLevel -> DLevel
 removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)
                            in  replaceItemsAt (at m) lvl is
+
+equip :: Mob -> Item -> Mob
+equip m i = if isWeapon i then
+                let weap = wielding (equipment m)
+                in  m { equipment = (equipment m) { wielding = Just i },
+                        inventory = maybeToList weap ++ L.delete i (inventory m) }
+            else
+                -- TODO replace same armor slot
+                let armor = wearing (equipment m)
+                in  m { equipment = (equipment m) { wearing = [i] },
+                        inventory = armor ++ L.delete i (inventory m) }
 
 -- use this to change to a different dungeon level
 changeLevel :: Env -> VerticalDirection -> DLevel -> Env
@@ -124,11 +141,6 @@ moveMob :: Mob -> Point -> Mob
 moveMob m p = let seen  = if lastSeen m == Just p then Nothing else lastSeen m
                   heard = if lastHeard m == Just p then Nothing else lastHeard m
               in  m { at = p, lastSeen = seen, lastHeard = heard }
-
-updateLastHeard :: Mob -> Point -> Mob
-updateLastHeard m p = if isNothing (lastHeard m) then m { lastHeard = Just p }
-                      else if distance (at m) (fromJust (lastHeard m)) > distance (at m) p then m { lastHeard = Just p }
-                      else m
 
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool

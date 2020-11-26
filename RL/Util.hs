@@ -63,3 +63,6 @@ dropWhiles f = go []
 
 translateList :: ([a] -> b -> [a]) -> [b] -> [a]
 translateList = flip foldl' []
+
+addOrReplace :: Eq k => k -> v -> [(k, v)] -> [(k, v)]
+addOrReplace key value assoc = (key,value):(L.filter ((key /=).fst) assoc)
