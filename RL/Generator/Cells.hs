@@ -4,7 +4,6 @@ import RL.Generator
 import RL.Map
 import RL.Random
 
-import Control.Monad (when)
 import Control.Monad.Reader (ask)
 import Data.Maybe (listToMaybe)
 
@@ -57,6 +56,7 @@ cell = do
                            6 `x` 6 ]
 
 -- generates random map point for particular dimensions
+-- TODO constrain within map
 randomCellPoint :: Dimension -> Generator CellConfig s Point
 randomCellPoint (w, h) = do
     c <- ask

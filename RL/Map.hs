@@ -3,7 +3,7 @@ module RL.Map (module RL.Map, module RL.Mob, module RL.Types) where
 import RL.Item
 import RL.Mob
 import RL.Types
-import RL.Util (enumerate, enumerate2d, unenumerate2d)
+import RL.Util (enumerate2d, unenumerate2d)
 
 import Data.Map (Map)
 import Data.Maybe (catMaybes, isNothing)
@@ -62,7 +62,6 @@ fromTile Cavern    = '.'
 fromTile (StairUp _) = '<'
 fromTile (StairDown _) = '>'
 fromTile Rock = '#'
-fromTile otherwise = ' '
 
 getStairLvl :: Tile -> Maybe DLevel
 getStairLvl (StairUp   lvl) = Just lvl
@@ -125,11 +124,14 @@ replaceItemsAt p lvl is =
     let dropped = filter (\(p',_) -> p /= p') (items lvl)
     in  lvl { items = dropped ++ (zip (repeat p) is) }
 
+findMobAt :: Point -> DLevel -> Maybe Mob
+findMobAt p lvl = if at (player lvl) == p then Just (player lvl)
+                  else L.find ((== p) . at) (mobs lvl)
+
 findTileOrMob :: Point -> DLevel -> Either Tile Mob
 findTileOrMob p lvl =
     let t = M.lookup p (tiles lvl)
-        m = if at (player lvl) == p then Just (player lvl)
-            else L.find ((== p) . at) (mobs lvl)
+        m = findMobAt p lvl
         err = error ("Error during finding " ++ show p)
     in  maybe (maybe err Left t) Right m
 

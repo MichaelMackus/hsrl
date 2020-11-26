@@ -29,14 +29,10 @@ executable hsrl
   extensions: DoAndIfThenElse, MultiParamTypeClasses
   ghc-options: -threaded -fwarn-unused-binds -cpp
   other-modules:
-    RL.Client
-    RL.Client.AI
-    RL.Client.Input
-    RL.Client.Time
-    RL.Command
+    RL.AI
+    RL.Action
     RL.Event
     RL.Game
-    RL.Game.Sprites
     RL.Generator
     RL.Generator.Cells
     RL.Generator.Dungeon
@@ -44,11 +40,12 @@ executable hsrl
     RL.Generator.Paths
     RL.Generator.Items
     RL.Item
+    RL.Input
     RL.Map
     RL.Mob
     RL.Pathfinder
     RL.Random
-    RL.State
+    RL.Sprites
     RL.Types
     RL.UI
     RL.UI.Common

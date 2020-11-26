@@ -4,7 +4,6 @@ module RL.Random (roll, pick, pickRarity, randomPoint, Roller(..), module System
 
 import RL.Types
 
-import Control.Monad          (liftM2, ap)
 import Control.Monad.Random
 import System.Random
 

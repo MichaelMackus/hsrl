@@ -5,7 +5,7 @@ import RL.Types
 import RL.Util (enumerate1)
 
 import Data.List (find)
-import Data.Maybe (listToMaybe, catMaybes, maybeToList)
+import Data.Maybe (catMaybes, maybeToList)
 
 -- player/mobs
 type HP     = Int
@@ -13,21 +13,23 @@ type Radius = Double
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
-    mobId     :: Int,
-    mobName   :: String,
-    symbol    :: Char,
-    at        :: Point,
-    hp        :: HP,
-    mhp       :: HP,
-    baseDmg   :: Dice,
-    baseAC    :: AC,   -- default to 10 in AD&D
-    thac0     :: Int,  -- traditional D&D combat rules
-    fov       :: Radius,
-    hearing   :: Radius,
-    flags     :: [MobFlag],
-    inventory :: [Item],
-    equipment :: MobEquipment,
-    mobPath   :: [Point] -- current path for AI pathfinding
+    mobId       :: Int,
+    mobName     :: String,
+    symbol      :: Char,
+    at          :: Point,
+    hp          :: HP,
+    mhp         :: HP,
+    baseDmg     :: Dice,
+    baseAC      :: AC,   -- default to 10 in AD&D
+    thac0       :: Int,  -- traditional D&D combat rules
+    fov         :: Radius,
+    hearing     :: Radius,
+    flags       :: [MobFlag],
+    inventory   :: [Item],
+    equipment   :: MobEquipment,
+    lastSeen    :: Maybe Point, -- last seen player point
+    lastHeard   :: Maybe Point, -- last heard player point
+    turnsToHeal :: Int
 }
 data MobFlag = Sleeping deriving Eq
 
@@ -52,7 +54,6 @@ canMove m = not (isDead m) && length (filter isSleeping (flags m)) == 0
 
 isSleeping :: MobFlag -> Bool
 isSleeping (Sleeping) = True
-isSleeping otherwise  = False
 
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
@@ -92,7 +93,9 @@ mob = Mob {
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing [],
-    mobPath = []
+    lastSeen = Nothing,
+    lastHeard = Nothing,
+    turnsToHeal = 5
 }
 
 -- helper functions for mob management
@@ -105,14 +108,6 @@ aliveMobs = filter (not . isDead)
 
 deadMobs :: [Mob] -> [Mob]
 deadMobs = filter isDead
-
--- move a mob by offset
-moveMob :: Point -> Mob -> Mob
-moveMob off m = m { at = addOffset off (at m) }
-
--- move a mob to exact point
-moveMobTo :: Point -> Mob -> Mob
-moveMobTo xy m = m { at = xy }
 
 -- this adds a (+x, +y) offset to (x, y) map coordinate
 addOffset :: Point -> Point -> Point

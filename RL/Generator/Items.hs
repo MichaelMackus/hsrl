@@ -9,7 +9,6 @@ import RL.Item
 import RL.Map
 import RL.Random
 
-import Control.Monad (when, replicateM)
 import Control.Monad.Reader (ask)
 import Data.Maybe (isJust, catMaybes, fromJust)
 
@@ -54,5 +53,4 @@ pickItem typ =
         (Armor  _) -> pickRarity itemRarity armors
         (Potion  ) -> pickRarity itemRarity potions
         (Tool    ) -> pickRarity itemRarity tools
-        otherwise  -> error ("Unable to pick item type: " ++ show typ)
 

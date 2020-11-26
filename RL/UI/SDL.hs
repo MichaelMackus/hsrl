@@ -3,12 +3,10 @@ module RL.UI.SDL where
 
 import RL.UI.Common
 
-import Control.Monad (forM_, forM)
-import Control.Concurrent (threadDelay)
+import Control.Monad (forM_)
 import Data.Char (toUpper, toLower)
 import Data.List (foldl')
-import Data.Maybe (listToMaybe, fromMaybe, catMaybes)
-import Foreign.C.String (peekCString)
+import Data.Maybe (catMaybes)
 import SDL
 import SDL.Font
 import qualified Data.Text as T

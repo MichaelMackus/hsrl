@@ -6,8 +6,6 @@ import RL.Generator.Cells (Cell, cmid)
 import RL.Random
 import RL.Util (lookupMax)
 
-import Control.Monad (replicateM, when)
-import Control.Monad.Reader (ask)
 import Data.Maybe (catMaybes)
 
 data PlayerConfig = PlayerConfig {

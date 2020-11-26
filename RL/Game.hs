@@ -1,14 +1,16 @@
-module RL.Game (Game, Env(..), isTicking, isViewingInventory, runGame, withEnv, withRng, iterLevel, module RL.Map, module RL.Event) where
+module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Map
+import RL.Random
 
-import Control.Monad (liftM)
-import Control.Monad.Random
-import Control.Monad.State
+import Control.Monad.Reader
+import Data.Maybe (fromMaybe, fromJust, isNothing, isJust)
+import qualified Data.List as L
+import qualified Data.Map as M
 
-data Game a = GameState (Env -> (a, Env))
-data Env    = Env {
+type GameEnv = ReaderT Env (Rand StdGen)
+data Env     = Env {
     dungeon  :: Dungeon,
     level    :: DLevel,
     rng      :: StdGen,
@@ -16,8 +18,8 @@ data Env    = Env {
     menu     :: Menu
 }
 
-runGame :: Game a -> Env -> (a, Env)
-runGame (GameState pr) e = pr e
+isQuit :: Env -> Bool
+isQuit e = isJust (L.find (== QuitGame) (events e))
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: Env -> Bool
@@ -28,45 +30,109 @@ isViewingInventory :: Env -> Bool
 isViewingInventory e = let m = menu e
                        in  m == Inventory || m == Equip
 
--- get/setters
-withEnv :: (Env -> Game a) -> Game a
-withEnv f = f =<< get
+-- represents a client that does something to the state
+class Client c where
+    -- broadcast event to client, resulting in state change within client
+    broadcast :: Client c => c -> Event -> c
+-- broadcast multiple events to client
+broadcastEvents :: Client c => c -> [Event] -> c
+broadcastEvents c []    = c
+broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
--- modify RNG helper function
-withRng :: (StdGen -> (a, StdGen)) -> Game a
-withRng f = withEnv $ \e -> do
-    g <- gets rng
-    let (r, g') = f g
-    put $ e { rng = g' }
-    return r
+instance Client Env where
+    broadcast env e@(StairsTaken v lvl) = broadcast' (changeLevel env v lvl) e
+    broadcast env e@(MenuChange  m)     = broadcast' (env { menu = m }) e
+    broadcast env e@NewGame             = broadcast' (updateSeen env) e
+    broadcast env e@EndOfTurn           = broadcast' (updateSeen env) e
+    broadcast env e@(MobSpawned m)      = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
+    broadcast env e@(ItemPickedUp m i)  = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e                     = broadcast' env e
 
-iterLevel :: (Point -> Tile -> Tile) -> Game DLevel
-iterLevel f = pure . iterMap f . level =<< get
+broadcast' env e =
+        let p       = player (level env)
+            lvl     = level env
+            ms'     = map (`broadcast` e) (mobs lvl)
+        in  env { level = lvl { player = broadcast p e,
+                                mobs   = aliveMobs ms' },
+                  events = e:events env }
 
--- plumbing
+instance Client Mob where
+    broadcast m (Moved m' to)       | m == m' && canMove m = moveMob m to
+    broadcast m (Damaged _ m' dmg)  | m == m' = hurtMob m dmg
+    broadcast m (Waken m')          | m == m' = let fs = filter (not . isSleeping) (flags m)
+                                                in  m { flags = fs }
+    broadcast m (Slept m')          | m == m' = m { flags = L.nub (Sleeping:flags m) }
+    broadcast m (MobSeen  m' p)     | m == m' = m { lastSeen = Just (at p), lastHeard = Nothing }
+    broadcast m (MobHeard m' p)     | m == m' = updateLastHeard m (at p)
+    broadcast m (ItemPickedUp m' i) | m == m' = m { inventory = inventory m ++ [i] }
+    broadcast m EndOfTurn                     = healDamaged m
 
-instance Monad Game where
-    g >>= k = GameState $ \e ->
-        let (r, e')  = runGame g e
-        in  runGame (k r) e'
-    return = pure
+    broadcast m otherwise = m
 
-instance MonadState Env Game where
-    get   = GameState $ \e -> (e,  e)
-    put e = GameState $ \_ -> ((), e)
+-- hurt    mob    dmg
+hurtMob :: Mob -> Int -> Mob
+hurtMob target dmg = target { hp = (hp target) - dmg, turnsToHeal = min 6 (turnsToHeal target + 1) }
 
-instance MonadRandom Game where
-    getRandom     = withRng random
-    getRandoms    = withRng $ \g -> (randoms g, g)
-    getRandomR    = withRng . randomR
-    getRandomRs r = withRng $ \g -> (randomRs r g, g)
+-- heal damaged if mob not damaged 5 turns ago
+healDamaged :: Mob -> Mob
+healDamaged m
+    | turnsToHeal m > 1 = m { turnsToHeal = turnsToHeal m - 1 } -- hasn't been 5 turns
+    | hp m + 1 > mhp m  = m                                     -- can't heal more than max
+    | otherwise         = m { hp = hp m + 1, turnsToHeal = 5 }
 
-instance MonadSplit StdGen Game where
-    getSplit      = withRng $ \g -> split g
+removePickedItem :: Mob -> Item -> DLevel -> DLevel
+removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)
+                           in  replaceItemsAt (at m) lvl is
 
-instance Functor Game where
-    fmap = liftM
+-- use this to change to a different dungeon level
+changeLevel :: Env -> VerticalDirection -> DLevel -> Env
+changeLevel env v lvl = do
+        let pl   = player (level env)
+            dng  = dungeon env
+            lvl' = fromMaybe (level env) (placeOnStair pl $ fromMaybe lvl (atDepth (depth lvl) dng))
+        if (depth lvl /= depth (level env)) then
+            env { level = lvl',
+                  dungeon = insertLevel (level env) $ insertLevel lvl' dng }
+        else
+            env
+    where
+        placeOnStair pl lvl =
+            let isStair   = if v == Up then isDownStair else isUpStair
+                t         = findTile (isStair . snd) lvl
+                f  (p, _) = lvl { player = pl { at = p } }
+            in  f <$> t
 
-instance Applicative Game where
-    (<*>)  = ap
-    pure x = GameState $ \e -> (x, e)
+updateSeen :: Env -> Env
+updateSeen env =
+    let lvl    = level env
+        p      = player lvl
+        points = M.keys (tiles lvl)
+        seen'  = filter (canSee lvl p) points
+        -- check what is on the current tile
+        t      = findTileAt (at (player lvl)) lvl 
+        stairE = if isDownStair (fromJust t) then [StairsSeen Down]
+                 else if isUpStair (fromJust t) then [StairsSeen Up]
+                 else []
+        -- check if there are items here
+        is     = findItemsAt (at (player lvl)) lvl
+        itemE  = if length is > 0 then [ItemsSeen is] else []
+    in  env { level  = lvl { seen = L.nub (seen' ++ seen lvl) },
+              events = if recentlyMoved p (events env) then stairE ++ itemE ++ events env else events env }
+
+-- moves mob, resetting the last seen & heard if we have reached the destination
+moveMob :: Mob -> Point -> Mob
+moveMob m p = let seen  = if lastSeen m == Just p then Nothing else lastSeen m
+                  heard = if lastHeard m == Just p then Nothing else lastHeard m
+              in  m { at = p, lastSeen = seen, lastHeard = heard }
+
+updateLastHeard :: Mob -> Point -> Mob
+updateLastHeard m p = if isNothing (lastHeard m) then m { lastHeard = Just p }
+                      else if distance (at m) (fromJust (lastHeard m)) > distance (at m) p then m { lastHeard = Just p }
+                      else m
+
+-- check if mob recently moved to this tile
+recentlyMoved :: Mob -> [Event] -> Bool
+recentlyMoved m es = let es' = L.takeWhile (not . f) es
+                         f (Moved m' _) = m == m'
+                         f otherwise    = False
+                     in  (== 0) . length $ L.filter isEndOfTurn es'

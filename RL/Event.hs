@@ -1,14 +1,17 @@
 module RL.Event where
 
-import RL.Mob
+import RL.Map
 import RL.Util (takeWhiles, dropWhiles)
 
 -- Represents Game events
 
-data Event = Attacked Mob Mob Int | Missed Mob Mob | Died Mob | EndOfTurn | Moved Mob Point | StairsTaken VerticalDirection | Waken Mob | Slept Mob
-    | MenuChange Menu | StairsSeen VerticalDirection | ItemsSeen String Int | ItemPickedUp String deriving (Eq, Show)
+data Event = Attacked Mob Mob | Damaged Mob Mob Int | Missed Mob Mob | Died Mob | Moved Mob Point
+    | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
+    | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
+    | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EndOfTurn | NewGame
+    | MenuChange Menu | QuitGame deriving (Eq, Show)
 
-data Menu = Inventory | Equip | NoMenu deriving (Eq, Show)
+data Menu = Inventory | Equipment | NoMenu deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]
 getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
@@ -23,11 +26,11 @@ isEndOfTurn otherwise = False
 isAttacked :: Mob -> [Event] -> Bool
 isAttacked x = (> 0) . length . filter isAttacked'
     where
-        isAttacked' (Attacked _ x' _) = x == x'
-        isAttacked' otherwise         = False
+        isAttacked' (Attacked _ x') = x == x'
+        isAttacked' otherwise       = False
 
 toMessage :: Event -> Maybe String
-toMessage (Attacked attacker target dmg)
+toMessage (Damaged attacker target dmg)
     | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
     | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
     | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
@@ -38,15 +41,14 @@ toMessage (Missed attacker target)
 toMessage (Died m)
     | isPlayer m = Just $ "You died!"
     | otherwise  = Just $ "You killed the " ++ mobName m
-toMessage (StairsTaken Up) = Just $ "You've gone up stairs."
-toMessage (StairsTaken Down) = Just $ "You've gone down stairs."
+toMessage (StairsTaken Up _) = Just $ "You've gone up stairs."
+toMessage (StairsTaken Down _) = Just $ "You've gone down stairs."
 toMessage (Waken m) = Just $ "The " ++ mobName m ++ " has waken up."
 toMessage (Slept m) = Just $ "The " ++ mobName m ++ " has fell asleep."
 toMessage (StairsSeen Up) = Just $ "You see stairs going up."
 toMessage (StairsSeen Down) = Just $ "You see stairs going down."
-toMessage (ItemsSeen item n) = let suffix = if n > 1 then "There are " ++ show (n - 1) ++ " more items here." else ""
-                               in  Just $ "You see a " ++ item ++ ". " ++ suffix
-toMessage (ItemPickedUp item) = Just $ "You have picked up a " ++ item ++ "."
-toMessage (MenuChange Equip) = Just $ "Pick an item to equip."
+toMessage (ItemsSeen items) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""
+                              in  Just $ "You see a " ++ show (head items) ++ ". " ++ suffix
+toMessage (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ show item ++ "."
+toMessage (MenuChange Equipment) = Just $ "Pick an item to equip."
 toMessage otherwise = Nothing
-

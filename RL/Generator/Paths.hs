@@ -6,7 +6,7 @@ import RL.Map
 import qualified RL.Generator.Cells as C
 
 import Control.Monad (forM)
-import Data.List (sortBy, deleteBy, filter, nub)
+import Data.List (sortBy, deleteBy, nub)
 import Data.Maybe (listToMaybe)
 
 data Path = P Point Point deriving Eq

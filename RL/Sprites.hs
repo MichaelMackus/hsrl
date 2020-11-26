@@ -1,4 +1,4 @@
-module RL.Game.Sprites (
+module RL.Sprites (
     Env(..),
     DLevel(..),
     getSprites
@@ -6,7 +6,7 @@ module RL.Game.Sprites (
 
 import RL.Game
 import RL.UI.Common as UI
-import RL.Util (enumerate, unenumerate2d)
+import RL.Util (enumerate)
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
@@ -24,10 +24,7 @@ blue   = (0, 0, 255)
 
 -- game is renderable
 getSprites :: Env -> [Sprite]
-getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
-    where
-        -- dungeon is renderable
-        getSprites' d = getMapSprites d
+getSprites e = getMapSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
 
 -- helper functions since map/mob isn't renderable without context
 
@@ -40,7 +37,6 @@ getSprites e = getSprites' (level e) ++ getMsgSprites (events e) ++ getStatusSpr
 getMapSprites :: DLevel -> [Sprite]
 getMapSprites lvl = map sprite (M.toList (tiles lvl))
     where
-        -- sprite (p, t) = tileOrMobSprite lvl p
         sprite (p, t) = if canPlayerSee p then tileOrMobSprite lvl p
                         else seenTileSprite lvl p
         canPlayerSee = canSee lvl (player lvl)
@@ -103,7 +99,7 @@ otherWindows e
 
 getMsgSprites :: [Event] -> [Sprite]
 getMsgSprites evs = let recentMsgs = catMaybes (map toMessage (getEventsAfterTurns 2 evs))
-                        staleMsgs  = catMaybes (map toMessage (getEventsAfterTurns 6 (getEventsBeforeTurns 2 evs)))
+                        staleMsgs  = catMaybes (map toMessage (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
                     in  mkColoredSprites (0, 15) . reverse . take 9 $ msgs
 

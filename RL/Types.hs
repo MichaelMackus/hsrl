@@ -2,7 +2,7 @@ module RL.Types where
 
 import Data.List (sort,unfoldr)
 
-data Dice  = D Int Sides
+data Dice  = D Int Sides deriving Eq
 type Sides = Int
 
 type AC = Int
@@ -15,6 +15,7 @@ type Point  = (Int, Int)
 type Offset = Point
 
 data VerticalDirection = Up | Down deriving (Eq, Show)
+data Dir = North | East | South | West | NE | NW | SE | SW deriving (Eq)
 
 -- dungeon cell box (w x h)
 type Dimension = (Width, Height)
@@ -27,6 +28,16 @@ x w h = (w, h)
 
 -- Point helpers
 type Slope = Double
+
+addDir :: Dir -> Point -> Point
+addDir North (ox, oy) = (ox, oy - 1)
+addDir South (ox, oy) = (ox, oy + 1)
+addDir East  (ox, oy) = (ox + 1, oy)
+addDir West  (ox, oy) = (ox - 1, oy)
+addDir NE    (ox, oy) = (ox + 1, oy - 1)
+addDir SE    (ox, oy) = (ox + 1, oy + 1)
+addDir NW    (ox, oy) = (ox - 1, oy - 1)
+addDir SW    (ox, oy) = (ox - 1, oy + 1)
 
 -- get y-intercept
 intercept :: Point -> Slope -> Double

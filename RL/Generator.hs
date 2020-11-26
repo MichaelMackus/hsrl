@@ -4,7 +4,6 @@ module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, mkGen
 
 import RL.Random
 
-import Control.Monad (ap, liftM)
 import Control.Monad.Cont
 import Control.Monad.Reader
 
