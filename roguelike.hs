@@ -73,7 +73,7 @@ main = do
     -- initialize game & launch game loop
     ui        <- initUI defaultUIConfig
     e         <- (`broadcast` NewGame) <$> nextLevel defaultConf
-    (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) $ broadcastEvents e [Vanished (player (level e))]
+    (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
 
     uiEnd ui
 
