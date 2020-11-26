@@ -65,50 +65,47 @@ getEvents disp env = do
     return $ evalRand (runReaderT (keyToEvents k m) env) g
 
 main = do
-        -- allow user to customize display if supported
-        flags <- getFlags
-        let initUI = if "vty" `elem` flags || "tty" `elem` flags then initTTYUI
-                     else initDefaultUI
+    -- allow user to customize display if supported
+    flags <- map (dropWhile (== '-')) . filter ("-" `isInfixOf`) <$> getArgs
+    let initUI = if "vty" `elem` flags || "tty" `elem` flags then initTTYUI
+                 else initDefaultUI
 
-        -- initialize game & launch game loop
-        ui        <- initUI defaultUIConfig
-        e         <- (`broadcast` NewGame) <$> nextLevel conf
-        (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
+    -- initialize game & launch game loop
+    ui        <- initUI defaultUIConfig
+    e         <- (`broadcast` NewGame) <$> nextLevel defaultConf
+    (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
 
-        uiEnd ui
+    uiEnd ui
 
-        -- print latest status messages
-        mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
+    -- print latest status messages
+    mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
 
-        -- print final text
-        if won then
-            putStrLn "Congratulations, you won the game!"
-        else
-            putStrLn "Goodbye!"
-    where
-        conf = DungeonConfig {
-            dwidth = 80,
-            dheight = 15,
-            maxTries = 10,
-            prevLevel = Nothing,
-            maxDepth  = 5,
-            mobConfig = MobConfig {
-                maxMobs   = 5,
-                maxMTries = 5,
-                difficultyRange = (2, 0)
-            },
-            itemConfig = ItemConfig {
-                maxItems = 10
-            },
-            playerConfig = PlayerConfig {
-                playerHp = 12,
-                playerFov = 5
-            }
-            -- TODO ItemConfig
-        }
+    -- print final text
+    if won then
+        putStrLn "Congratulations, you won the game!"
+    else
+        putStrLn "Goodbye!"
 
-        getFlags =
-            map (dropWhile (== '-')) . filter ("-" `isInfixOf`) <$> getArgs
+defaultConf = DungeonConfig {
+    dwidth = 80,
+    dheight = 15,
+    maxTries = 10,
+    prevLevel = Nothing,
+    maxDepth  = 5,
+    mobConfig = MobConfig {
+        maxMobs   = 5,
+        maxMTries = 5,
+        difficultyRange = (2, 0)
+    },
+    itemConfig = ItemConfig {
+        maxItems = 10
+    },
+    playerConfig = PlayerConfig {
+        playerHp = 12,
+        playerFov = 5
+    }
+    -- TODO ItemConfig
+}
 
 -- generate a new level
 nextLevel :: DungeonConfig -> IO Env
@@ -121,7 +118,6 @@ nextLevel conf = do
         mkEnv lvl g = Env {
             dungeon = DTip lvl,
             level   = lvl,
-            rng     = g,
             events  = [],
             menu    = NoMenu
         }
