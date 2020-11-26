@@ -62,10 +62,12 @@ sdlUI window renderer font cfg = UI
         mods <- toMods <$> getModState
         let k = foldl' f Nothing es
             f def e = case eventToKey e of
-                        Nothing           -> def
-                        Just (KeyChar ch) -> if KeyModShift `elem` mods then Just (KeyChar (toUpper ch))
-                                             else Just (KeyChar (toLower ch))
-                        Just k            -> Just k
+                        Nothing                -> def
+                        Just (KeyChar ch)      -> if KeyModShift `elem` mods then Just (KeyChar (toUpper ch))
+                                                  else Just (KeyChar (toLower ch))
+                        Just (KeyMouseLeft  p) -> Just $ KeyMouseLeft  (translateToWorld cfg p)
+                        Just (KeyMouseRight p) -> Just $ KeyMouseRight (translateToWorld cfg p)
+                        Just k                 -> Just k
             waitForInput = uiInput (sdlUI window renderer font cfg)
         maybe waitForInput (return . (,mods)) k
     }
@@ -79,6 +81,12 @@ toMods mod = let shift = keyModifierLeftShift mod || keyModifierRightShift mod |
                            ,if ctrl  then Just KeyModCtrl  else Nothing
                            ,if alt   then Just KeyModAlt   else Nothing
                            ,if super then Just KeyModSuper else Nothing]
+
+-- translate point from pixel coordinates to tile (world) coordinates
+translateToWorld :: UIConfig -> (Int, Int) -> (Int, Int)
+translateToWorld cfg (x, y) = let x' = floor (fromIntegral x / fromIntegral (fontSize cfg))
+                                  y' = floor (fromIntegral y / fromIntegral (fontSize cfg))
+                              in  (x', y')
 
 eventToKey :: Event -> Maybe Key
 eventToKey e = case e of
@@ -95,7 +103,7 @@ eventToKey e = case e of
                                 in  if isAlpha k  then Just (KeyChar ch) -- Ctrl doesn't get TextInputEvent
                                     else               Nothing           -- So we can get capitalized symbol from TextInputEvent
     (Event _ (TextInputEvent (TextInputEventData _ t))) -> Just (textToKey t)
-    (Event _ (MouseButtonEvent ed))
+    (Event _ (MouseButtonEvent ed)) -- TODO transform from pixel coordinates to tile coordinates
         | mouseButtonEventMotion ed == Released && mouseButtonEventButton ed == ButtonLeft ->
             let (P (V2 x y)) = mouseButtonEventPos ed
             in  Just (KeyMouseLeft (fromIntegral x, fromIntegral y))
