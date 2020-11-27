@@ -100,7 +100,6 @@ itemRarity d (Item "Plate Mail"       _) = (1 % 10)
 itemRarity d (Item "Full Plate"       _) = (1 % 50)
 itemRarity d (Item "Small Shield"     _) = (1 % 10)
 itemRarity d (Item "Tower Shield"     _) = (1 % 10)
-itemRarity d (Item "Helmet"           _) = (2 % 10)
 itemRarity d (Item _         (Potion t)) = potionRarities t
 itemRarity d (Item _         (Scroll t)) = scrollRarities t
 itemRarity d otherwise = (0 % 10)

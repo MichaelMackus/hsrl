@@ -52,7 +52,7 @@ data ArmorProperties = ArmorProperties {
     defense :: Int, -- this is opposite of traditional AD&D - this number is subtracted by 10 for the *true* AC of a mob
     slot    :: ArmorSlot
 } deriving Eq
-data ArmorSlot = Head | Chest | Hand deriving Eq
+data ArmorSlot = Chest | Hand deriving Eq
 
 inventoryLetters :: [Char]
 inventoryLetters = map toEnum ([fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z'])
@@ -118,8 +118,7 @@ armors = [ armor "Leather Armor" (ArmorProperties 2 Chest),
            armor "Plate Mail" (ArmorProperties 8 Chest),
            armor "Full Plate" (ArmorProperties 10 Chest),
            armor "Small Shield" (ArmorProperties 1 Hand),
-           armor "Tower Shield" (ArmorProperties 2 Hand),
-           armor "Helmet" (ArmorProperties 1 Head) ]
+           armor "Tower Shield" (ArmorProperties 2 Hand) ]
 
 potions = [ potion "Blue" Healing,
             potion "Yellow" Life,

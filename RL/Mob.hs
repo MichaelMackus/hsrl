@@ -5,7 +5,7 @@ import RL.Types
 import RL.Util (enumerate1)
 
 import Data.List (find)
-import Data.Maybe (catMaybes, maybeToList)
+import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
 
 -- player/mobs
 type HP     = Int
@@ -35,9 +35,10 @@ data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF deriving Eq
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
-    wearing :: [Item]
+    wearing :: Maybe Item,
+    shield :: Maybe Item
 }
-equipmentToList eq = maybeToList (wielding eq) ++ wearing eq
+equipmentToList eq = catMaybes [wielding eq, wearing eq, shield eq]
 
 instance Eq Mob where
     m == m' = mobId m == mobId m'
@@ -67,7 +68,7 @@ isVisible m = not (Invisible `elem` flags m)
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
 mobAC :: Mob -> AC
-mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties . wearing . equipment $ m
+mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties $ catMaybes [wearing (equipment m), shield (equipment m)]
 
 -- configure default player
 mkPlayer :: HP -> Point -> Radius -> Player
@@ -79,7 +80,7 @@ mkPlayer hp at fov = mob {
     mhp = hp,
     at = at,
     fov = fov,
-    equipment = MobEquipment (findItemByName "Mace" weapons) (maybeToList $ findItemByName "Leather Armor" armors)
+    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) Nothing
 }
 
 isPlayer :: Mob -> Bool
@@ -102,7 +103,7 @@ mob = Mob {
     hearing = 10.0,
     flags = [],
     inventory = [],
-    equipment = MobEquipment Nothing [],
+    equipment = MobEquipment Nothing Nothing Nothing,
     destination = Nothing,
     isTelepathicOn = []
 }
@@ -136,3 +137,9 @@ findMob n = find ((n==) . mobId)
 moveMob :: Point -> Mob -> Mob
 moveMob p m = let dest = if destination m == Just p then Nothing else destination m
               in  m { at = p, destination = dest }
+
+isShielded :: Mob -> Bool
+isShielded m = isJust (shield (equipment m))
+
+handsFull :: Mob -> Bool
+handsFull = maybe False (twoHanded . fromJust . weaponProperties) . wielding . equipment

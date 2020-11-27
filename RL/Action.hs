@@ -4,15 +4,16 @@ import RL.Event
 import RL.Game
 import RL.Random
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.List as L
 
 attack :: MonadRandom r => Mob -> Mob -> r [Event]
 attack attacker target = do
     let weap = weaponProperties =<< wielding (equipment attacker)
+        weapBonus = fromMaybe 0 (bonus <$> weap)
     -- attack roll
     atk <- roll (1 `d` 20)
-    if atk + (fromMaybe 0 (bonus <$> weap)) >= thac0 attacker - mobAC target || atk == 20 then do
+    if atk + weapBonus >= thac0 attacker - mobAC target || atk == 20 then do
         -- hit!
         let dmgDie  = maybe (baseDmg attacker) dmgd weap
             crit    = atk == (maybe 20 critRange weap)
@@ -28,10 +29,18 @@ attack attacker target = do
 
 applyItem :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
 applyItem lvl m i =
-    if isEquippable i then return [Equipped m i]
-    else if isDrinkable i then drinkPotion m i
-    else if isReadable i then readScroll lvl m i
-    else return []
+        if isEquippable i then return equipped
+        else if isDrinkable i then drinkPotion m i
+        else if isReadable i then readScroll lvl m i
+        else return []
+    where
+        equipped = let isTwoH = maybe False twoHanded . weaponProperties
+                       isShld = maybe False ((==Hand) . slot) . armorProperties
+                       wield  = fromJust (wielding (equipment m))
+                       shld   = fromJust (shield (equipment m))
+                       wieldE = if isTwoH i && isShielded m then [EquipmentRemoved m shld] else []
+                       shldE  = if isShld i && handsFull  m then [EquipmentRemoved m wield] else []
+                    in wieldE ++ shldE ++ [Equipped m i]
 
 drinkPotion :: MonadRandom r => Mob -> Item -> r [Event]
 drinkPotion m i = do

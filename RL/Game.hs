@@ -88,6 +88,7 @@ instance Client Mob where
     broadcast m (DestinationAbrupted m' p) | m == m' = m { destination = Nothing }
     broadcast m (ItemPickedUp m' i)        | m == m' = m { inventory = inventory m ++ [i] }
     broadcast m (Equipped m' i)            | m == m' = equip m i
+    broadcast m (EquipmentRemoved m' i)    | m == m' = removeEquip m i
     broadcast m (Read     m' i)            | m == m' = poofItem m i
     broadcast m (Teleported m' to)         | m == m' = m { at = to }
     broadcast m (GainedTelepathy lvl)   | isPlayer m = m { isTelepathicOn = depth lvl:isTelepathicOn m }
@@ -112,11 +113,23 @@ equip m i = if isWeapon i then
                         inventory = maybeToList weap ++ L.delete i (inventory m) }
             else if isArmor i then
                 let s     = slot (fromJust (armorProperties i))
-                    worn' = L.find   ((Just s ==) . armorSlot) (wearing (equipment m))
-                    eqp'  = L.filter ((Just s /=) . armorSlot) (wearing (equipment m))
-                in  m { equipment = (equipment m) { wearing = i:eqp' },
+                    worn' = if Chest == s then wearing (equipment m) else shield (equipment m)
+                    eqp'  = if Chest == s then (equipment m) { wearing = Just i }
+                            else               (equipment m) { shield  = Just i }
+                in  m { equipment = eqp',
                         inventory = maybeToList worn' ++ (L.delete i $ inventory m) }
             else m
+
+removeEquip :: Mob -> Item -> Mob
+removeEquip m i = if isWeapon i then
+                      m { equipment = (equipment m) { wielding = Nothing }, inventory = i:inventory m }
+                  else if isArmor i then
+                      let s     = slot (fromJust (armorProperties i))
+                          eqp'  = if Chest == s then (equipment m) { wearing = Nothing }
+                                  else               (equipment m) { shield  = Nothing }
+                      in  m { equipment = eqp', inventory = i:inventory m }
+                  else m
+
 
 poofItem :: Mob -> Item -> Mob
 poofItem m i = m { inventory = L.delete i (inventory m) }
