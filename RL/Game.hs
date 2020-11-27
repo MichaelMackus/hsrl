@@ -110,11 +110,13 @@ equip m i = if isWeapon i then
                 let weap = wielding (equipment m)
                 in  m { equipment = (equipment m) { wielding = Just i },
                         inventory = maybeToList weap ++ L.delete i (inventory m) }
-            else
-                -- TODO replace same armor slot
-                let armor = wearing (equipment m)
-                in  m { equipment = (equipment m) { wearing = [i] },
-                        inventory = armor ++ L.delete i (inventory m) }
+            else if isArmor i then
+                let s     = slot (fromJust (armorProperties i))
+                    worn' = L.find   ((Just s ==) . armorSlot) (wearing (equipment m))
+                    eqp'  = L.filter ((Just s /=) . armorSlot) (wearing (equipment m))
+                in  m { equipment = (equipment m) { wearing = i:eqp' },
+                        inventory = maybeToList worn' ++ (L.delete i $ inventory m) }
+            else m
 
 poofItem :: Mob -> Item -> Mob
 poofItem m i = m { inventory = L.delete i (inventory m) }

@@ -52,7 +52,7 @@ data ArmorProperties = ArmorProperties {
     defense :: Int, -- this is opposite of traditional AD&D - this number is subtracted by 10 for the *true* AC of a mob
     slot    :: ArmorSlot
 } deriving Eq
-data ArmorSlot = Head | Chest | Legs | Feet | Hands deriving Eq
+data ArmorSlot = Head | Chest | Hand deriving Eq
 
 inventoryLetters :: [Char]
 inventoryLetters = map toEnum ([fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z'])
@@ -63,6 +63,9 @@ fromInventoryLetter ch is = L.lookup ch (zip inventoryLetters is)
 armorProperties :: Item -> Maybe ArmorProperties
 armorProperties (Item _ (Armor prop)) = Just prop
 armorProperties otherwise             = Nothing
+
+armorSlot :: Item -> Maybe ArmorSlot
+armorSlot i = slot <$> armorProperties i
 
 findItemByName :: String -> [Item] -> Maybe Item
 findItemByName n = L.find f
@@ -113,7 +116,10 @@ weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20),
 armors = [ armor "Leather Armor" (ArmorProperties 2 Chest),
            armor "Chain Mail" (ArmorProperties 6 Chest),
            armor "Plate Mail" (ArmorProperties 8 Chest),
-           armor "Full Plate" (ArmorProperties 10 Chest) ]
+           armor "Full Plate" (ArmorProperties 10 Chest),
+           armor "Small Shield" (ArmorProperties 1 Hand),
+           armor "Tower Shield" (ArmorProperties 2 Hand),
+           armor "Helmet" (ArmorProperties 1 Head) ]
 
 potions = [ potion "Blue" Healing,
             potion "Yellow" Life,

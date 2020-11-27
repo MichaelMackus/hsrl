@@ -136,4 +136,3 @@ findMob n = find ((n==) . mobId)
 moveMob :: Point -> Mob -> Mob
 moveMob p m = let dest = if destination m == Just p then Nothing else destination m
               in  m { at = p, destination = dest }
-
