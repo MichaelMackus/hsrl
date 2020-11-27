@@ -17,7 +17,7 @@ vtyUI cfg = do
     disp   <- mkVty vtyCfg
     return UI
         { uiRender = \sprites ->
-            let image         = vertCat (charsToImages rows)
+            let image         = vertCat (map flattenSprites rows)
                 bg            = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
                 (lenX, lenY)  = (maxX sprites, maxY sprites)
                 initRows      = replicate lenY (replicate lenX (' ', (0,0,0), (0,0,0)))
@@ -49,13 +49,22 @@ vtyUI cfg = do
 
 type CharSprite = (Char, RL.UI.Common.Color, RL.UI.Common.Color)
 
-charsToImages :: [[CharSprite]] -> [Image]
-charsToImages = map (horizCat . map toImage)
--- charsToImages = map (string defAttr . map ch) -- FIXME combining strings is faster
-    where toImage :: CharSprite -> Image
-          toImage spr        = char (color spr) (ch spr)
-          color  (ch, c, c') = withForeColor (withBackColor defAttr (uncurry3 rgbColor c')) (uncurry3 rgbColor c)
+flattenSprites :: [CharSprite] -> Image
+flattenSprites = horizCat . map toImage . foldr f []
+    where f c []    = [toSprite c]
+          f c (h:t) = if fgClr c == spriteFgColor h && bgClr c == spriteBgColor h then (concatSpr c h:t)
+                      else toSprite c:h:t
+          toImage spr = string (color spr) (spriteStr spr)
+          fgClr  (ch, c, c') = c
+          bgClr  (ch, c, c') = c'
+          color  spr         = withForeColor (withBackColor defAttr (uncurry3 rgbColor (spriteBgColor spr))) (uncurry3 rgbColor (spriteFgColor spr))
           ch     (c , _, _ ) = c
+
+toSprite :: CharSprite -> Sprite
+toSprite (ch, c, c') = Sprite (-1,-1) (ch:"") c c'
+
+concatSpr :: CharSprite -> Sprite -> Sprite
+concatSpr (c, _, _) spr = spr { spriteStr = c:spriteStr spr }
 
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 f (a,b,c) = f a b c
