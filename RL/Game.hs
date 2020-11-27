@@ -91,7 +91,6 @@ instance Client Mob where
     broadcast m (EquipmentRemoved m' i)    | m == m' = removeEquip m i
     broadcast m (Read     m' i)            | m == m' = poofItem m i
     broadcast m (Teleported m' to)         | m == m' = m { at = to }
-    broadcast m (GainedTelepathy lvl)   | isPlayer m = m { isTelepathicOn = depth lvl:isTelepathicOn m }
     broadcast m (Drank    m' i)            | m == m' = poofItem m i
     broadcast m (Healed m' amt)            | m == m' = m { hp = min (mhp m) (hp m + amt) }
     broadcast m (GainedLife m' amt)        | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
@@ -99,6 +98,7 @@ instance Client Mob where
     broadcast m (Vanished m')              | m == m' = m { flags = L.nub (Invisible:flags m) }
     broadcast m (Confused m')              | m == m' = m { flags = L.nub (ConfusedF:flags m) }
     broadcast m (Blinded m')               | m == m' = m { flags = L.nub (BlindedF:flags m) }
+    broadcast m (GainedTelepathy m')       | m == m' = m { flags = L.nub (TelepathicF:flags m) }
 
     broadcast m otherwise = m
 
@@ -154,11 +154,12 @@ changeLevel env v lvl = do
 
 -- remove stale flags from mobs/player at end of turn
 updateFlags :: Env -> Env
-updateFlags env = let p                 = player (level env)
-                      isStale Invisible = turnsSince (== Vanished p) (events env) >= 100
-                      isStale ConfusedF = turnsSince (== Confused p) (events env) >= 10
-                      isStale BlindedF  = turnsSince (== Blinded  p) (events env) >= 50
-                      isStale otherwise = False
+updateFlags env = let p                   = player (level env)
+                      isStale Invisible   = turnsSince (== Vanished p) (events env) >= 100
+                      isStale ConfusedF   = turnsSince (== Confused p) (events env) >= 10
+                      isStale BlindedF    = turnsSince (== Blinded  p) (events env) >= 50
+                      isStale TelepathicF = turnsSince (== GainedTelepathy p) (events env) >= 200
+                      isStale otherwise   = False
                   in  env { level = (level env) { player = p { flags = L.filter (not . isStale) (flags p) } } }
 
 -- update newly seen things at end of turn

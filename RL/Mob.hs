@@ -28,10 +28,9 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    destination    :: Maybe Point, -- destination point
-    isTelepathicOn :: [Int] -- dungeon levels mob is telepathic (can see all mobs) on
+    destination    :: Maybe Point -- destination point
 }
-data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF deriving Eq
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -61,6 +60,9 @@ isBlinded m = BlindedF `elem` flags m
 
 isConfused :: Mob -> Bool
 isConfused m = ConfusedF `elem` flags m
+
+isTelepathic :: Mob -> Bool
+isTelepathic m = TelepathicF `elem` flags m
 
 isVisible :: Mob -> Bool
 isVisible m = not (Invisible `elem` flags m)
@@ -104,8 +106,7 @@ mob = Mob {
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing Nothing Nothing,
-    destination = Nothing,
-    isTelepathicOn = []
+    destination = Nothing
 }
 
 -- helper functions for mob management

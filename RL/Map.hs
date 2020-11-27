@@ -203,27 +203,17 @@ isObstructed lvl p p' =
 -- can mob see a point on the map?
 canSee :: DLevel -> Mob -> Point -> Bool
 canSee lvl m p =
-    if distance (at m) p > fov m then
-        False
-    else
-        not (isObstructed lvl (at m) p)
-
--- can mob see a point on the map with telepathy?
-canSeeTelepathic :: DLevel -> Mob -> Point -> Bool
-canSeeTelepathic lvl m p =
-    -- test for telepathic sight
-    let m'           = findMobAt p lvl
-        isTelepathic = isJust m' && depth lvl `elem` isTelepathicOn m
-    in  canSee lvl m p || isTelepathic
-
--- can mob see a point on the map if blind?
-canSeeBlind :: DLevel -> Mob -> Point -> Bool
-canSeeBlind lvl m p =
-    -- test for telepathic sight
     let isBlind = BlindedF `elem` flags m
     in  if isBlind then distance (at m) p < 2
-        else canSee lvl m p
+        else withinFov lvl m p
 
+withinFov :: DLevel -> Mob -> Point -> Bool
+withinFov lvl m p = distance (at m) p <= fov m && not (isObstructed lvl (at m) p)
+
+
+-- can mob see a point on the map with telepathy?
+canSense :: DLevel -> Mob -> Point -> Bool
+canSense lvl m p = isTelepathic m && isJust (findMobAt p lvl)
 
 mapWidth :: DLevel -> Int
 mapWidth lvl = length (toTiles lvl !! 0)

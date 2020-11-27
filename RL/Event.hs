@@ -8,7 +8,7 @@ import qualified Data.List as L
 
 data Event = Attacked Mob Mob | Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
-    | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy DLevel
+    | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy Mob
     | DestinationSet Mob Point | DestinationAbrupted Mob Point
     | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
     | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
@@ -82,5 +82,5 @@ toMessage (CastFire        m n) | isPlayer m = Just $ "Roaring flames erupt all 
 toMessage (CastLightning   m n) | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
 toMessage (Teleported      m p) | isPlayer m = Just $ "You feel disoriented."
 toMessage (Mapped          lvl)              = Just $ "You suddenly understand the layout of the current level."
-toMessage (GainedTelepathy lvl)              = Just $ "You sense nearby danger."
+toMessage (GainedTelepathy m)   | isPlayer m = Just $ "You sense nearby danger."
 toMessage otherwise = Nothing

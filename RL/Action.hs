@@ -67,20 +67,20 @@ readScroll lvl m i = do
              Just Fire -> do
                  dmg <- roll (6 `d` 6)
                  let p    = player lvl
-                     ms   = L.filter (\m -> canSee lvl p (at m)) (mobs lvl)
+                     ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
                      dmgE = map (\m -> Damaged p m dmg) ms
                  return (CastFire m dmg:dmgE)
              Just Lightning -> do
                  dmg <- roll (6 `d` 6)
                  let p    = player lvl
-                     ms   = L.filter (\m -> canSee lvl p (at m)) (mobs lvl)
+                     ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
                      dmgE = map (\m -> Damaged p m dmg) ms
                  return (CastLightning m dmg:dmgE)
              Just Teleport     -> do
                  p <- randomPassable lvl
                  return [Teleported m p]
              Just Mapping      -> return [Mapped lvl]
-             Just Telepathy    -> return [GainedTelepathy lvl]
+             Just Telepathy    -> return [GainedTelepathy m]
              otherwise -> return []
     return ([Read m i] ++ e)
 

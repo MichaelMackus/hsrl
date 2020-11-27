@@ -42,7 +42,7 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
     where
         sprite (p, t)  = if canPlayerSee p then tileOrMobSprite lvl p
                          else seenTileSprite lvl p
-        canPlayerSee p = canSeeBlind lvl (player lvl) p && canSeeTelepathic lvl (player lvl) p
+        canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
 
         tileColor Floor = white
         tileColor Cavern = grey
