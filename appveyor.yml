@@ -24,7 +24,7 @@ environment:
   # - ARGS: "--resolver lts-13"
   # - ARGS: "--resolver lts-14"
   # - ARGS: "--resolver lts-15"
-  - ARGS: "--resolver lts-16.8"
+  - ARGS: "--resolver lts-16.23"
   #- ARGS: "--resolver nightly"
 
 test_script:
