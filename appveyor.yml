@@ -1,5 +1,3 @@
-build: off
-
 before_test:
 # http://help.appveyor.com/discussions/problems/6312-curl-command-not-found
 - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
@@ -27,11 +25,24 @@ environment:
   - ARGS: "--resolver lts-16.23"
   #- ARGS: "--resolver nightly"
 
-test_script:
+artifacts:
+  - path: hsrl.exe
+    name: hsrl
+    type: zip
+
+  - path: .stack-work
+    name: stack
+    type: zip
+
+build_script:
 
 # Install toolchain, but do it silently due to lots of output
 - stack %ARGS% setup > nul
+- stack exec --no-terminal -- pacman -Syu > nul
+- stack exec --no-terminal -- pacman -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2
 
 # The ugly echo "" hack is to avoid complaints about 0 being an invalid file
 # descriptor
-- echo "" | stack %ARGS% --no-terminal test
+- echo "" | stack %ARGS% --no-terminal build
+
+- stack --local-bin-path . install hsrl
