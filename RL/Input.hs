@@ -31,6 +31,18 @@ keyToEvents k m = do
             (KeyChar 'y')     -> moveOrAttack NW
             (KeyChar 'b')     -> moveOrAttack SW
             (KeyChar 'n')     -> moveOrAttack SE
+            (KeyChar '8')     -> moveOrAttack North
+            (KeyChar '2')     -> moveOrAttack South
+            (KeyChar '4')     -> moveOrAttack West
+            (KeyChar '6')     -> moveOrAttack East
+            (KeyChar '9')     -> moveOrAttack NE
+            (KeyChar '7')     -> moveOrAttack NW
+            (KeyChar '1')     -> moveOrAttack SW
+            (KeyChar '3')     -> moveOrAttack SE
+            KeyUp             -> moveOrAttack North
+            KeyRight          -> moveOrAttack East
+            KeyLeft           -> moveOrAttack West
+            KeyDown           -> moveOrAttack South
             -- (KeyChar 'r')  -> Restart
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
             (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
