@@ -31,6 +31,8 @@ build_script:
 # descriptor
 - echo "" | stack %ARGS% --no-terminal build
 
+- curl -sS -ofreetype.dll https://github.com/PistonDevelopers/binaries/raw/master/x86_64/freetype.dll
+- curl -sS -oFREETYPE-LICENSE.txt https://raw.githubusercontent.com/PistonDevelopers/binaries/master/GPLv2.TXT
 - stack --local-bin-path . install hsrl
-- 7z a -tzip hsrl.zip hsrl.exe res LICENSE
+- 7z a -tzip hsrl.zip hsrl.exe res LICENSE freetype.dll FREETYPE-LICENSE.txt
 - forfiles /p C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows /s /m "SDL*.dll" /c "cmd /c 7z.exe a -tzip C:\stack\hsrl.zip @file"
