@@ -21,13 +21,8 @@ environment:
   #- ARGS: "--resolver nightly"
 
 artifacts:
-  - path: hsrl.exe
+  - path: hsrl.zip
     name: hsrl
-    type: zip
-
-  - path: .stack-work
-    name: stack
-    type: zip
 
 before_build:
 # http://help.appveyor.com/discussions/problems/6312-curl-command-not-found
@@ -48,3 +43,4 @@ build_script:
 - echo "" | stack %ARGS% --no-terminal build
 
 - stack --local-bin-path . install hsrl
+- 7z a hsrl.zip hsrl.exe "C:\Program Files\Git\mingw64\bin\SDL2.dll" "C:\Program Files\Git\mingw64\bin\SDL2_ttf.dll"
