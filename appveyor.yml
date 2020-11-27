@@ -40,8 +40,8 @@ build_script:
 
 # Install toolchain, but do it silently due to lots of output
 - stack %ARGS% setup > nul
-- stack exec --no-terminal -- pacman -Syu > nul
-- stack exec --no-terminal -- pacman -S mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2
+- stack exec --no-terminal -- pacman -Syu --noconfirm > nul
+- stack exec --no-terminal -- pacman -S --noconfirm mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2
 
 # The ugly echo "" hack is to avoid complaints about 0 being an invalid file
 # descriptor
