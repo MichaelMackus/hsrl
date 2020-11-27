@@ -98,12 +98,15 @@ potionType otherwise = Nothing
 
 itemTypes = [ Weapon undefined, Armor undefined, Potion undefined, Scroll undefined, Tool ]
 
+isShield :: Item -> Bool
+isShield i = maybe False ((== Hand) . slot) (armorProperties i)
+
 itemSymbol :: Item -> Char
-itemSymbol (Item _ (Weapon _)) = ')'
-itemSymbol (Item _ (Armor _)) = ']'
-itemSymbol (Item _ (Potion _)) = '!'
-itemSymbol (Item _ (Scroll _)) = '?'
-itemSymbol (Item _ (Tool)) = '/'
+itemSymbol   (Item _ (Weapon _)) = ')'
+itemSymbol i@(Item _ (Armor  _)) = if isShield i then '0' else ']'
+itemSymbol   (Item _ (Potion _)) = '!'
+itemSymbol   (Item _ (Scroll _)) = '?'
+itemSymbol   (Item _ (Tool)) = '/'
 
 weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20),
             weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19),
@@ -125,8 +128,8 @@ potions = [ potion "Blue" Healing,
             potion "Black" Acid,
             potion "Red" Strength,
             potion "White" Invisibility,
-            potion "Grey" Confusion,
-            potion "Silver" Darkness ]
+            potion "Green" Confusion,
+            potion "Orange" Darkness ]
 
 scrolls = [ scroll "READ ME" Fire,
             scroll "HEHE" Lightning,

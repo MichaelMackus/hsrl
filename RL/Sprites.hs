@@ -12,15 +12,18 @@ import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
 import qualified Data.Map as M
 
-white  = (255, 255, 255)
-grey   = (200, 200, 200)
-dgrey  = (125, 125, 125)
-black  = (0, 0, 0)
-purple = (204,0,204)
-green  = (0,204,0)
-yellow = (255,255,0)
-red    = (255,0,0)
-blue   = (0, 0, 255)
+white   = (255, 255, 255)
+grey    = (200, 200, 200)
+dgrey   = (125, 125, 125)
+black   = (0, 0, 0)
+purple  = (204,0,204)
+green   = (0,204,0)
+yellow  = (255,255,0)
+red     = (255,0,0)
+blue    = (0, 0, 255)
+brown   = (153, 76, 0)
+orange  = (255, 128, 0)
+lyellow = (255, 255, 204)
 
 -- game is renderable
 getSprites :: Env -> [Sprite]
@@ -51,7 +54,29 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
         mobColor "Goblin" = green
         mobColor "Grid Bug" = purple
         mobColor "Orc" = yellow
+        mobColor "Zombie" = dgrey
         mobColor otherwise = white
+
+        itemColor (Item "Blue"          (Potion _)) = blue
+        itemColor (Item "Yellow"        (Potion _)) = yellow
+        itemColor (Item "Black"         (Potion _)) = dgrey
+        itemColor (Item "Red"           (Potion _)) = red
+        itemColor (Item "White"         (Potion _)) = white
+        itemColor (Item "Green"         (Potion _)) = green
+        itemColor (Item "Orange"        (Potion _)) = orange
+        itemColor (Item "Leather Armor" (Armor  _)) = brown
+        itemColor (Item "Plate Mail"    (Armor  _)) = white
+        itemColor (Item "Full Plate"    (Armor  _)) = white
+        itemColor (Item "Small Shield"  (Armor  _)) = grey
+        itemColor (Item "Tower Shield"  (Armor  _)) = white
+        itemColor (Item n               (Armor  _)) = grey
+        itemColor (Item "Quarterstaff"  (Weapon _)) = brown
+        itemColor (Item "Dagger"        (Weapon _)) = dgrey
+        itemColor (Item "Mace"          (Weapon _)) = grey
+        itemColor (Item "Ornate Sword"  (Weapon _)) = yellow
+        itemColor (Item n               (Weapon _)) = lyellow
+        itemColor (Item n               (Scroll _)) = white
+        itemColor otherwise = white
 
         tileSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         tileSprite lvl p = case findTileAt p lvl of
@@ -59,7 +84,7 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
                                Nothing -> Nothing
         itemSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         itemSprite lvl p = case findItemsAt p lvl of
-                               (i:_) -> Just (Sprite p (itemSymbol i:"") blue black)
+                               (i:_) -> Just (Sprite p (itemSymbol i:"") (itemColor i) black)
                                []    -> Nothing
         mobSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         mobSprite lvl p = case findTileOrMob p lvl of
