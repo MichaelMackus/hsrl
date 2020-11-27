@@ -32,4 +32,4 @@ build_script:
 - echo "" | stack %ARGS% --no-terminal build
 
 - stack --local-bin-path . install hsrl
-- 7z a hsrl.zip hsrl.exe "C:\Program Files\Git\mingw64\bin\SDL2.dll" "C:\Program Files\Git\mingw64\bin\SDL2_ttf.dll"
+- 7z a hsrl.zip hsrl.exe C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows\*\mingw64\lib\*.dll
