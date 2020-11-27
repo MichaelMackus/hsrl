@@ -25,7 +25,7 @@ build_script:
 - stack %ARGS% setup > nul
 - stack exec --no-terminal -- pacman -Syu --noconfirm > nul
 - stack exec --no-terminal -- pacman -S   --noconfirm mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_ttf
-- pkg-config --libs sdl2 --libs SDL2_ttf
+- stack exec -- pkg-config --libs sdl2 --libs SDL2_ttf
 
 # The ugly echo "" hack is to avoid complaints about 0 being an invalid file
 # descriptor
