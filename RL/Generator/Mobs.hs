@@ -64,10 +64,11 @@ generateMob diff = do
         return Nothing
 
 updateFlags :: DLevel -> Mob -> Mob
-updateFlags lvl m = let maxDist = 10
-                        pDist = distance (at m) (at (player lvl))
-                        flags = if pDist >= maxDist then [Sleeping] else []
-                    in  m { flags = flags }
+updateFlags lvl m = m { flags = [Sleeping] }
+-- updateFlags lvl m = let maxDist = 10
+--                         pDist = distance (at m) (at (player lvl))
+--                         flags = if pDist >= maxDist then [Sleeping] else []
+--                     in  m { flags = flags }
 
 dngMobs = [ mob {
                 mobName = "Kobold",
