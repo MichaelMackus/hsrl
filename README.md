@@ -4,36 +4,45 @@ Simple roguelike implemented in Haskell (pending more creative name). Inspired
 by roguelikes like [rogue](https://archive.org/details/msdos_Rogue_1983) and
 [nethack](http://www.nethack.org/).
 
-Uses [VTY](http://hackage.haskell.org/package/vty) for virtual terminal
-rendering/input. Will eventually move to
-[LambdaHack](http://hackage.haskell.org/package/LambdaHack), but I'm currently
-enjoying the basics of the VTY library.
+Uses [VTY](http://hackage.haskell.org/package/vty) for the terminal frontend
+and [SDL2](https://www.libsdl.org/) for the graphics frontend.
 
-# Dependencies
+There are Windows builds on the
+[releases](https://github.com/MichaelMackus/hsrl/releases) page. Download the
+hsrl.zip file, unzip it somewhere, and run the "hsrl" executable file.
 
-**Stack:**
+# Build
 
-The preferred way to install is with stack. `cd` into the directory, and
-do a `stack build`.
+[Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) is the
+supported way to build the game. You will also need the
+[SDL2](https://www.libsdl.org/) and
+[SDL2_ttf](https://www.libsdl.org/projects/SDL_ttf/) libraries installed for
+the graphical (default) frontend. After you have the proper dependencies, run
+`stack build` to build or `stack run` to build & run.
 
-**Manual Install:**
+Mac installation:
 
-* GHC (`brew install ghc` or `apt-get install ghc`)
-* Execute the following in a terminal (requires `apt-get install cabal-install`)
+```
+brew install sdl2 sdl2_ttf
+curl -sSL https://get.haskellstack.org/ | sh
+stack build
+```
 
-    cabal install monadrandom
-    cabal install vty
+Ubuntu installation:
 
+```
+sudo apt-get install libsdl2-dev libsdl2-ttf-dev
+curl -sSL https://get.haskellstack.org/ | sh
+stack build
+```
+
+If you would like the ability to run within a TTY enable the vty build flag:
+`stack build --flag hsrl:vty`.
 
 # Run
 
-Compile with `ghc -threaded roguelike.hs` or `stack build`. An executable `roguelike` should be created.
+`stack exec hsrl`
 
-# TODOs:
+To run within a TTY (needs to be built with VTY support):
 
-- [ ] AI
-- [ ] Dungeon generation
-- [ ] Level navigation
-- [ ] Items
-- [ ] Basic story
-- [ ] Save game
+`stack exec hsrl -- --tty`
