@@ -44,7 +44,7 @@ levelGenerator = do
 
         -- generate up/down stairs
         let lvl'    = iterMap f lvl
-            f p t   = if p == at player && not (isStair t) && isJust prev then (StairUp (fromJust prev))
+            f p t   = if p == at player && not (isStair t) then (StairUp prev)
                       else if Just p == lastP && d + 1 <= maxDepth conf then (StairDown nextLvl)
                            else t
             lastP   = cmid <$> listToMaybe (reverse (L.sortBy (comparing' (distance (at player))) cs))

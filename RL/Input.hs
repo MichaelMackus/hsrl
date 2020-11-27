@@ -8,7 +8,7 @@ import RL.Game
 import RL.Pathfinder
 import RL.Random
 
-import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing)
+import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMaybe)
 
 charFromKey :: Key -> Maybe Char
 charFromKey (KeyChar ch) = Just ch
@@ -86,14 +86,15 @@ pickup lvl =
 takeStairs :: VerticalDirection -> GameEnv (Maybe Event)
 takeStairs v = do
     lvl <- asks level
-    let p = player lvl
-    return $ do
-        t    <- findTileAt (at p) lvl
-        lvl' <- getStairLvl t
-        if (v == Up && isUpStair t) || (v == Down && isDownStair t) then
-            Just (StairsTaken v lvl')
-        else
-            Nothing
+    let p    = player lvl
+        t    = fromMaybe (error "Unable to find stairs tile") $ findTileAt (at p) lvl
+        lvl' = getStairLvl t
+    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust lvl' then
+        return $ StairsTaken v <$> lvl'
+    else if isNothing lvl' then
+        return $ Just Escaped
+    else
+        return Nothing
 
 automatePlayer :: Point -> GameEnv [Event]
 automatePlayer to = do

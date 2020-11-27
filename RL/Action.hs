@@ -12,14 +12,17 @@ attack attacker target = do
     let weap = weaponProperties =<< wielding (equipment attacker)
     -- attack roll
     atk <- roll (1 `d` 20)
-    if atk + (fromMaybe 0 (bonus <$> weap)) >= thac0 attacker - mobAC target then do
+    if atk + (fromMaybe 0 (bonus <$> weap)) >= thac0 attacker - mobAC target || atk == 20 then do
         -- hit!
-        dmg <- (+ strength attacker) <$> roll (maybe (baseDmg attacker) dmgd weap)
+        let dmgDie  = maybe (baseDmg attacker) dmgd weap
+            crit    = atk == (maybe 20 critRange weap)
+            -- the ornate sword automatically kills enemies on crit
+            critDmg = if (itemDescription <$> (wielding (equipment attacker))) == Just "Ornate Sword" then hp target else maxD dmgDie
+        dmg <- (+ strength attacker) <$> if crit then return critDmg else roll dmgDie
         let e = Damaged attacker target dmg
-        if isDead (target { hp = hp target - dmg }) then
-            return [e, Died target]
-        else
-            return [e]
+            critE = if crit then [Crit attacker target] else []
+            deadE = if isDead (target { hp = hp target - dmg }) then [Died target] else []
+        return $ [e] ++ critE ++ deadE
     else
         return [Missed attacker target]
 

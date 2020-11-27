@@ -3,7 +3,6 @@ module RL.Item where
 import RL.Types
 
 import Data.Maybe (isJust)
-import Data.Ratio
 import qualified Data.List as L
 
 data Item = Item {
@@ -41,7 +40,8 @@ itemTrueName i = show (i { itemDescription = (typeTrueName (itemType i)) })
 data WeaponProperties = WeaponProperties {
     dmgd :: Dice,
     bonus :: Int, -- positive OR negative bonus to attack & damage rolls
-    twoHanded :: Bool
+    twoHanded :: Bool,
+    critRange :: Int
 } deriving Eq
 
 weaponProperties :: Item -> Maybe WeaponProperties
@@ -102,11 +102,13 @@ itemSymbol (Item _ (Potion _)) = '!'
 itemSymbol (Item _ (Scroll _)) = '?'
 itemSymbol (Item _ (Tool)) = '/'
 
-weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False),
-            weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False),
-            weapon "Quarterstaff" (WeaponProperties (1 `d` 8) 0 True),
-            weapon "Sword" (WeaponProperties (1 `d` 8) 0 False),
-            weapon "Two-Handed Sword" (WeaponProperties (1 `d` 10) 0 True) ]
+weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20),
+            weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19),
+            weapon "Quarterstaff" (WeaponProperties (1 `d` 8) 0 True 20),
+            weapon "Sword" (WeaponProperties (1 `d` 8) 0 False 20),
+            weapon "Two-Handed Sword" (WeaponProperties (1 `d` 10) 0 True 20),
+            -- TODO generate on last level
+            weapon "Ornate Sword" (WeaponProperties (1 `d` 10) 3 False 19) ]
 
 armors = [ armor "Leather Armor" (ArmorProperties 2 Chest),
            armor "Chain Mail" (ArmorProperties 6 Chest),

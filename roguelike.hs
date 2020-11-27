@@ -77,8 +77,14 @@ main = do
 
     uiEnd ui
 
-    -- print latest status messages
+    putStrLn "Your inventory:"
+    putStrLn "---------------"
+    mapM_ putStrLn (map ((" - " ++) . itemTrueName) (inventory (player (level (e')))))
+    putStrLn ""
+    putStrLn "Latest status messages:"
+    putStrLn "-----------------------"
     mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
+    putStrLn ""
 
     -- print final text
     if won then

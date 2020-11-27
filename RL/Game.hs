@@ -161,8 +161,12 @@ updateSeen f env =
         -- check if there are items here
         is     = findItemsAt (at (player lvl)) lvl
         itemE  = if length is > 0 then [ItemsSeen is] else []
+        fresh  = not (recentGame p (events env)) && recentlyMoved p (events env)
+        picked = recentlyPicked p (events env)
     in  env { level  = lvl { seen = L.nub (seen' ++ seen lvl) },
-              events = if recentlyMoved p (events env) then stairE ++ itemE ++ events env else events env }
+              events = if fresh then stairE ++ itemE ++ events env
+                       else if picked then itemE ++ events env
+                       else events env }
 
 -- heal damaged mobs if mob not damaged 5 turns ago
 healDamaged :: Env -> Env
@@ -184,3 +188,19 @@ recentlyMoved m es = let es' = L.takeWhile (not . f) es
                          f (Moved m' _) = m == m'
                          f otherwise    = False
                      in  (== 0) . length $ L.filter isEndOfTurn es'
+
+-- check if recently picked up on this tile
+recentlyPicked :: Mob -> [Event] -> Bool
+recentlyPicked m es = let es' = L.takeWhile (not . f) es
+                          f (ItemPickedUp m' _) = m == m'
+                          f otherwise           = False
+                      in  (== 0) . length $ L.filter isEndOfTurn es'
+
+-- check if this is a new game since player last moved
+recentGame :: Mob -> [Event] -> Bool
+recentGame m es = let es' = L.takeWhile (not . g) es
+                      f (Moved m' _) = m == m'
+                      f otherwise    = False
+                      g (NewGame)    = True
+                      g otherwise    = False
+                  in  (== 0) . length $ L.filter f es'

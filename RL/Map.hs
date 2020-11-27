@@ -47,7 +47,7 @@ allMobs lvl = (player lvl:mobs lvl)
 instance Eq DLevel where
     d == d' = depth d == depth d' && mobs d == mobs d' && tiles d == tiles d'
 
-data Tile = Floor | Cavern | Rock | StairUp DLevel | StairDown DLevel
+data Tile = Floor | Cavern | Rock | StairUp (Maybe DLevel) | StairDown DLevel
 
 instance Eq Tile where
     Floor         == Floor         = True
@@ -64,7 +64,7 @@ fromTile (StairDown _) = '>'
 fromTile Rock = '#'
 
 getStairLvl :: Tile -> Maybe DLevel
-getStairLvl (StairUp   lvl) = Just lvl
+getStairLvl (StairUp   lvl) = lvl
 getStairLvl (StairDown lvl) = Just lvl
 getStairLvl otherwise = Nothing
 

@@ -11,6 +11,9 @@ type AC = Int
 d :: Int -> Sides -> Dice
 d n ns = D n ns
 
+maxD :: Dice -> Int
+maxD (D n ns) = ns * n
+
 type Point  = (Int, Int)
 type Path   = [Point]
 type Offset = Point

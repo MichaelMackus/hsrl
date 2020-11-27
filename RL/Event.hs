@@ -6,14 +6,14 @@ import qualified Data.List as L
 
 -- Represents Game events
 
-data Event = Attacked Mob Mob | Damaged Mob Mob Int | Missed Mob Mob | Died Mob | Moved Mob Point
+data Event = Attacked Mob Mob | Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
     | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy DLevel
     | DestinationSet Mob Point | DestinationAbrupted Mob Point
     | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
     | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
     | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EndOfTurn | NewGame
-    | MenuChange Menu | QuitGame deriving (Eq, Show)
+    | MenuChange Menu | QuitGame | Escaped deriving (Eq, Show)
 
 data Menu = Inventory | Equipment | DrinkMenu | ReadMenu | NoMenu deriving (Eq, Show)
 
@@ -37,7 +37,12 @@ isAttacked x = (> 0) . length . filter isAttacked'
         isAttacked' otherwise       = False
 
 toMessage :: Event -> Maybe String
+toMessage (NewGame) = Just $ "You delve underground, searching for your ancestors' sword."
+toMessage (Escaped) = Just $ "There is no escape. You must avenge your ancestors!"
+toMessage (Crit attacker target)
+    | isPlayer attacker = Just $ "CRITICAL HIT!"
 toMessage (Damaged attacker target dmg)
+    | isPlayer attacker && isPlayer target = Just $ "You hurt yourself for " ++ show dmg ++ " damage! Be more careful!"
     | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
     | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
     | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
