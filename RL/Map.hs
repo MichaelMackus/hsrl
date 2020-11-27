@@ -147,10 +147,14 @@ neighbors d p@(x, y) f
     | isNothing (M.lookup p (tiles d)) = []
     | otherwise =
         let ts = tiles d
-            ps = [ ((x + 1), y),
-                   ((x - 1), y),
-                   (x, (y + 1)),
-                   (x, (y - 1)) ]
+            ps = [ (x + 1, y),
+                   (x - 1, y),
+                   (x, y + 1),
+                   (x, y - 1),
+                   (x - 1, y - 1),
+                   (x + 1, y + 1),
+                   (x - 1, y + 1),
+                   (x + 1, y - 1) ]
             ts' = map (`M.lookup` ts) ps
         in  map fst (filter f (zip ps ts'))
 
@@ -158,7 +162,11 @@ neighbors d p@(x, y) f
 touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
                                  (p1x + 1 == p2x && p1y == p2y) ||
                                  (p1x == p2x && p1y - 1 == p2y) ||
-                                 (p1x - 1 == p2x && p1y == p2y)
+                                 (p1x - 1 == p2x && p1y == p2y) ||
+                                 (p1x - 1 == p2x && p1y - 1 == p2y) ||
+                                 (p1x - 1 == p2x && p1y + 1 == p2y) ||
+                                 (p1x + 1 == p2x && p1y - 1 == p2y) ||
+                                 (p1x + 1 == p2x && p1y + 1 == p2y)
 
 dfinder :: DLevel -> Point -> Set Point
 dfinder d p = Set.fromList (dneighbors d p)
