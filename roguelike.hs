@@ -7,7 +7,7 @@ import RL.Generator.Mobs
 import RL.UI
 import RL.Random
 
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, filter)
 import Data.Maybe (catMaybes)
 import System.Environment
 
@@ -23,11 +23,10 @@ gameLoop draw inputEvents env = do
     -- broadcast input events & then process end of turn
     env' <- endTurn (broadcastEvents env es)
     let playing = not (isDead (player (level env')) || isQuit env')
-        won     = False
-    if playing && not won then
+    if playing then
         gameLoop draw inputEvents env'
     else
-        return (won, env')
+        return (isQuit env', env')
 
 endTurn :: Env -> IO Env
 endTurn env =
@@ -67,30 +66,33 @@ getEvents disp env = do
 main = do
     -- allow user to customize display if supported
     flags <- map (dropWhile (== '-')) . filter ("-" `isInfixOf`) <$> getArgs
-    let initUI = if "vty" `elem` flags || "tty" `elem` flags then initTTYUI
-                 else initDefaultUI
+    ui    <- if "vty" `elem` flags || "tty" `elem` flags then initTTYUI defaultUIConfig
+             else initDefaultUI defaultUIConfig
 
     -- initialize game & launch game loop
-    ui        <- initUI defaultUIConfig
-    e         <- (`broadcast` NewGame) <$> nextLevel defaultConf
-    (won, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
+    let newGame = do
+        e          <- (`broadcast` NewGame) <$> nextLevel defaultConf
+        (quit, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
+        uiRender ui (getSprites e') -- render last frame
 
-    uiEnd ui
+        let waitForQuit = do
+            -- wait for one last button press
+            (k, m) <- uiInput ui
+            if k == KeyChar ' ' || k == KeyQuit || k == KeyChar 'q' || k == KeyChar 'Q' || k == KeyChar 'r' || k == KeyEscape then return k
+            else waitForQuit
+        k <- if quit then return KeyQuit else waitForQuit
+        if k == KeyChar 'r' then newGame
+        else uiEnd ui
+    newGame
 
-    putStrLn "Your inventory:"
-    putStrLn "---------------"
-    mapM_ putStrLn (map ((" - " ++) . itemTrueName) (inventory (player (level (e')))))
-    putStrLn ""
-    putStrLn "Latest status messages:"
-    putStrLn "-----------------------"
-    mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
-    putStrLn ""
-
-    -- print final text
-    if won then
-        putStrLn "Congratulations, you won the game!"
-    else
-        putStrLn "Goodbye!"
+    -- putStrLn "Your inventory:"
+    -- putStrLn "---------------"
+    -- mapM_ putStrLn (map ((" - " ++) . itemTrueName) (inventory (player (level (e')))))
+    -- putStrLn ""
+    -- putStrLn "Latest status messages:"
+    -- putStrLn "-----------------------"
+    -- mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
+    -- putStrLn ""
 
 defaultConf = DungeonConfig {
     dwidth = 80,

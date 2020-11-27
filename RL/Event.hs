@@ -51,7 +51,7 @@ toMessage (Missed attacker target)
     | isPlayer target = Just $ "The " ++ mobName attacker ++ " missed"
     | otherwise = Just $ "The " ++ mobName attacker ++ " missed the " ++ mobName target
 toMessage (Died m)
-    | isPlayer m = Just $ "You died!"
+    | isPlayer m = Just $ "You died! Press space to quit or r to restart a new game."
     | otherwise  = Just $ "You killed the " ++ mobName m
 toMessage (StairsTaken Up _) = Just $ "You've gone up stairs."
 toMessage (StairsTaken Down _) = Just $ "You've gone down stairs."

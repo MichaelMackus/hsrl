@@ -53,7 +53,8 @@ drinkPotion m i = do
                  return [GainedLife m healed]
              Just Acid -> do
                  dmg <- roll (1 `d` 6)
-                 return [DrankAcid m, Damaged m m dmg]
+                 let diedE = if isDead (m { hp = hp m - dmg }) then [Died m] else []
+                 return ([DrankAcid m, Damaged m m dmg] ++ diedE)
              Just Strength     -> return [GainedStrength m 1]
              Just Invisibility -> return [Vanished m]
              Just Confusion    -> return [Confused m]
