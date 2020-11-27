@@ -32,5 +32,5 @@ build_script:
 - echo "" | stack %ARGS% --no-terminal build
 
 - stack --local-bin-path . install hsrl
-- 7z a hsrl.zip hsrl.exe 
-- forfiles /p C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows /s /m "*.dll" /c "7z a C:\stack\hsrl.zip @file"
+- 7z a -tzip hsrl.zip hsrl.exe 
+- forfiles /p C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows /s /m "SDL*.dll" /c "cmd /c 7z.exe a -tzip C:\stack\hsrl.zip @file"
