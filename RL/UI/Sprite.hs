@@ -1,7 +1,8 @@
-module RL.Sprites (
-    Env(..),
-    DLevel(..),
-    getSprites
+module RL.UI.Sprite (
+    Message(..),
+    Sprite(..),
+    getSprites,
+    spriteAt
 ) where
 
 import RL.Game
@@ -25,9 +26,23 @@ brown   = (153, 76, 0)
 orange  = (255, 128, 0)
 lyellow = (255, 255, 204)
 
+data Message = Message {
+    messagePos :: Point,
+    message :: String,
+    messageFgColor :: Color,
+    messageBgColor :: Color
+} deriving Show
+
+data Sprite   = Sprite {
+    spritePos :: Point,
+    spriteChar :: Char,
+    spriteFgColor :: Color,
+    spriteBgColor :: Color
+} deriving Show
+
 -- game is renderable
-getSprites :: Env -> [Sprite]
-getSprites e = getMapSprites (level e) ++ getMsgSprites (events e) ++ getStatusSprites (level e) ++ otherWindows e
+getSprites :: Env -> [Either Message Sprite]
+getSprites e = map Right (getMapSprites (level e)) ++ map Left (getMsgSprites (events e)) ++ map Left (getStatusSprites (level e)) ++ map Left (otherWindows e)
 
 -- helper functions since map/mob isn't renderable without context
 
@@ -37,11 +52,10 @@ getSprites e = getMapSprites (level e) ++ getMsgSprites (events e) ++ getStatusS
 --         sym (p, t) = (p, head (spriteStr (sprite (p, t))))
 --         getRowSprite ((y), ts) = Sprite (0, y) ts white black
 
-getMapSprites :: DLevel -> [Sprite]
-getMapSprites lvl = map sprite (M.toList (tiles lvl))
+spriteAt :: DLevel -> Point -> Sprite
+spriteAt lvl p = if canPlayerSee p then tileOrMobSprite lvl p
+                 else seenTileSprite lvl p
     where
-        sprite (p, t)  = if canPlayerSee p then tileOrMobSprite lvl p
-                         else seenTileSprite lvl p
         canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
 
         tileColor Floor = white
@@ -80,18 +94,18 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
 
         tileSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         tileSprite lvl p = case findTileAt p lvl of
-                               Just  t -> Just (Sprite p (fromTile t:"") (tileColor t) black)
+                               Just  t -> Just (Sprite p (fromTile t) (tileColor t) black)
                                Nothing -> Nothing
         itemSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         itemSprite lvl p = case findItemsAt p lvl of
-                               (i:_) -> Just (Sprite p (itemSymbol i:"") (itemColor i) black)
+                               (i:_) -> Just (Sprite p (itemSymbol i) (itemColor i) black)
                                []    -> Nothing
         mobSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         mobSprite lvl p = case findTileOrMob p lvl of
                                Right m -> if isVisible m then
-                                            Just (Sprite p (symbol m:"")   (mobColor (mobName m)) black)
+                                            Just (Sprite p (symbol m) (mobColor (mobName m)) black)
                                           else if isPlayer m then
-                                            Just (Sprite p (" ") white (50,50,50))
+                                            Just (Sprite p ' ' white (50,50,50))
                                           else
                                             Nothing
                                Left _  -> Nothing
@@ -99,50 +113,53 @@ getMapSprites lvl = map sprite (M.toList (tiles lvl))
         tileOrMobSprite lvl p = let sprites = [mobSprite lvl p, itemSprite lvl p, tileSprite lvl p]
                                     sprite  = listToMaybe (catMaybes sprites)
                                 in  if isJust sprite then fromJust sprite
-                                    else Sprite p " " black black
+                                    else Sprite p ' ' black black
         seenTileSprite lvl p = if p `elem` seen lvl then stale (fromJust (listToMaybe (catMaybes [itemSprite lvl p, tileSprite lvl p])))
-                               else Sprite p " " black black
+                               else Sprite p ' ' black black
         stale spr = spr { spriteFgColor = dgrey, spriteBgColor = black }
 
-getStatusSprites :: DLevel -> [Sprite]
+getMapSprites :: DLevel -> [Sprite]
+getMapSprites lvl = map (spriteAt lvl . fst) . M.toList $ tiles lvl
+
+getStatusSprites :: DLevel -> [Message]
 getStatusSprites lvl =
     let p = player lvl
-        hpSprite = (mkSprite (64, 15) (show (hp p))) { spriteFgColor = hpColor }
+        hpSprite = (mkMessage (64, 15) (show (hp p))) { messageFgColor = hpColor }
         hpPercent = fromIntegral (hp p) / fromIntegral (mhp p)
         hpColor = if hpPercent >= 1.0 then white
                   else if hpPercent >= 0.7 then green
                   else if hpPercent >= 0.4 then yellow
                   else red
-    in [ mkSprite (60, 15) "HP: ", hpSprite, mkSprite (66, 15) ("/" ++ show (mhp p)),
-         mkSprite (60, 16) ("Depth: " ++ show (depth lvl)) ]
+    in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
+         mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
 
-otherWindows :: Env -> [Sprite]
+otherWindows :: Env -> [Message]
 otherWindows e
     | isViewingInventory e =
         let lvl = level e
             inv = L.groupBy (equating itemType) (inventory (player lvl))
             eq  = L.groupBy (equating itemType) (equipmentToList (equipment (player lvl)))
-        in  mkSprites (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters (concat inv))) ++
-            mkSprites (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
+        in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters (concat inv))) ++
+            mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
     | otherwise = []
         where showInvItem (ch, i) = ch:(showItem i)
               showItem i = " - " ++ show i
 
-getMsgSprites :: [Event] -> [Sprite]
+getMsgSprites :: [Event] -> [Message]
 getMsgSprites evs = let recentMsgs = catMaybes (map toMessage (getEventsAfterTurns 2 evs))
                         staleMsgs  = catMaybes (map toMessage (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
-                    in  mkColoredSprites (0, 15) . reverse . take 9 $ msgs
+                    in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
 
-mkSprites :: UI.Point -> [String] -> [Sprite]
-mkSprites (offx, offy) = map toSprite . enumerate
+mkMessages :: Point -> [String] -> [Message]
+mkMessages (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, s) = Sprite (offx, i + offy) s white black
+        toSprite (i, s) = Message (offx, i + offy) s white black
 
-mkColoredSprites :: UI.Point -> [(String, Color)] -> [Sprite]
-mkColoredSprites (offx, offy) = map toSprite . enumerate
+mkColoredMessages :: Point -> [(String, Color)] -> [Message]
+mkColoredMessages (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, (s, fg)) = Sprite (offx, i + offy) s fg black
+        toSprite (i, (s, fg)) = Message (offx, i + offy) s fg black
 
-mkSprite :: UI.Point -> String -> Sprite
-mkSprite xy s = Sprite xy s white black
+mkMessage :: Point -> String -> Message
+mkMessage xy s = Message xy s white black

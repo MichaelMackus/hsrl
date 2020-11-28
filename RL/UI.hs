@@ -3,7 +3,6 @@ module RL.UI (
     defaultUIConfig,
     initDefaultUI,
     initTTYUI,
-    Sprite,
     Key(..)
 ) where
 

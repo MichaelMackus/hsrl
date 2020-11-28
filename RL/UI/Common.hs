@@ -1,14 +1,8 @@
 module RL.UI.Common where
 
-data Sprite   = Sprite {
-    spritePos :: Point,
-    spriteStr :: String,
-    spriteFgColor :: Color,
-    spriteBgColor :: Color
-} deriving Show
-type Point    = (Int, Int)
-type Color    = (Int, Int, Int) -- RGB color value
+import RL.Game
 
+type Color    = (Int, Int, Int) -- RGB color value
 data Key      = KeyChar Char | KeyUp | KeyDown | KeyRight | KeyLeft |
                 KeyEnter | KeyEscape | KeyBackspace |
                 KeyMouseLeft Point | KeyMouseRight Point | KeyQuit |
@@ -25,6 +19,6 @@ data UIConfig = UIConfig { columns :: Int
                          , fullscreen :: Bool }
 
 data UI = UI { uiEnd    :: IO ()              -- shut down
-             , uiRender :: [Sprite] -> IO ()  -- main render function
+             , uiRender :: Env -> IO ()       -- main render function
              , uiInput  :: IO (Key, [KeyMod]) -- wait on input from keyboard and return the single key inputted
              }

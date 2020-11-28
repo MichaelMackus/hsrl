@@ -1,7 +1,6 @@
 import RL.AI
 import RL.Input
 import RL.Game
-import RL.Sprites
 import RL.Generator.Dungeon
 import RL.Generator.Mobs
 import RL.UI
@@ -72,8 +71,8 @@ main = do
     -- initialize game & launch game loop
     let newGame = do
         e          <- (`broadcast` NewGame) <$> nextLevel defaultConf
-        (quit, e') <- gameLoop (uiRender ui . getSprites) (getEvents ui) e
-        uiRender ui (getSprites e') -- render last frame
+        (quit, e') <- gameLoop (uiRender ui) (getEvents ui) e
+        uiRender ui e' -- render last frame
 
         let waitForQuit = do
             -- wait for one last button press

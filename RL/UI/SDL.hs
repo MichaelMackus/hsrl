@@ -3,13 +3,14 @@ module RL.UI.SDL where
 
 import RL.UI.Common
 import RL.UI.SDL.Image
+import RL.UI.Sprite
 import RL.Util
 
 import Codec.Picture
 import Control.Monad (forM_)
 import Data.Char (toUpper, toLower)
 import Data.IORef
-import Data.List (foldl', lookup)
+import Data.List (foldl')
 import Data.Maybe (catMaybes, isJust, fromJust)
 import Foreign.C.Types (CInt)
 import SDL
@@ -36,25 +37,36 @@ fromColor (r,g,b) = V4 (fromIntegral r) (fromIntegral g) (fromIntegral b) 255
 
 sdlUI :: Window -> Renderer -> (Color -> Color -> IO Texture) -> UIConfig -> UI
 sdlUI window renderer getFont cfg = UI
-    { uiRender = \sprites -> do
+    { uiRender = \env -> do
         -- clear
         clear renderer
         rendererDrawColor renderer $= V4 0 0 0 255
-        let maxWidth  = fromIntegral $ fontSize cfg * columns cfg
-            maxHeight = fromIntegral $ fontSize cfg * rows cfg
+        -- let maxWidth  = fromIntegral $ fontSize cfg * columns cfg
+        --     maxHeight = fromIntegral $ fontSize cfg * rows cfg
         -- fontT <- createTexture renderer RGBA8888 TextureAccessStreaming (V2 maxWidth maxHeight)
         -- fontT <- createTextureFromSurface renderer fontS
         -- draw sprites
-        forM_ sprites $ \(Sprite (x,y) str fg bg) -> do
-            let fwidth = fromIntegral (fontSize cfg)
-                fheight = fromIntegral (fontSize cfg)
-                x' = fromIntegral x * fwidth
-                y' = fromIntegral y * fwidth
-                dest  = Rectangle (P (V2 x' y')) (V2 fwidth fheight)
-                srcs  = map lookupChar str
-                dests = offsetDest str dest
-            fontT <- getFont fg bg
-            forM_ (zip srcs dests) $ \(src, dest) -> copy renderer fontT (Just src) (Just dest)
+        forM_ (getSprites env) $ \spr ->
+            case spr of
+                Left (Message (x,y) str fg bg) -> do
+                    let fwidth = fromIntegral (fontSize cfg)
+                        fheight = fromIntegral (fontSize cfg)
+                        x' = fromIntegral x * fwidth
+                        y' = fromIntegral y * fwidth
+                        dest  = Rectangle (P (V2 x' y')) (V2 fwidth fheight)
+                        srcs  = map lookupChar str
+                        dests = offsetDest str dest
+                    fontT <- getFont fg bg
+                    forM_ (zip srcs dests) $ \(src, dest) -> copy renderer fontT (Just src) (Just dest)
+                Right (Sprite (x,y) ch fg bg) -> do
+                    let fwidth = fromIntegral (fontSize cfg)
+                        fheight = fromIntegral (fontSize cfg)
+                        x' = fromIntegral x * fwidth
+                        y' = fromIntegral y * fwidth
+                        dest = Rectangle (P (V2 x' y')) (V2 fwidth fheight)
+                        src  = lookupChar ch
+                    fontT <- getFont fg bg
+                    copy renderer fontT (Just src) (Just dest)
         -- update renderer
         present renderer
     , uiEnd = do
