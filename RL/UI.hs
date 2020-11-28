@@ -1,9 +1,9 @@
 module RL.UI (
     UI(..),
-    defaultUIConfig,
     initDefaultUI,
     initTTYUI,
-    Key(..)
+    Key(..),
+    module RL.UI.Common
 ) where
 
 import RL.UI.Common
@@ -42,10 +42,3 @@ initTTYUI = vtyUI
 #else
 initTTYUI = const (error "Terminal UI is unsupported! Game is not compiled with the `vty` flag.")
 #endif
-
-defaultUIConfig = UIConfig { columns = 80
-                           , rows = 24
-                           , uiTitle = "Dungeons of Haskell"
-                           , fontPath = "res/image/Anno_16x16.png"
-                           , fontSize = 16
-                           , fullscreen = False }

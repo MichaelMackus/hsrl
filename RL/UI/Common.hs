@@ -14,8 +14,8 @@ data UIConfig = UIConfig { columns :: Int
                          , rows    :: Int
                          -- below is for GUI-based UIs (e.g. SDL)
                          , uiTitle    :: String
-                         , fontPath   :: FilePath
-                         , fontSize   :: Int
+                         , tilePath   :: FilePath
+                         , tileSize   :: (Int, Int)
                          , fullscreen :: Bool }
 
 data UI = UI { uiEnd    :: IO ()              -- shut down

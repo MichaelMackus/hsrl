@@ -93,6 +93,13 @@ main = do
     -- mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
     -- putStrLn ""
 
+defaultUIConfig = UIConfig { columns = 80
+                           , rows = 24
+                           , uiTitle = "Dungeons of Haskell"
+                           , tilePath = "res/image/Anno_16x16.png"
+                           , tileSize = (16, 16)
+                           , fullscreen = False }
+
 defaultConf = DungeonConfig {
     dwidth = 80,
     dheight = 15,
