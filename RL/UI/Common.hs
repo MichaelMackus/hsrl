@@ -19,7 +19,6 @@ data KeyMod   = KeyModAlt | KeyModCtrl | KeyModShift | KeyModSuper deriving (Sho
 data UIConfig = UIConfig { columns :: Int
                          , rows    :: Int
                          -- below is for GUI-based UIs (e.g. SDL)
-                         , initMouse  :: Bool
                          , uiTitle    :: String
                          , fontPath   :: FilePath
                          , fontSize   :: Int

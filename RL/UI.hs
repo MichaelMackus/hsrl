@@ -46,8 +46,7 @@ initTTYUI = const (error "Terminal UI is unsupported! Game is not compiled with 
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
-                           , initMouse = False
-                           , uiTitle = "RogueLike Demo"
-                           , fontPath = "res/fonts/16x16xw.woff"
+                           , uiTitle = "Dungeons of Haskell"
+                           , fontPath = "res/image/Anno_16x16.png"
                            , fontSize = 16
                            , fullscreen = False }

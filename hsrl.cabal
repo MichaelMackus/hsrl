@@ -52,13 +52,14 @@ executable hsrl
     RL.Util
   build-depends: base >=4.6, transformers >=0.4, random >=1.1
                , mtl >=2.2, MonadRandom >=0.4, time >=1.5, containers >=0.5
-               , pqueue >= 1.4.1.0
+               , pqueue >= 1.4.1.0, JuicyPixels >=3.3.0
 
   if flag(sdl)
     build-depends:
-      sdl2 >= 2.5, sdl2-ttf >= 2.1, text
+      sdl2 >= 2.5, text, cpu, vector
     other-modules:
       RL.UI.SDL
+      RL.UI.SDL.Image
     cpp-options: -Dsdl
 
   if flag(vty)
