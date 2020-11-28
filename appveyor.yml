@@ -24,15 +24,13 @@ build_script:
 # Install toolchain, but do it silently due to lots of output
 - stack %ARGS% setup > nul
 - stack exec --no-terminal -- pacman -Syu --noconfirm > nul
-- stack exec --no-terminal -- pacman -S   --noconfirm mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2 mingw-w64-x86_64-SDL2_ttf
-- stack exec -- pkg-config --libs sdl2 --libs SDL2_ttf
+- stack exec --no-terminal -- pacman -S   --noconfirm mingw-w64-x86_64-pkg-config mingw-w64-x86_64-SDL2
+- stack exec -- pkg-config --libs sdl2
 
 # The ugly echo "" hack is to avoid complaints about 0 being an invalid file
 # descriptor
 - echo "" | stack %ARGS% --no-terminal build
 
-- curl -sS -ofreetype.dll https://github.com/PistonDevelopers/binaries/raw/master/x86_64/freetype.dll
-- curl -sS -oFREETYPE-LICENSE.txt https://raw.githubusercontent.com/PistonDevelopers/binaries/master/GPLv2.TXT
 - stack --local-bin-path . install hsrl
-- 7z a -tzip hsrl.zip hsrl.exe res LICENSE freetype.dll FREETYPE-LICENSE.txt
+- 7z a -tzip hsrl.zip hsrl.exe res LICENSE
 - forfiles /p C:\Users\appveyor\AppData\Local\Programs\stack\x86_64-windows /s /m "SDL*.dll" /c "cmd /c 7z.exe a -tzip C:\stack\hsrl.zip @file"
