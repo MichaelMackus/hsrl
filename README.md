@@ -15,16 +15,15 @@ hsrl.zip file, unzip it somewhere, and run the "hsrl" executable file.
 
 [Stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/) is the
 supported way to build the game. You will also need the
-[SDL2](https://www.libsdl.org/) and
-[SDL2_ttf](https://www.libsdl.org/projects/SDL_ttf/) libraries installed for
-the graphical (default) frontend. You'll also need `pkg-config` if it isn't
-installed by default on your system. After you have the proper dependencies,
-run `stack build` to build or `stack run` to build & run.
+[SDL2](https://www.libsdl.org/) library installed for the graphical (default)
+frontend and `pkg-config` if it isn't already installed on your system.  After
+you have the proper dependencies, run `stack build` to build or `stack run` to
+build & run.
 
 Mac installation:
 
 ```
-brew install sdl2 sdl2_ttf pkg-config
+brew install sdl2 pkg-config
 curl -sSL https://get.haskellstack.org/ | sh
 stack build
 ```
@@ -32,7 +31,7 @@ stack build
 Ubuntu installation:
 
 ```
-sudo apt-get install libsdl2-dev libsdl2-ttf-dev pkg-config
+sudo apt-get install libsdl2-dev pkg-config
 curl -sSL https://get.haskellstack.org/ | sh
 stack build
 ```
