@@ -83,11 +83,14 @@ moveOrAttack dir = do
 moveOrAttackAt :: Point -> GameEnv [Event]
 moveOrAttackAt to = do
     env <- ask
-    let lvl = level env
-        p   = player lvl
+    let lvl    = level env
+        p      = player lvl
+        moveE  = [Moved p to]
+        stairE = maybe [] (maybeToList . stairF) $ findTileAt to lvl
+        stairF = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
     case (findMobAt to lvl, findTileAt to lvl) of
         (Just m, _) -> attack p m
-        (_, Just t) -> if isPassable t then return [Moved p to] else return []
+        (_, Just t) -> if isPassable t then return (moveE ++ stairE) else return []
         otherwise   -> return []
 
 pickup :: DLevel -> Maybe Event

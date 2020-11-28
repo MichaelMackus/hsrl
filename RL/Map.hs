@@ -68,6 +68,11 @@ getStairLvl (StairUp   lvl) = lvl
 getStairLvl (StairDown lvl) = Just lvl
 getStairLvl otherwise = Nothing
 
+getStairDir :: Tile -> Maybe VerticalDirection
+getStairDir (StairUp   _) = Just Up
+getStairDir (StairDown _) = Just Down
+getStairDir otherwise     = Nothing
+
 isStair :: Tile -> Bool
 isStair t = isDownStair t || isUpStair t
 
