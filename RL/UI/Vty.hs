@@ -6,6 +6,7 @@ import RL.UI.Sprite
 import RL.Util
 
 import Data.Either (lefts)
+import Data.Maybe (fromJust)
 import Graphics.Vty
 
 vtyUI :: UIConfig -> IO UI
@@ -42,7 +43,26 @@ vtyUI cfg = do
 
 tileToImage :: Env -> (Int, [Tile]) -> Image
 tileToImage env (y, row) = flattenSprites . map spr $ enumerate row
-    where spr (x, _)     = spriteAt (level env) (x, y)
+    where spr (x, _)     = let s = spriteAt (level env) (x, y)
+                           in  if spriteChar s == '#' then s { spriteChar = getWallChar env (x,y) }
+                               else s
+
+getWallChar :: Env -> Point -> Char
+getWallChar env p = maybe ' ' wallChar (seenWallType env p)
+
+wallChar :: WallType -> Char
+wallChar WallNESW = '╋'
+wallChar WallNSE  = '┣'
+wallChar WallNSW  = '┫'
+wallChar WallNEW  = '┻'
+wallChar WallSEW  = '┳'
+wallChar WallNS   = '┃'
+wallChar WallSW   = '┓'
+wallChar WallSE   = '┏'
+wallChar WallNW   = '┛'
+wallChar WallNE   = '┗'
+wallChar WallEW   = '━'
+wallChar Wall     = '#'
 
 msgToImage :: Message -> Image
 msgToImage msg = let (x,y) = messagePos msg

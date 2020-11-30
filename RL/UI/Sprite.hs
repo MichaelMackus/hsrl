@@ -2,7 +2,9 @@ module RL.UI.Sprite (
     Message(..),
     Sprite(..),
     getSprites,
-    spriteAt
+    spriteAt,
+    seenWallType,
+    WallType(..)
 ) where
 
 import RL.Game
@@ -163,3 +165,97 @@ mkColoredMessages (offx, offy) = map toSprite . enumerate
 
 mkMessage :: Point -> String -> Message
 mkMessage xy s = Message xy s white black
+
+data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
+              | WallEW | WallSE | WallSW | WallSEW | WallNESW deriving (Eq, Ord)
+
+wallHasE WallNE    = True
+wallHasE WallNSE   = True
+wallHasE WallNEW   = True
+wallHasE WallEW    = True
+wallHasE WallSE    = True
+wallHasE WallSEW   = True
+wallHasE WallNESW  = True
+wallHasE otherwise = False
+wallHasW WallNW    = True
+wallHasW WallNSW   = True
+wallHasW WallNEW   = True
+wallHasW WallEW    = True
+wallHasW WallSW    = True
+wallHasW WallSEW   = True
+wallHasW WallNESW  = True
+wallHasW otherwise = False
+wallHasN WallNESW  = True
+wallHasN t         = t <= WallNEW && t > Wall
+wallHasS WallNS    = True
+wallHasS WallNSE   = True
+wallHasS WallNSW   = True
+wallHasS t         = t <= WallNESW && t >= WallSE
+
+-- which part of the wall is seen
+seenWallType :: Env -> Point -> Maybe WallType
+seenWallType env (x,y) =
+    let lvl  = level env
+        f p' = maybe False (not . isWall) (findTileAt p' lvl) && p' `elem` (seen lvl)
+        fixWall Wall = if ((x+1),y) `elem` (seen lvl) || ((x-1),y) `elem` (seen lvl) then WallEW
+                       else if (x,y+1) `elem` (seen lvl) || (x,y-1) `elem` (seen lvl) then WallNS
+                       else Wall
+        fixWall t    = t
+    in  fixWall <$> filterWallType f (x,y) <$> wallType env (x,y)
+
+filterWallType :: (Point -> Bool) -> Point -> WallType -> WallType
+filterWallType f (x,y) t =
+    let ne    = (x+1,y-1)
+        nw    = (x-1,y-1)
+        se    = (x+1,y+1)
+        sw    = (x-1,y+1)
+        north = (x,  y-1)
+        south = (x,  y+1)
+        west  = (x-1,y)
+        east  = (x+1,y)
+    in  if t == WallNESW && (f ne || f nw) && (f se || f sw) then t
+        else if wallHasN t && wallHasE t && wallHasW t && ((f ne && f nw) || ((f ne || f nw) && f south)) then WallNEW
+        else if wallHasS t && wallHasE t && wallHasW t && ((f se && f sw) || ((f se || f sw) && f north)) then WallSEW
+        else if wallHasN t && wallHasS t && wallHasE t && ((f ne && f se) || ((f ne || f se) && f west)) then WallNSE
+        else if wallHasN t && wallHasS t && wallHasW t && ((f nw && f sw) || ((f nw || f sw) && f east)) then WallNSW
+        else if wallHasS t && wallHasW t && (f sw || (f east && f north)) then WallSW
+        else if wallHasS t && wallHasE t && (f se || (f west && f north)) then WallSE
+        else if wallHasN t && wallHasW t && (f nw || (f east && f south)) then WallNW
+        else if wallHasN t && wallHasE t && (f ne || (f west && f south)) then WallNE
+        else if (wallHasN t || wallHasS t) && (f west  || f east)  then WallNS
+        else if (wallHasW t || wallHasE t) && (f north || f south) then WallEW
+        else Wall
+
+-- wall type for different wall tiles
+wallType :: Env -> Point -> Maybe WallType
+wallType env p =
+    if not (maybe False isWall (findTileAt p (level env))) then Nothing
+    else if wallN env p && wallS env p && wallE env p && wallW env p then Just WallNESW
+    else if wallN env p && wallS env p && wallE env p then Just WallNSE
+    else if wallN env p && wallS env p && wallW env p then Just WallNSW
+    else if wallN env p && wallW env p && wallE env p then Just WallNEW
+    else if wallS env p && wallW env p && wallE env p then Just WallSEW
+    else if wallN env p && wallS env p then Just WallNS
+    else if wallW env p && wallS env p then Just WallSW
+    else if wallE env p && wallS env p then Just WallSE
+    else if wallW env p && wallN env p then Just WallNW
+    else if wallE env p && wallN env p then Just WallNE
+    else if wallE env p then Just WallEW
+    else if wallW env p then Just WallEW
+    else if wallS env p then Just WallNS
+    else if wallN env p then Just WallNS
+    else Just Wall
+
+wallN  :: Env -> Point -> Bool
+wallN env (x,y) = maybe False isWall (findTileAt (x, y - 1) (level env))
+wallE  :: Env -> Point -> Bool
+wallE env (x,y) = maybe False isWall (findTileAt (x + 1, y) (level env))
+wallS  :: Env -> Point -> Bool
+wallS env (x,y) = maybe False isWall (findTileAt (x, y + 1) (level env))
+wallW  :: Env -> Point -> Bool
+wallW env (x,y) = maybe False isWall (findTileAt (x - 1, y) (level env))
+
+isWall :: Tile -> Bool
+isWall Rock = True
+isWall otherwise = False
+
