@@ -74,13 +74,13 @@ heardPath :: DLevel -> Mob -> Mob -> Maybe [Point]
 heardPath lvl m1 m2 =
     -- TODO should be able to still somewhat track if invisible
     if isVisible m2 && distance (at m1) (at m2) <= hearing m1 then
-        findPath (dfinder lvl) distance (at m2) (at m1)
+        findAIPath lvl distance (at m2) (at m1)
     else
         Nothing
 
 
 mobPath :: DLevel -> Mob -> Maybe [Point]
-mobPath lvl m = (\p -> findPath (dfinder lvl) distance p (at m)) =<< destination m
+mobPath lvl m = (\p -> findAIPath lvl distance p (at m)) =<< destination m
 
 -- find AI path, first trying to find optimal path around mobs
 -- fallback is naive dfinder to allow mobs to bunch up
