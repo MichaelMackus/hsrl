@@ -6,10 +6,14 @@ import RL.Generator.Mobs
 import RL.UI
 import RL.Random
 
-import Data.List (isInfixOf, filter)
-import Data.Maybe (catMaybes)
+import Data.List (isInfixOf)
 import System.Environment
+import System.Exit (exitSuccess)
 
+helpMessages = [ "Usage: hsrl [--vty|--tty] [TILESET_PATH]"
+                ,""
+                ,"TILESET_PATH\tPath to custom tileset. By default uses res/image/Anno_16x16.png"
+                ,"--vty or --tty\tSet to terminal mode (must be built with the vty build flag)." ]
 
 -- main game loop
 --
@@ -63,10 +67,18 @@ getEvents disp env = do
     return $ evalRand (runReaderT (keyToEvents k m) env) g
 
 main = do
-    -- allow user to customize display if supported
-    flags <- map (dropWhile (== '-')) . filter ("-" `isInfixOf`) <$> getArgs
-    ui    <- if "vty" `elem` flags || "tty" `elem` flags then initTTYUI defaultUIConfig
-             else initDefaultUI defaultUIConfig
+    -- allow user to customize display if supported, or tileset
+    flags <- map (dropWhile (== '-')) . filter ("-" `isInfixOf`)         <$> getArgs
+    args  <- filter (not . ("-" `isInfixOf`)) <$> getArgs
+
+    when ("help" `elem` flags || "h" `elem` flags) $ do
+        mapM_ putStrLn helpMessages
+        exitSuccess
+
+    let uiConfig = if not (null args) then defaultUIConfig { tilePath = head args }
+                   else defaultUIConfig
+    ui    <- if "vty" `elem` flags || "tty" `elem` flags then initTTYUI uiConfig
+             else initDefaultUI uiConfig
 
     -- initialize game & launch game loop
     let newGame = do
