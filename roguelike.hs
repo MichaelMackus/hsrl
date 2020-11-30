@@ -44,7 +44,7 @@ endTurn env =
             let maxMobs   = 10   -- TODO make this configurable
                 maxMTries = 5    -- TODO make this configurable
                 ms        = mobs (level env)
-            r <- roll (1 `d` 10) -- 10% chance to spawn new mob
+            r <- roll (1 `d` 50) -- 2% chance to spawn new mob
             if (length ms < maxMobs && r == 1) then do
                 g   <- newStdGen
                 let s = mkGenState (level env) g
