@@ -24,8 +24,10 @@ automate m = do
             return $ wakeE ++ [MobSeen m p] ++ mobE
         else if isJust heard then
             return $ wakeE ++ [MobHeard m p] ++ mobE
+        else if not (Sleeping `elem` flags m) then
+            return mobE
         else
-            return $ wakeE ++ mobE
+            return []
     where
         mobTurn m p seen heard = do
             lvl <- asks level
