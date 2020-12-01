@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, mkGenState, initState, getCounter, getGData, appendGData, setGData, isGDone, markGDone) where
+module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, mkGenState, initState, getCounter, resetCounter, getGData, appendGData, setGData, isGDone, markGDone) where
 
 import RL.Random
 
@@ -81,14 +81,14 @@ getGData = Generator $ \c s -> (gdata s, s)
 -- append data to state
 appendGData :: s -> Generator c [s] ()
 appendGData x = Generator $ \c s -> ((), appended s)
-    where appended s = s { gdata = (x:gdata s), i = 0 }
+    where appended s = s { gdata = (x:gdata s) }
 
 -- set data to state, only if the data is different than previous
 -- this also resets the try counter if the state is updated
 setGData :: Eq s => s -> Generator c s ()
 setGData gdata = do
     gdata' <- getGData
-    when (gdata /= gdata') (Generator $ \c s -> ((), s { gdata = gdata, i = 0 }))
+    Generator $ \c s -> ((), s { gdata = gdata })
 
 -- increment try counter
 incCounter :: Generator c s ()
@@ -97,6 +97,10 @@ incCounter = Generator $ \c s -> ((), s { i = i s + 1 })
 -- get try counter
 getCounter :: Generator c s Int
 getCounter = Generator $ \c s -> (i s, s)
+
+-- reset try counter
+resetCounter :: Generator c s ()
+resetCounter = Generator $ \c s -> ((), s { i = -1 }) -- incremented before next iteration
 
 instance Monad (Generator c s) where
     gen >>= f = Generator $ \c s ->

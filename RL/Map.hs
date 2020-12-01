@@ -45,7 +45,7 @@ allMobs :: DLevel -> [Mob]
 allMobs lvl = (player lvl:mobs lvl)
 
 instance Eq DLevel where
-    d == d' = depth d == depth d' && mobs d == mobs d' && tiles d == tiles d'
+    d == d' = depth d == depth d'
 
 data Tile = Floor | Cavern | Rock | StairUp (Maybe DLevel) | StairDown DLevel
 
@@ -54,6 +54,7 @@ instance Eq Tile where
     Cavern        == Cavern        = True
     (StairUp _)   == (StairUp _)   = True
     (StairDown _) == (StairDown _) = True
+    Rock          == Rock          = True
     _ == _ = False
 
 fromTile :: Tile -> Char
@@ -90,7 +91,7 @@ instance Show DLevel where
 
 -- Map constructor
 mkLevel :: Int -> [[Tile]] -> DLevel
-mkLevel depth ts = DLevel depth (M.fromList (enumerateMap ts)) p [] [] []
+mkLevel depth ts = DLevel depth (M.fromList (enumerate2d ts)) p [] [] []
     where p = mob
 
 -- blank map
@@ -191,8 +192,8 @@ isPassable Rock = False
 isPassable otherwise = True
 
 -- helper function for map construction
-enumerateMap :: [[Tile]] -> [(Point, Tile)]
-enumerateMap = enumerate2d
+enumerateMap :: DLevel -> [(Point, Tile)]
+enumerateMap = enumerate2d . toTiles
 
 -- helper function for map deconstruction
 toTiles :: DLevel -> [[Tile]]
