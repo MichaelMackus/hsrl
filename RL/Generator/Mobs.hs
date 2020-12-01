@@ -5,7 +5,7 @@ import RL.Generator
 import RL.Generator.Cells (Cell, cmid)
 import RL.Random
 
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isNothing)
 import Data.Ratio
 
 data PlayerConfig = PlayerConfig {
@@ -18,12 +18,13 @@ instance GenConfig PlayerConfig where
 
 data MobConfig = MobConfig {
     maxMobs :: Int,
-    maxMTries :: Int,
+    minMobs :: Int,
+    mobGenChance :: Rational,
     difficultyRange :: (Int, Int) -- min - fst, max + snd
 }
 
 instance GenConfig MobConfig where
-    generating conf = (< maxMTries conf) <$> getCounter
+    generating conf = (< maxMobs conf) <$> getCounter
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
@@ -41,25 +42,23 @@ mobGenerator = do
     conf <- ask
     lvl <- getGData
     let diff = depth lvl
-    mobs' <- withMobIds . (++ (mobs lvl)) . catMaybes <$> replicateM (maxMobs conf - length (mobs lvl)) (generateMob diff)
-    when (length mobs' == maxMobs conf) markGDone
+    mobs' <- maybe (mobs lvl) (insertMob (mobs lvl))  <$> generateMob diff
     setGData (lvl { mobs = mobs' })
     return mobs'
 
 generateMob :: Difficulty -> Generator MobConfig DLevel (Maybe Mob)
 generateMob diff = do
-    lvl  <- getGData
-    let ts = toTiles lvl
-        dheight = length ts
-        dwidth  = if length ts > 0 then length (ts !! 0) else 0
-    p    <- randomPoint dwidth dheight
-
     -- generate mob based on random difficulty - this way we have more variation of mobs
+    -- TODO don't generate in player los
+    lvl   <- getGData
     conf  <- ask
     diff' <- max 1 <$> getRandomR (diff - fst (difficultyRange conf), diff + snd (difficultyRange conf))
-    m     <- pickRarity (mobRarity diff) dngMobs
-    if maybe False isPassable (findTileAt p lvl) then
-        return (moveMob p . updateFlags lvl <$> m)
+    r     <- randomChance (mobGenChance conf)
+    if length (mobs lvl) < minMobs conf || r then do
+        let tileF p t = not (isStair t) && isPassable t && isNothing (findMobAt p lvl)
+        p <- randomTile tileF lvl
+        m <- pickRarity (mobRarity diff) dngMobs
+        return $ fmap (updateFlags lvl) (moveMob <$> p <*> m)
     else
         return Nothing
 
@@ -146,7 +145,7 @@ mobRarity d m
     | d == 1 = case mobName m of
                     "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 10)
-                    "Grid Bug" -> (1 % 5)
+                    "Grid Bug" -> (1 % 3)
                     otherwise  -> (0 % 10)
     | d == 2 = case mobName m of
                     "Orc"      -> (1 % 5)

@@ -25,6 +25,7 @@ paths cs = do
     else do
         ps' <- nub . (ps ++) . concat <$> forM reachable (`generatePath` unreachable)
         setGData ps'
+        resetCounter -- keep generating until all paths are reachable
         return ps'
 
 reachableCells :: [Cell] -> [Path] -> [Cell]

@@ -4,7 +4,7 @@ import RL.Item
 import RL.Types
 import RL.Util (enumerate1)
 
-import Data.List (find)
+import Data.List (find, sort)
 import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
 
 -- player/mobs
@@ -124,12 +124,9 @@ deadMobs = filter isDead
 addOffset :: Point -> Point -> Point
 addOffset (offx, offy) (x, y) = (offx + x, offy + y)
 
--- initializes mob IDs
-withMobIds :: [Mob] -> [Mob]
-withMobIds = map withMobId . enumerate1
-    where
-        -- prevent re-indexing player
-        withMobId   (id, m) = if mobId m /= 0 then m { mobId = id } else m
+insertMob :: [Mob] -> Mob -> [Mob]
+insertMob ms m = m { mobId = maxId + 1 } : ms
+    where maxId = if not (null ms) then last (sort (map mobId ms)) else 0
 
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)

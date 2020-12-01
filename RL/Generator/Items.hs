@@ -9,17 +9,21 @@ import RL.Item
 import RL.Map
 import RL.Random
 
+import Debug.Trace
 import Control.Monad.Reader (ask)
 import Data.Ratio
 import Data.Maybe (isJust, catMaybes, fromJust)
 
 data ItemConfig = ItemConfig {
     maxItems :: Int,
+    minItems :: Int,
+    itemGenChance :: Rational,
     randomItemNames :: [(ItemType, [String])]
 }
 
 instance GenConfig ItemConfig where
-    generating conf = return True
+    generating conf = (< maxItems conf) <$> getCounter
+    -- generating conf = return True
 
 -- data ItemGenEnv = ItemGenEnv {
 --     level :: DLevel,
@@ -30,27 +34,25 @@ itemsGenerator :: Generator ItemConfig DLevel [(Point, Item)]
 itemsGenerator = do
     conf <- ask
     lvl  <- getGData
-    items' <- (++ items lvl) . catMaybes <$> replicateM (maxItems conf - length (items lvl)) generateItem
-    when (length items' >= maxItems conf) markGDone
+    items' <- maybe (items lvl) (:items lvl) <$> generateItem
     setGData (lvl { items = items' })
     return items'
 
 generateItem :: Generator ItemConfig DLevel (Maybe (Point, Item))
 generateItem = do
-    lvl <- getGData
-    let ts = toTiles lvl
-        dheight = length ts
-        dwidth  = if length ts > 0 then length (ts !! 0) else 0
-
-    p <- randomPoint dwidth dheight
-    let tile = maybe Nothing (\t -> if not (isStair t) then Just t else Nothing) (findTileAt p lvl)
-    if isJust tile && isPassable (fromJust tile) then do
+    lvl  <- getGData
+    conf <- ask
+    r    <- randomChance (itemGenChance conf)
+    if length (items lvl) < minItems conf || r then do
+        let tileF _ t = not (isStair t) && isPassable t
+        p <- randomTile tileF lvl
         i <- pickItem (depth lvl)
-        return ((p, ) <$> i)
+        return ((,) <$> p <*> i)
     else
         return Nothing
 
 -- pick an item at random for the given depth
+-- TODO make items more common
 pickItem :: MonadRandom m => Difficulty -> m (Maybe Item)
 pickItem d = do
     typ <- pickItemType d
@@ -73,19 +75,19 @@ typeRarity d t
                    (Armor _)  -> 1 % 7
                    (Potion _) -> 1 % 10
                    (Scroll _) -> 1 % 20
-                   (Tool)     -> 1 % 10
+                   (Tool)     -> 0 % 10
     | d <= 3 = case t of 
                    (Weapon _) -> 1 % 5
                    (Armor _)  -> 1 % 7
                    (Potion _) -> 1 % 5
                    (Scroll _) -> 1 % 10
-                   (Tool)     -> 1 % 7
+                   (Tool)     -> 0 % 7
     | otherwise = case t of 
                    (Weapon _) -> 1 % 5
                    (Armor _)  -> 1 % 7
                    (Potion _) -> 1 % 3
                    (Scroll _) -> 1 % 4
-                   (Tool)     -> 1 % 5
+                   (Tool)     -> 0 % 5
 
 -- item rarity at depth
 itemRarity :: Difficulty -> Item -> Rational

@@ -36,6 +36,7 @@ cells = do
         -- mark generation as done if we hit maxCells
         cs' <- getGData
         when (length cs' >= maxCells) markGDone
+        when (cs /= cs') resetCounter
 
         return cs'
     where

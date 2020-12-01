@@ -1,11 +1,14 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, pick, pickRarity, randomPoint, randomDir, Roller(..), module System.Random, module Control.Monad.Random) where
+module RL.Random (roll, pick, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module System.Random, module Control.Monad.Random) where
 
 import RL.Types
+import RL.Map
 
 import Control.Monad.Random
+import Data.Ratio
 import System.Random
+import qualified Data.List as L
 
 newtype Roller m a = Roller { runRoller :: StdGen -> m (a, StdGen) } deriving Functor
 
@@ -17,21 +20,40 @@ roll (D n ns) = getRandomR (minInt, maxInt)
 -- pick randomly from a list
 pick :: MonadRandom m => [a] -> m (Maybe a)
 pick [] = return Nothing
-pick xs = getRandomR (0, length xs - 1) >>= return . Just . (xs !!)
+pick xs = Just <$> uniform xs
 
--- pick randomly from a list using a rarity function
+-- pick randomly from a list using a rarity function, always returning a result for a list
 pickRarity :: MonadRandom m => (a -> Rational) -> [a] -> m (Maybe a)
-pickRarity f l = do
-        res <- roll (1 `d` 100)
-        pick (filter (\x -> res <= percentage (f x)) l)
-    where
-        percentage :: Rational -> Int
-        percentage r = floor (fromRational r * 100)
+pickRarity f l =
+    if null (L.filter (\a -> f a >= 1%100) l) then return Nothing
+    else do
+        r <- pick =<< filterM (randomChance . f) l
+        case r of
+            Just _    -> return r
+            otherwise -> pickRarity f l
+
+randomChance :: MonadRandom m => Rational -> m Bool
+randomChance freq = (<= percentage freq) <$> roll (1 `d` 100)
+
+percentage :: Rational -> Int
+percentage r = floor (fromRational r * 100)
 
 -- generates random point
 -- between     maxX   maxY
 randomPoint :: MonadRandom m => Int -> Int -> m Point
 randomPoint x y = liftM2 (,) (roll $ 1 `d` x) (roll $ 1 `d` y)
+
+-- generates random tile matching criteria
+randomTile :: MonadRandom m => (Point -> Tile -> Bool) -> DLevel -> m (Maybe Point)
+randomTile f lvl = do
+    let ts = filter (uncurry f) $ enumerateMap lvl
+    t <- pick ts
+    case t of
+        Just (p, t) -> return (Just p)
+        otherwise   -> return Nothing
+-- generates random passable point
+randomPassable :: MonadRandom m => DLevel -> m (Maybe Point)
+randomPassable = randomTile (const isPassable)
 
 randomDir :: MonadRandom m => m Dir
 randomDir = toEnum <$> roll (1 `d` 7)

@@ -7,6 +7,7 @@ import RL.UI
 import RL.Random
 
 import Data.List (isInfixOf)
+import Data.Ratio
 import System.Environment
 import System.Exit (exitSuccess)
 
@@ -18,8 +19,8 @@ helpMessages = [ "Usage: hsrl [--vty|--tty] [TILESET_PATH]"
 -- main game loop
 --
 -- first part of returned tuple is whether player has won or not
-gameLoop :: (Env -> IO ()) -> (Env -> IO [Event]) -> Env -> IO (Bool, Env)
-gameLoop draw inputEvents env = do
+gameLoop :: (Env -> IO ()) -> (Env -> IO [Event]) -> (Env -> IO Env) -> Env -> IO (Bool, Env)
+gameLoop draw inputEvents endTurn env = do
     draw env              -- draw to screen
     es <- inputEvents env -- wait for user input, and transform into Action
 
@@ -27,12 +28,12 @@ gameLoop draw inputEvents env = do
     env' <- endTurn (broadcastEvents env es)
     let playing = not (isDead (player (level env')) || isQuit env')
     if playing then
-        gameLoop draw inputEvents env'
+        gameLoop draw inputEvents endTurn env'
     else
         return (isQuit env', env')
 
-endTurn :: Env -> IO Env
-endTurn env =
+doEndTurn :: MobConfig -> Env -> IO Env
+doEndTurn conf env =
         if isTicking env then do
             env'    <- doAI env
             spawned <- spawnMobs env'
@@ -40,16 +41,11 @@ endTurn env =
         else return env
     where
         spawnMobs env = do
-            -- spawn new mobs
-            let maxMobs   = 10   -- TODO make this configurable
-                maxMTries = 5    -- TODO make this configurable
-                ms        = mobs (level env)
-            r <- roll (1 `d` 50) -- 2% chance to spawn new mob
-            if (length ms < maxMobs && r == 1) then do
+            let ms = mobs (level env)
+            if length ms < maxMobs conf then do
                 g   <- newStdGen
                 let s = mkGenState (level env) g
-                    -- TODO save config somewhere..
-                    (newMs', _) = runGenerator mobGenerator (MobConfig (length ms + 1) maxMTries (2,0)) s
+                    (newMs', _) = runGenerator mobGenerator conf s
                     spawned = filter (not . (`elem` ms)) newMs'
                 return (map MobSpawned spawned)
             else return []
@@ -83,7 +79,7 @@ main = do
     -- initialize game & launch game loop
     let newGame = do
         e          <- (`broadcast` NewGame) <$> nextLevel defaultConf
-        (quit, e') <- gameLoop (uiRender ui) (getEvents ui) e
+        (quit, e') <- gameLoop (uiRender ui) (getEvents ui) (doEndTurn (mobConfig defaultConf)) $ broadcast e (GainedTelepathy $ player (level e))
         uiRender ui e' -- render last frame
 
         let waitForQuit = do
@@ -119,12 +115,15 @@ defaultConf = DungeonConfig {
     prevLevel = Nothing,
     maxDepth  = 5,
     mobConfig = MobConfig {
-        maxMobs   = 5,
-        maxMTries = 5,
+        maxMobs = 10,
+        minMobs = 4,
+        mobGenChance = (1 % 20),
         difficultyRange = (2, 0)
     },
     itemConfig = ItemConfig {
         maxItems = 10,
+        minItems = 3,
+        itemGenChance = (1 % 5),
         randomItemNames = []
     },
     playerConfig = PlayerConfig {

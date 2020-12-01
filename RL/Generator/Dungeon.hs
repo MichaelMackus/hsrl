@@ -32,7 +32,7 @@ levelGenerator :: Generator DungeonConfig s DLevel
 levelGenerator = do
         conf   <- ask
         cs     <- runGenerator' cells (mkCellConf conf) initState
-        ps     <- runGenerator' (paths cs) conf initState
+        ps     <- runGenerator' (paths cs) conf initState -- TODO ensure all reachable!
         player <- fromMaybe (error errPlayer) <$> runGenerator' playerGenerator (playerConfig conf) (mkGenState cs)
 
         let prev = prevLevel conf

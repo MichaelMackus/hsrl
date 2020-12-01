@@ -4,9 +4,10 @@ import RL.Event
 import RL.Game
 import RL.Random
 
-import Data.Maybe (fromMaybe, fromJust)
+import Data.Maybe (fromMaybe, fromJust, maybeToList)
 import qualified Data.List as L
 
+-- TODO miss chance if invis
 attack :: MonadRandom r => Mob -> Mob -> r [Event]
 attack attacker target = do
     let weap = weaponProperties =<< wielding (equipment attacker)
@@ -78,19 +79,11 @@ readScroll lvl m i = do
                      dmgE = map (\m -> Damaged p m dmg) ms
                  return (CastLightning m dmg:dmgE)
              Just Teleport     -> do
-                 p <- randomPassable lvl
-                 return [Teleported m p]
+                p <- randomPassable lvl
+                return $ maybeToList (Teleported m <$> p)
              Just Mapping      -> return [Mapped lvl]
              Just Telepathy    -> return [GainedTelepathy m]
              otherwise -> return []
     return ([Read m i] ++ e)
 
-
--- generates random passable point
-randomPassable :: MonadRandom m => DLevel -> m Point
-randomPassable lvl = do
-    p <- randomPoint (mapWidth lvl) (mapHeight lvl)
-    let t = findTileAt p lvl
-    if maybe False isPassable t then return p
-    else randomPassable lvl
 
