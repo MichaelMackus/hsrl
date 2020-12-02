@@ -28,6 +28,10 @@ instance Show ItemType where
     show (Scroll t) = "scroll"
     show (Tool) = "tool"
 
+-- show true name if in identified list
+showIdentified :: [ItemType] -> Item -> String
+showIdentified identified i = if itemType i `elem` identified then itemTrueName i else show i
+
 -- get true item name (after identified)
 itemTrueName :: Item -> String
 itemTrueName i = show (i { itemDescription = (typeTrueName (itemType i)) })

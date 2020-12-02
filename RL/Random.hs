@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, pick, shuffle, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module System.Random, module Control.Monad.Random) where
+module RL.Random (roll, pick, shuffle, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module System.Random, module Control.Monad.Random, module Data.Ratio) where
 
 import RL.Types
 import RL.Map

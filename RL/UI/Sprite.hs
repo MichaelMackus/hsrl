@@ -4,7 +4,8 @@ module RL.UI.Sprite (
     getSprites,
     spriteAt,
     seenWallType,
-    WallType(..)
+    WallType(..),
+    toMessage
 ) where
 
 import RL.Game
@@ -44,7 +45,7 @@ data Sprite   = Sprite {
 
 -- game is renderable
 getSprites :: Env -> [Either Message Sprite]
-getSprites e = map Right (getMapSprites (level e)) ++ map Left (getMsgSprites (events e)) ++ map Left (getStatusSprites (level e)) ++ map Left (otherWindows e)
+getSprites e = map Right (getMapSprites (level e)) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e)) ++ map Left (otherWindows e)
 
 -- helper functions since map/mob isn't renderable without context
 
@@ -145,11 +146,12 @@ otherWindows e
             mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
     | otherwise = []
         where showInvItem (ch, i) = ch:(showItem i)
-              showItem i = " - " ++ show i
+              showItem i = " - " ++ showIdentified (identified e) i
 
-getMsgSprites :: [Event] -> [Message]
-getMsgSprites evs = let recentMsgs = catMaybes (map toMessage (getEventsAfterTurns 2 evs))
-                        staleMsgs  = catMaybes (map toMessage (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
+getMsgSprites :: Env -> [Message]
+getMsgSprites env = let evs        = events env
+                        recentMsgs = catMaybes (map (toMessage env) (getEventsAfterTurns 2 evs))
+                        staleMsgs  = catMaybes (map (toMessage env) (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
                     in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
 
@@ -259,3 +261,52 @@ isWall :: Tile -> Bool
 isWall Rock = True
 isWall otherwise = False
 
+
+toMessage :: Env -> Event -> Maybe String
+toMessage e (NewGame) = Just $ "You delve underground, searching for your ancestors' sword."
+toMessage e (Escaped) = Just $ "There is no escape. You must avenge your ancestors!"
+toMessage e (Crit attacker target)
+    | isPlayer attacker = Just $ "CRITICAL HIT!"
+toMessage e (Damaged attacker target dmg)
+    | isPlayer attacker && isPlayer target = Just $ "You hurt yourself for " ++ show dmg ++ " damage! Be more careful!"
+    | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
+    | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
+    | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
+toMessage e (Missed attacker target)
+    | isPlayer attacker = Just $ "You missed the " ++ mobName target
+    | isPlayer target = Just $ "The " ++ mobName attacker ++ " missed"
+    | otherwise = Just $ "The " ++ mobName attacker ++ " missed the " ++ mobName target
+toMessage e (Died m)
+    | isPlayer m = Just $ "You died! Press space to quit or r to restart a new game."
+    | otherwise  = Just $ "You killed the " ++ mobName m
+toMessage e (StairsTaken Up _) = Just $ "You've gone up stairs."
+toMessage e (StairsTaken Down _) = Just $ "You've gone down stairs."
+toMessage e (Waken m) = Just $ "You hear shuffling nearby."
+toMessage e (Slept m) = Just $ "The " ++ mobName m ++ " has fell asleep."
+toMessage e (StairsSeen Up) = Just $ "You see stairs going up."
+toMessage e (StairsSeen Down) = Just $ "You see stairs going down."
+toMessage e (ItemsSeen items) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""
+                              in  Just $ "You see a " ++ showIdentified (identified e) (head items) ++ ". " ++ suffix
+toMessage e (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified e) item ++ "."
+toMessage e (Equipped m item) | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified e) item ++ "."
+toMessage e (EquipmentRemoved m item) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified e) item ++ "."
+-- toMessage (MenuChange Equipment) = Just $ "Pick an item to equip."
+-- toMessage (MenuChange DrinkMenu) = Just $ "Pick a potion to quaff."
+-- toMessage (MenuChange ReadMenu)  = Just $ "Pick a scroll to read."
+toMessage e (MenuChange NoMenu) = Nothing
+toMessage e (MenuChange otherwise) = Just $ "Pick an item to use or equip. Press space to cancel."
+toMessage e (Drank           m p) | isPlayer m = Just $ "You drank the " ++ show p ++ "."
+toMessage e (Healed          m n) | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
+toMessage e (GainedLife      m n) | isPlayer m = Just $ "Praise the sun! You feel youthful."
+toMessage e (GainedStrength  m n) | isPlayer m = Just $ "You feel empowered!"
+toMessage e (DrankAcid       m  ) | isPlayer m = Just $ "It BURNS!"
+toMessage e (Vanished        m  ) | isPlayer m = Just $ "You can no longer see yourself!"
+toMessage e (Confused        m  ) | isPlayer m = Just $ "You feel drunk."
+toMessage e (Blinded         m  ) | isPlayer m = Just $ "You can no longer see your surroundings!"
+toMessage e (Read            m s) | isPlayer m = Just $ "You read the " ++ show s ++ "."
+toMessage e (CastFire        m n) | isPlayer m = Just $ "Roaring flames erupt all around you!"
+toMessage e (CastLightning   m n) | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
+toMessage e (Teleported      m p) | isPlayer m = Just $ "You feel disoriented."
+toMessage e (Mapped          lvl)              = Just $ "You suddenly understand the layout of the current level."
+toMessage e (GainedTelepathy m)   | isPlayer m = Just $ "You sense nearby danger."
+toMessage e otherwise = Nothing
