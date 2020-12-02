@@ -13,9 +13,9 @@ data Item = Item {
 type ItemName = String
 type RandomName = String
 type ItemRarity = Rational
-data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Tool deriving Eq
-data PotionType = Healing | Life | Acid | Strength | Invisibility | Confusion | Darkness deriving (Show, Eq)
-data ScrollType = Fire | Lightning | Teleport | Mapping | Telepathy deriving (Show, Eq)
+data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Tool deriving (Eq, Ord)
+data PotionType = Healing | Life | Acid | Strength | Invisibility | Confusion | Darkness deriving (Show, Eq, Ord)
+data ScrollType = Fire | Lightning | Teleport | Mapping | Telepathy deriving (Show, Eq, Ord)
 
 instance Show Item where
     show (Item n (Potion _ )) = n ++ " Potion"
@@ -24,8 +24,8 @@ instance Show Item where
 instance Show ItemType where
     show (Weapon _) = "weapon"
     show (Armor _) = "armor"
-    show (Potion _) = "potion"
-    show (Scroll _) = "scroll"
+    show (Potion t) = "potion"
+    show (Scroll t) = "scroll"
     show (Tool) = "tool"
 
 -- get true item name (after identified)
@@ -42,7 +42,7 @@ data WeaponProperties = WeaponProperties {
     bonus :: Int, -- positive OR negative bonus to attack & damage rolls
     twoHanded :: Bool,
     critRange :: Int
-} deriving Eq
+} deriving (Eq, Ord)
 
 weaponProperties :: Item -> Maybe WeaponProperties
 weaponProperties (Item _ (Weapon prop)) = Just prop
@@ -51,8 +51,8 @@ weaponProperties otherwise              = Nothing
 data ArmorProperties = ArmorProperties {
     defense :: Int, -- this is opposite of traditional AD&D - this number is subtracted by 10 for the *true* AC of a mob
     slot    :: ArmorSlot
-} deriving Eq
-data ArmorSlot = Chest | Hand deriving Eq
+} deriving (Eq, Ord)
+data ArmorSlot = Chest | Hand deriving (Eq, Ord)
 
 inventoryLetters :: [Char]
 inventoryLetters = map toEnum ([fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z'])

@@ -1,4 +1,4 @@
-module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), ItemConfig(..), levelGenerator, module RL.Generator) where
+module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), ItemConfig(..), levelGenerator, randomItemAppearances, module RL.Generator) where
 
 import RL.Map
 import RL.Generator

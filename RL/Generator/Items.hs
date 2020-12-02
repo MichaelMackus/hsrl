@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module RL.Generator.Items (itemsGenerator, ItemConfig(..)) where
+module RL.Generator.Items (ItemConfig(..), itemsGenerator, randomItemAppearances) where
 
 -- generate random items in dungeon
 
@@ -9,26 +9,22 @@ import RL.Item
 import RL.Map
 import RL.Random
 
-import Debug.Trace
 import Control.Monad.Reader (ask)
+import Data.Map (Map)
 import Data.Ratio
 import Data.Maybe (isJust, catMaybes, fromJust)
+import qualified Data.List as L
+import qualified Data.Map as M
 
 data ItemConfig = ItemConfig {
     maxItems :: Int,
     minItems :: Int,
     itemGenChance :: Rational,
-    randomItemNames :: [(ItemType, [String])]
+    itemAppearances :: Map ItemType String
 }
 
 instance GenConfig ItemConfig where
     generating conf = (< maxItems conf) <$> getCounter
-    -- generating conf = return True
-
--- data ItemGenEnv = ItemGenEnv {
---     level :: DLevel,
---     generatedItems :: [(ItemType, String)]
--- }
 
 itemsGenerator :: Generator ItemConfig DLevel [(Point, Item)]
 itemsGenerator = do
@@ -38,6 +34,13 @@ itemsGenerator = do
     setGData (lvl { items = items' })
     return items'
 
+randomItemAppearances :: MonadRandom m => m (Map ItemType String)
+randomItemAppearances = do
+    let f is = zip (map itemType is) . map itemDescription
+    potApps <- M.fromList . f potions <$> shuffle potions
+    scrApps <- M.fromList . f scrolls <$> shuffle scrolls
+    return (M.union potApps scrApps)
+
 generateItem :: Generator ItemConfig DLevel (Maybe (Point, Item))
 generateItem = do
     lvl  <- getGData
@@ -46,13 +49,18 @@ generateItem = do
     if length (items lvl) < minItems conf || r then do
         let tileF _ t = not (isStair t) && isPassable t
         p <- randomTile tileF lvl
-        i <- pickItem (depth lvl)
+        i <- fmap (updateAppearance (itemAppearances conf)) <$> pickItem (depth lvl)
         return ((,) <$> p <*> i)
     else
         return Nothing
 
+updateAppearance :: Map ItemType String -> Item -> Item
+updateAppearance apps i =
+    let app = M.lookup (itemType i) apps
+        f s = i { itemDescription = s }
+    in  maybe i f app
+
 -- pick an item at random for the given depth
--- TODO make items more common
 pickItem :: MonadRandom m => Difficulty -> m (Maybe Item)
 pickItem d = do
     typ <- pickItemType d

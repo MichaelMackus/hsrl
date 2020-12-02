@@ -1,14 +1,18 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, pick, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module System.Random, module Control.Monad.Random) where
+module RL.Random (roll, pick, shuffle, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module System.Random, module Control.Monad.Random) where
 
 import RL.Types
 import RL.Map
 
 import Control.Monad.Random
+import Control.Monad.ST
+import Data.Array.ST
 import Data.Ratio
+import GHC.Arr
 import System.Random
 import qualified Data.List as L
+
 
 newtype Roller m a = Roller { runRoller :: StdGen -> m (a, StdGen) } deriving Functor
 
@@ -61,6 +65,20 @@ randomDir = toEnum <$> roll (1 `d` 7)
 -- generates random point
 -- randomPointBetween :: MonadRandom m => Int -> Int -> m Point
 -- randomPointBetween x y x' y' = liftM2 (,) (roll $ x `d` x') (roll $ y `d` y')
+
+shuffle :: MonadRandom m => [a] -> m [a]
+shuffle xs = do
+    let l = length xs
+    rands <- forM [0..(l-2)] $ \i -> getRandomR (i, l-1)
+    let ar = runSTArray $ do
+        ar <- thawSTArray $ listArray (0, l-1) xs
+        forM_ (zip [0..] rands) $ \(i, j) -> do
+            vi <- readSTArray ar i
+            vj <- readSTArray ar j
+            writeSTArray ar j vi
+            writeSTArray ar i vj
+        return ar
+    return (elems ar)
 
 instance Monad m => Monad (Roller m) where
     return x = Roller $ \s -> return (x, s)

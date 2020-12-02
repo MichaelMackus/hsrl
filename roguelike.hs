@@ -78,8 +78,9 @@ main = do
 
     -- initialize game & launch game loop
     let newGame = do
-        e          <- (`broadcast` NewGame) <$> nextLevel defaultConf
-        (quit, e') <- gameLoop (uiRender ui) (getEvents ui) (doEndTurn (mobConfig defaultConf)) $ broadcast e (GainedTelepathy $ player (level e))
+        conf       <- mkDefaultConf
+        e          <- (`broadcast` NewGame) <$> nextLevel conf
+        (quit, e') <- gameLoop (uiRender ui) (getEvents ui) (doEndTurn (mobConfig conf)) e
         uiRender ui e' -- render last frame
 
         let waitForQuit = do
@@ -108,29 +109,31 @@ defaultUIConfig = UIConfig { columns = 80
                            , tileSize = (16, 16)
                            , fullscreen = False }
 
-defaultConf = DungeonConfig {
-    dwidth = 80,
-    dheight = 15,
-    maxTries = 10,
-    prevLevel = Nothing,
-    maxDepth  = 5,
-    mobConfig = MobConfig {
-        maxMobs = 10,
-        minMobs = 4,
-        mobGenChance = (1 % 20),
-        difficultyRange = (2, 0)
-    },
-    itemConfig = ItemConfig {
-        maxItems = 10,
-        minItems = 3,
-        itemGenChance = (1 % 5),
-        randomItemNames = []
-    },
-    playerConfig = PlayerConfig {
-        playerHp = 12,
-        playerFov = 5
+mkDefaultConf = do
+    itemApps <- randomItemAppearances
+    return $ DungeonConfig {
+        dwidth = 80,
+        dheight = 15,
+        maxTries = 10,
+        prevLevel = Nothing,
+        maxDepth  = 5,
+        mobConfig = MobConfig {
+            maxMobs = 10,
+            minMobs = 4,
+            mobGenChance = (1 % 20),
+            difficultyRange = (2, 0)
+        },
+        itemConfig = ItemConfig {
+            maxItems = 10,
+            minItems = 3,
+            itemGenChance = (1 % 5),
+            itemAppearances = itemApps
+        },
+        playerConfig = PlayerConfig {
+            playerHp = 12,
+            playerFov = 5
+        }
     }
-}
 
 -- generate a new level
 nextLevel :: DungeonConfig -> IO Env
@@ -141,10 +144,11 @@ nextLevel conf = do
         return (mkEnv lvl (gen s))
     where
         mkEnv lvl g = Env {
-            dungeon = DTip lvl,
-            level   = lvl,
-            events  = [],
-            menu    = NoMenu
+            dungeon    = DTip lvl,
+            level      = lvl,
+            events     = [],
+            menu       = NoMenu,
+            identified = []
         }
 
 -- generate mobs if necessary

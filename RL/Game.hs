@@ -5,6 +5,7 @@ import RL.Map
 import RL.Random
 
 import Control.Monad.Reader
+import Data.Map (Map)
 import Data.Maybe (fromMaybe, fromJust, isJust, maybeToList)
 import qualified Data.List as L
 import qualified Data.Map as M
@@ -14,7 +15,8 @@ data Env     = Env {
     dungeon    :: Dungeon,
     level      :: DLevel,
     events     :: [Event],
-    menu       :: Menu
+    menu       :: Menu,
+    identified :: [ItemType]
 }
 
 isPlaying :: Env -> Bool
@@ -58,15 +60,17 @@ broadcastEvents c []    = c
 broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
-    broadcast env e@NewGame             = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@EndOfTurn           = broadcast' (updateFlags . healDamaged $ updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@(StairsTaken v lvl) = broadcast' (changeLevel env v lvl) e
-    broadcast env e@(MenuChange  m)     = broadcast' (env { menu = m }) e
-    broadcast env e@(MobSpawned m)      = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
-    broadcast env e@(ItemPickedUp m i)  = broadcast' (env { level = removePickedItem m i (level env) }) e
-    broadcast env e@(Teleported m to)   = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
-    broadcast env e@(Mapped lvl)        = broadcast' (updateSeen (const True) env) e
-    broadcast env e                     = broadcast' env e
+    broadcast env e@NewGame                  = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
+    broadcast env e@EndOfTurn                = broadcast' (updateFlags . healDamaged $ updateSeen (canSee (level env) (player (level env))) env) e
+    broadcast env e@(StairsTaken v lvl)      = broadcast' (changeLevel env v lvl) e
+    broadcast env e@(MenuChange  m)          = broadcast' (env { menu = m }) e
+    broadcast env e@(MobSpawned m)           = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
+    broadcast env e@(ItemPickedUp m i)       = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(Teleported m to)        = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
+    broadcast env e@(Mapped lvl)             = broadcast' (updateSeen (const True) env) e
+    broadcast env e@(Drank m i) | isPlayer m = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    broadcast env e@(Read  m i) | isPlayer m = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    broadcast env e                          = broadcast' env e
 
 broadcast' env e =
         let p       = player (level env)

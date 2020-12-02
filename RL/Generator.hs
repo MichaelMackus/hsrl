@@ -85,7 +85,7 @@ appendGData x = Generator $ \c s -> ((), appended s)
 
 -- set data to state, only if the data is different than previous
 -- this also resets the try counter if the state is updated
-setGData :: Eq s => s -> Generator c s ()
+setGData :: s -> Generator c s ()
 setGData gdata = do
     gdata' <- getGData
     Generator $ \c s -> ((), s { gdata = gdata })
