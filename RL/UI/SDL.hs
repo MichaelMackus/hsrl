@@ -118,7 +118,8 @@ tileColor ch  color   = color
 
 -- TODO wall mask to have corners & vert/horiz walls
 tileChar :: Env -> Sprite -> Char
-tileChar env s | spriteChar s == '#' = maybe ' ' wallChar (seenWallType env (spritePos s))
+tileChar env s | spriteChar s == '#' = maybe '#' wallChar (seenWallType env (spritePos s))
+-- tileChar env s | spriteChar s == '#' = maybe ' ' wallChar (seenWallType env (spritePos s))
 -- tileChar env s | otherwise           = xyToRect s 11 2
 tileChar env s | otherwise           = spriteChar s
 
@@ -137,7 +138,7 @@ wallChar WallSE   = xyToChar 12 9
 wallChar WallNW   = xyToChar 11 12
 wallChar WallNE   = xyToChar 12 8
 wallChar WallEW   = xyToChar 12 13
-wallChar Wall     = '#'
+wallChar Wall     = xyToChar 11 0
 
 
 xyToChar :: Int -> Int -> Char
