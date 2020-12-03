@@ -65,12 +65,13 @@ generateMob diff = do
         return Nothing
 
 -- random chance to be sleeping or wandering
+-- TODO don't ever put undead to sleep
 updateFlags :: Mob -> Generator MobConfig DLevel Mob
 updateFlags m = do
     chance <- asks mobSleepingChance
     lvl    <- getGData
     r      <- randomChance chance
-    if not (isUndead m) && r then return $ m { flags = [Sleeping] }
+    if not (isUndead m) && r then return $ m { flags = Sleeping:flags m }
     else return m
 
 dngMobs = [ mob {
@@ -114,7 +115,7 @@ dngMobs = [ mob {
                mhp = 4,
                baseDmg = 1 `d` 6,
                baseAC  = 7,
-               isUndead = True
+               flags = [Undead]
             },
             mob {
                mobName = "Zombie",
@@ -124,7 +125,7 @@ dngMobs = [ mob {
                baseDmg = 1 `d` 8,
                thac0   = 18,
                baseAC  = 8,
-               isUndead = True
+               flags = [Undead]
             },
             mob {
                mobName = "Ogre",
@@ -150,17 +151,17 @@ mobRarity :: Difficulty -> Mob -> Rational
 mobRarity d m
     | d == 1 = case mobName m of
                     "Kobold"   -> (1 % 5)
-                    "Goblin"   -> (1 % 10)
                     "Grid Bug" -> (1 % 3)
                     otherwise  -> (0 % 10)
     | d == 2 = case mobName m of
-                    "Orc"      -> (1 % 5)
+                    "Goblin"   -> (1 % 5)
+                    "Orc"      -> (1 % 10)
                     otherwise  -> mobRarity 1 m
-    | d < 5  = case mobName m of
+    | d < 10 = case mobName m of
                     "Skeleton" -> (1 % 7)
                     "Zombie"   -> (1 % 10)
                     otherwise  -> mobRarity 2 m
-    | d >= 5 = case mobName m of
+    | d >= 10 = case mobName m of
                     "Black Dragon" -> (1 % 20)
                     "Ogre"         -> (1 % 15)
                     otherwise      -> mobRarity 3 m

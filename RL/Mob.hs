@@ -28,10 +28,9 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    destination    :: Maybe Point, -- destination point
-    isUndead       :: Bool
+    destination    :: Maybe Point -- destination point
 }
-data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF deriving (Eq, Show)
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -67,6 +66,12 @@ isTelepathic m = TelepathicF `elem` flags m
 
 isVisible :: Mob -> Bool
 isVisible m = not (Invisible `elem` flags m)
+
+isUndead :: Mob -> Bool
+isUndead m = Undead `elem` flags m
+
+isResting :: Mob -> Bool
+isResting m = Resting `elem` flags m
 
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
@@ -107,8 +112,7 @@ mob = Mob {
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing Nothing Nothing,
-    destination = Nothing,
-    isUndead = False
+    destination = Nothing
     -- TODO DR & weaknesses
 }
 

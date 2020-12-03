@@ -36,19 +36,11 @@ doEndTurn :: MobConfig -> Env -> IO Env
 doEndTurn conf env =
         if isTicking env then do
             env'    <- doAI env
-            spawned <- spawnMobs env'
+            -- spawned <- spawnMobs env'
+            let spawned = []
             return $ broadcastEvents env' (spawned ++ [EndOfTurn])
         else return env
     where
-        spawnMobs env = do
-            g <- newStdGen
-            let ms = mobs (level env)
-                chance = (1 % 6) * (1 % 10) -- random (1/6 every 10 rounds) chance to spawn mobs
-                s = mkGenState (level env) g
-                (newMs', _) = runGenerator mobGenerator (conf { mobSleepingChance = 0, mobGenChance = chance, maxMobs = 1 }) s
-                spawned = filter (not . (`elem` ms)) newMs'
-            if length ms < maxMobs conf then return (map MobSpawned spawned)
-            else return []
         doAI env = let ms = mobs (level env)
                    in  go ms env
             where go []    env = return env
@@ -58,9 +50,11 @@ doEndTurn conf env =
 
 getEvents :: UI -> Env -> IO [Event]
 getEvents disp env = do
-    (k, m) <- if not (canAutomate env) then uiInput disp else return (KeyUnknown, [])
-    g      <- newStdGen
-    return $ evalRand (runReaderT (keyToEvents k m) env) g
+    if not (isAutomated env) then do
+        (k, m) <- uiInput disp
+        return . evalRand (runReaderT (keyToEvents k m) env) =<< newStdGen
+    else
+        return . evalRand (runReaderT automatePlayer env)    =<< newStdGen
 
 main = do
     -- allow user to customize display if supported, or tileset
@@ -151,7 +145,3 @@ nextLevel conf = do
             menu       = NoMenu,
             identified = []
         }
-
--- generate mobs if necessary
--- mobSpawner :: Env -> Generator MobConfig DLevel [Mob]
--- mobSpawner 

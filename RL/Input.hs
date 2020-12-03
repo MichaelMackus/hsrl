@@ -10,9 +10,18 @@ import RL.Random
 
 import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMaybe)
 
-charFromKey :: Key -> Maybe Char
-charFromKey (KeyChar ch) = Just ch
-charFromKey otherwise = Nothing
+-- automate player turn
+automatePlayer :: GameEnv [Event]
+automatePlayer = do
+    env <- ask
+    p   <- asks (player . level)
+    if isResting p then
+        if canAutomate env then return (rest p)
+        else return [StoppedResting p]
+    else if isJust (destination p) then
+        if canAutomate env then startRunning (fromJust (destination p))
+        else return [DestinationAbrupted p (fromJust (destination p))]
+    else return []
 
 -- transform key to an event(s) within the game
 keyToEvents :: Key -> [KeyMod] -> GameEnv [Event]
@@ -20,9 +29,8 @@ keyToEvents k m = do
     env <- ask
     let lvl = level env
         p   = player lvl
-        canInput = not (canAutomate env) && not (ConfusedF `elem` flags p)
-    if menu env == NoMenu && canInput then do
-        es <- case k of
+    if menu env == NoMenu && not (isConfused p) then do
+        case k of
             (KeyChar 'k')     -> moveOrAttack North
             (KeyChar 'j')     -> moveOrAttack South
             (KeyChar 'h')     -> moveOrAttack West
@@ -43,7 +51,8 @@ keyToEvents k m = do
             KeyRight          -> moveOrAttack East
             KeyLeft           -> moveOrAttack West
             KeyDown           -> moveOrAttack South
-            -- (KeyChar 'r')  -> Restart
+            (KeyChar 'r')     -> if canRest env then return [StartedResting p] else return [FailedRest p]
+            (KeyChar 'R')     -> if canRest env then return [StartedResting p] else return [FailedRest p]
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
             (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
             (KeyChar 'i')     -> return [MenuChange Inventory]
@@ -54,24 +63,21 @@ keyToEvents k m = do
             (KeyChar 'W')     -> return [MenuChange Equipment]
             (KeyChar 'e')     -> return [MenuChange Equipment]
             (KeyChar 'q')     -> return [MenuChange DrinkMenu]
-            (KeyChar 'r')     -> return [MenuChange ReadMenu]
-            (KeyMouseLeft to) -> if canSee lvl p to || to `elem` seen lvl then automatePlayer to else return []
+            (KeyMouseLeft to) -> if canSee lvl p to || to `elem` seen lvl then startRunning to else return []
             otherwise         -> return []
-        -- stop automating if we've seen a mob
-        if isJust (destination p) then
-            return $ DestinationAbrupted p (fromJust (destination p)):es
-        else
-            return es
-    else if ConfusedF `elem` flags p then do
+    else if isConfused p then do
         if k == (KeyChar 'Q') then return [QuitGame]
         else moveOrAttack =<< randomDir
-    else if isAutomated env then automatePlayer (fromJust (destination p))
     else if isViewingInventory env then do
         let ch = charFromKey k
             i  = (`fromInventoryLetter` (inventory p)) =<< ch
         e <- maybe (return []) (applyItem lvl p) i
         return (e ++ [MenuChange NoMenu])
     else return []
+
+charFromKey :: Key -> Maybe Char
+charFromKey (KeyChar ch) = Just ch
+charFromKey otherwise = Nothing
 
 moveOrAttack :: Dir -> GameEnv [Event]
 moveOrAttack dir = do
@@ -111,13 +117,11 @@ takeStairs v = do
     else
         return Nothing
 
-automatePlayer :: Point -> GameEnv [Event]
-automatePlayer to = do
-    env <- ask
-    p   <- asks (player . level)
-    let path  = findPath (dfinder (level env)) distance to (at p)
-        destE = if isNothing (destination p) then [DestinationSet p to] else []
-    if isJust path && length (fromJust path) > 1 then
-        (destE ++) <$> moveOrAttackAt (fromJust path !! 1)
-    else
-        return []
+startRunning :: Point -> GameEnv [Event]
+startRunning to = ask >>= \env ->
+    let p     = player (level env)
+        path  = findPath (dfinder (level env)) distance to (at p)
+        destE = if canAutomate env && isNothing (destination p) then [DestinationSet p to] else []
+    in  if isJust path && length (fromJust path) > 1 then
+            (destE ++) <$> moveOrAttackAt (fromJust path !! 1)
+        else return []

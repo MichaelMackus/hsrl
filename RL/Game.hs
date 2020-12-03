@@ -1,4 +1,4 @@
-module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, isWon, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
+module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, canRest, isWon, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Map
@@ -33,14 +33,20 @@ isQuit e = isJust (L.find (== QuitGame) (events e))
 isAutomated :: Env -> Bool
 isAutomated env = let lvl = level env
                       p   = player lvl
-                  in  isJust (destination p)
+                  in  isJust (destination p) || isResting p
 
 -- checks if we are running to the destination and there are no mobs seen
 canAutomate :: Env -> Bool
 canAutomate env = let lvl = level env
                       p   = player lvl
                       ms  = mobs lvl
-                  in  isAutomated env && null (L.filter (canSee lvl p) (map at ms))
+                  in  null (L.filter (canSee lvl p) (map at ms))
+
+-- check to ensure we can rest (nearby mobs are dead)
+canRest :: Env -> Bool
+canRest env = let f m = distance (at m) (at p) <= hearing m
+                  p   = player (level env)
+              in  null (L.filter f (mobs (level env)))
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: Env -> Bool
@@ -61,7 +67,7 @@ broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
     broadcast env e@NewGame                  = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@EndOfTurn                = broadcast' (updateFlags . healDamaged $ updateSeen (canSee (level env) (player (level env))) env) e
+    broadcast env e@EndOfTurn                = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
     broadcast env e@(StairsTaken v lvl)      = broadcast' (changeLevel env v lvl) e
     broadcast env e@(MenuChange  m)          = broadcast' (env { menu = m }) e
     broadcast env e@(MobSpawned m)           = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
@@ -103,6 +109,8 @@ instance Client Mob where
     broadcast m (Confused m')              | m == m' = m { flags = L.nub (ConfusedF:flags m) }
     broadcast m (Blinded m')               | m == m' = m { flags = L.nub (BlindedF:flags m) }
     broadcast m (GainedTelepathy m')       | m == m' = m { flags = L.nub (TelepathicF:flags m) }
+    broadcast m (StartedResting  m')       | m == m' = m { flags = L.nub (Resting:flags m) }
+    broadcast m (StoppedResting  m')       | m == m' = m { flags = L.delete Resting (flags m) }
 
     broadcast m otherwise = m
 
@@ -187,20 +195,6 @@ updateSeen f env =
               events = if fresh then stairE ++ itemE ++ events env
                        else if picked then itemE ++ events env
                        else events env }
-
--- heal damaged mobs if mob not damaged 5 turns ago
-healDamaged :: Env -> Env
-healDamaged env =
-    let p            = player (level env)
-        healedP      = if isHealing p then p { hp = min (mhp p) (hp p + 1) } else p
-        healedMs     = map (\m -> m { hp = min (mhp m) (hp m + 1) }) msToHeal
-        msToHeal     = L.filter isHealing (mobs (level env))
-        sinceHit   m = turnsSince (isDamageE m) (events env)
-        isHealing  m = sinceHit m > 0 && sinceHit m `mod` 5 == 0
-        isDamageE m (Damaged _ m' _) = m == m'
-        isDamageE m otherwise        = False
-    in  env { level = (level env) { mobs   = L.nub (healedMs ++ mobs (level env))
-                                  , player = healedP} }
 
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool

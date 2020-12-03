@@ -28,6 +28,21 @@ attack attacker target = do
     else
         return [Missed attacker target]
 
+rest :: Mob -> [Event]
+rest m =
+    if hp m < mhp m then [Healed m 1]
+    else [StoppedResting m]
+        -- if hp m < mhp m then
+        --     if not (isPlayer m) || null (L.filter (canSee lvl m . at) (mobs lvl)) then
+        --         let sinceRest = turnsSince f (events env)
+        --         in  if sinceRest `mod` 100 == 0 then return [Healed m 1]
+        --             else return []
+        --     else return [StoppedResting m]
+        -- else return [StoppedResting m]
+    -- where lvl = level env
+        --   f (StartedResting m') | m == m' = True
+        --   f otherwise                     = False
+
 applyItem :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
 applyItem lvl m i =
         if isEquippable i then return equipped

@@ -34,14 +34,14 @@ data Message = Message {
     message :: String,
     messageFgColor :: Color,
     messageBgColor :: Color
-} deriving Show
+} deriving (Show, Eq)
 
 data Sprite   = Sprite {
     spritePos :: Point,
     spriteChar :: Char,
     spriteFgColor :: Color,
     spriteBgColor :: Color
-} deriving Show
+} deriving (Show, Eq)
 
 -- game is renderable
 getSprites :: Env -> [Either Message Sprite]
@@ -309,4 +309,5 @@ toMessage e (CastLightning   m n) | isPlayer m = Just $ "KABOOM! Lightning strik
 toMessage e (Teleported      m p) | isPlayer m = Just $ "You feel disoriented."
 toMessage e (Mapped          lvl)              = Just $ "You suddenly understand the layout of the current level."
 toMessage e (GainedTelepathy m)   | isPlayer m = Just $ "You sense nearby danger."
+toMessage e (FailedRest      m)   | isPlayer m = Just $ "You are unable to rest with the sounds of nearby monsters."
 toMessage e otherwise = Nothing
