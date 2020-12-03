@@ -112,8 +112,10 @@ itemSymbol   (Item _ (Potion _)) = '!'
 itemSymbol   (Item _ (Scroll _)) = '?'
 itemSymbol   (Item _ (Tool)) = '/'
 
+dagger = weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19)
+
 weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20),
-            weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19),
+            dagger,
             weapon "Quarterstaff" (WeaponProperties (1 `d` 8) 0 True 20),
             weapon "Sword" (WeaponProperties (1 `d` 8) 0 False 20),
             weapon "Two-Handed Sword" (WeaponProperties (1 `d` 10) 0 True 20),

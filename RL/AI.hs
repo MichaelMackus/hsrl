@@ -50,7 +50,7 @@ automate m = do
                 m'          = fromJust (findMob (mobId m) (mobs lvl))
             if isValidPath then
                 if next == at p && not (isDead p) then
-                    attack m' p
+                    attack m' (wielding (equipment m')) p
                 else if isNothing (findMobAt next lvl) then
                     return [Moved m' next]
                 else return []

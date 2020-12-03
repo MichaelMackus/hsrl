@@ -127,7 +127,7 @@ mkDefaultConf = do
         playerConfig = PlayerConfig {
             playerHp = 12,
             playerFov = 5,
-            playerItems = replicate 3 (Item "Healing" (Potion Healing))
+            playerItems = dagger:(replicate 3 (Item "Healing" (Potion Healing)))
         }
     }
 

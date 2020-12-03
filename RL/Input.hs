@@ -51,6 +51,8 @@ keyToEvents k m = do
             KeyRight          -> moveOrAttack East
             KeyLeft           -> moveOrAttack West
             KeyDown           -> moveOrAttack South
+            (KeyChar 'f')     -> return [MenuChange ProjectileMenu]
+            (KeyChar 't')     -> return [MenuChange ProjectileMenu]
             (KeyChar 'r')     -> return [MenuChange Inventory]
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
             (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
@@ -58,20 +60,32 @@ keyToEvents k m = do
             (KeyChar 'Q')     -> return [QuitGame]
             (KeyChar 'g')     -> return (maybeToList (pickup (level env)))
             (KeyChar ',')     -> return (maybeToList (pickup (level env)))
-            (KeyChar 'w')     -> return [MenuChange Equipment]
-            (KeyChar 'W')     -> return [MenuChange Equipment]
-            (KeyChar 'e')     -> return [MenuChange Equipment]
-            (KeyChar 'q')     -> return [MenuChange DrinkMenu]
+            (KeyChar 'w')     -> return [MenuChange Inventory]
+            (KeyChar 'W')     -> return [MenuChange Inventory]
+            (KeyChar 'e')     -> return [MenuChange Inventory]
+            (KeyChar 'q')     -> return [MenuChange Inventory]
             (KeyMouseLeft to) -> if canSee lvl p to || to `elem` seen lvl then startRunning to else return []
             otherwise         -> return []
     else if isConfused p then do
         if k == (KeyChar 'Q') then return [QuitGame]
         else moveOrAttack =<< randomDir
-    else if isViewingInventory env then do
+    else if menu env == Inventory then do
         let ch = charFromKey k
             i  = (`fromInventoryLetter` (inventory p)) =<< ch
         e <- maybe (return []) (applyItem lvl p) i
         return (e ++ [MenuChange NoMenu])
+    else if menu env == ProjectileMenu then
+        let ch = charFromKey k
+            i  = (`fromInventoryLetter` (inventory p)) =<< ch
+        in  return $ maybe [MenuChange NoMenu] ((:[MenuChange TargetMenu]) . ReadiedProjectile p) i
+    else if menu env == TargetMenu then
+        case k of
+            -- TODO keyboard support
+            (KeyMouseLeft to) | canSee lvl p to && isJust (findMobAt to lvl) && isJust (readied p) -> do
+                let m = findMobAt to lvl
+                atkE <- attack p (readied p) (fromJust m)
+                return $ [ThrownProjectile p (fromJust (readied p)) (fromJust m), MenuChange NoMenu] ++ atkE
+            otherwise -> return [MenuChange NoMenu]
     else return []
 
 charFromKey :: Key -> Maybe Char
@@ -94,7 +108,7 @@ moveOrAttackAt to = do
         stairE = maybe [] (maybeToList . stairF) $ findTileAt to lvl
         stairF = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
     case (findMobAt to lvl, findTileAt to lvl) of
-        (Just m, _) -> attack p m
+        (Just m, _) -> attack p (wielding (equipment p)) m
         (_, Just t) -> if isPassable t then return (moveE ++ stairE) else return []
         otherwise   -> return []
 

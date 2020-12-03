@@ -7,6 +7,7 @@ import qualified Data.List as L
 -- Represents Game events
 
 data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point | StartedResting Mob | StoppedResting Mob | FailedRest Mob
+    | ReadiedProjectile Mob Item | ThrownProjectile Mob Item Mob
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
     | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy Mob
     | DestinationSet Mob Point | DestinationAbrupted Mob Point
@@ -15,7 +16,7 @@ data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Mo
     | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item | EndOfTurn | NewGame
     | MenuChange Menu | QuitGame | Escaped deriving (Eq, Show)
 
-data Menu = Inventory | Equipment | DrinkMenu | ReadMenu | NoMenu deriving (Eq, Show)
+data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]
 getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)

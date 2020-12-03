@@ -28,7 +28,8 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    destination    :: Maybe Point -- destination point
+    destination    :: Maybe Point, -- destination point
+    readied        :: Maybe Item
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting deriving (Eq, Show)
 
@@ -112,7 +113,8 @@ mob = Mob {
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing Nothing Nothing,
-    destination = Nothing
+    destination = Nothing,
+    readied = Nothing
     -- TODO DR & weaknesses
 }
 

@@ -1,4 +1,4 @@
-module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, canRest, isWon, isQuit, isViewingInventory, module RL.Map, module RL.Event, module Control.Monad.Reader) where
+module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, canRest, isWon, isQuit, module RL.Map, module RL.Event, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Map
@@ -51,10 +51,6 @@ canRest env = let f m = distance (at m) (at p) <= hearing m
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: Env -> Bool
 isTicking = (== NoMenu) . menu
-
--- detects if we're ticking (i.e. AI and other things should be active)
-isViewingInventory :: Env -> Bool
-isViewingInventory e = menu e /= NoMenu
 
 -- represents a client that does something to the state
 class Client c where
@@ -111,6 +107,8 @@ instance Client Mob where
     broadcast m (GainedTelepathy m')       | m == m' = m { flags = L.nub (TelepathicF:flags m) }
     broadcast m (StartedResting  m')       | m == m' = m { flags = L.nub (Resting:flags m) }
     broadcast m (StoppedResting  m')       | m == m' = m { flags = L.delete Resting (flags m) }
+    broadcast m (ReadiedProjectile m' i)   | m == m' = m { readied = Just i }
+    broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, inventory = L.delete i (inventory m) } -- TODO drop item
 
     broadcast m otherwise = m
 

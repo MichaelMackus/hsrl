@@ -8,16 +8,16 @@ import Data.Maybe (fromMaybe, fromJust, maybeToList)
 import qualified Data.List as L
 
 -- TODO miss chance if invis
-attack :: MonadRandom r => Mob -> Mob -> r [Event]
-attack attacker target = do
-    let weap = weaponProperties =<< wielding (equipment attacker)
-        weapBonus = fromMaybe 0 (bonus <$> weap)
+attack :: MonadRandom r => Mob -> Maybe Item -> Mob -> r [Event]
+attack attacker weap target = do
+    let weapProp  = weaponProperties =<< weap
+        weapBonus = fromMaybe 0 (bonus <$> weapProp)
     -- attack roll
     atk <- roll (1 `d` 20)
     if atk + weapBonus >= thac0 attacker - mobAC target || atk == 20 then do
         -- hit!
-        let dmgDie  = maybe (baseDmg attacker) dmgd weap
-            crit    = atk == (maybe 20 critRange weap)
+        let dmgDie  = maybe (baseDmg attacker) dmgd weapProp
+            crit    = atk == (maybe 20 critRange weapProp)
             -- the ornate sword automatically kills enemies on crit
             critDmg = if (itemDescription <$> (wielding (equipment attacker))) == Just "Ornate Sword" then hp target else maxD dmgDie
         dmg <- (+ strength attacker) <$> if crit then return critDmg else roll dmgDie
