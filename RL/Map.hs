@@ -209,9 +209,14 @@ isObstructed lvl p p' =
 -- can mob see a point on the map?
 canSee :: DLevel -> Mob -> Point -> Bool
 canSee lvl m p =
-    let isBlind = BlindedF `elem` flags m
-    in  if isBlind then distance (at m) p < 2
-        else withinFov lvl m p
+    if isBlinded m then distance (at m) p < 2
+    else withinFov lvl m p && not (isSleeping m)
+
+-- can mob see a mob on the map?
+canSeeMob :: DLevel -> Mob -> Mob -> Bool
+canSeeMob lvl m target =
+    if isVisible target then canSee lvl m (at target)
+    else canSee lvl m (at target) && distance (at m) (at target) < 2
 
 withinFov :: DLevel -> Mob -> Point -> Bool
 withinFov lvl m p = distance (at m) p <= fov m && not (isObstructed lvl (at m) p)
