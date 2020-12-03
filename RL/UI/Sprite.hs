@@ -281,8 +281,8 @@ toMessage e (Died m)
     | otherwise  = Just $ "You killed the " ++ mobName m
 toMessage e (StairsTaken Up _) = Just $ "You've gone up stairs."
 toMessage e (StairsTaken Down _) = Just $ "You've gone down stairs."
-toMessage e (Waken m) = Just $ "You hear shuffling nearby."
-toMessage e (Slept m) = Just $ "The " ++ mobName m ++ " has fell asleep."
+toMessage e (Waken m) | canSee (level e) (player (level e)) (at m) = Just $ "The " ++ mobName m ++ " wakes up from their slumber."
+toMessage e (Slept m) = Just $ "The " ++ mobName m ++ " has fallen asleep."
 toMessage e (StairsSeen Up) = Just $ "You see stairs going up."
 toMessage e (StairsSeen Down) = Just $ "You see stairs going down."
 toMessage e (ItemsSeen items) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""

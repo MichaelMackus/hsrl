@@ -13,16 +13,18 @@ import qualified Data.Set as Set
 
 automate :: Mob -> GameEnv [Event]
 automate m = do
-        env <- ask
+        env   <- ask
         let lvl     = level env
             p       = player lvl
-            seen    = seenPath lvl m p
-            heard   = heardPath lvl m p
+            seenP   = seenPath lvl m p
+            heardP  = heardPath lvl m p
             wakeE   = if (Sleeping `elem` flags m) then [Waken m] else []
-        mobE <- mobTurn m p seen heard
-        if isJust seen then
+        heardApproach <- canHear env m p True
+        heardNearby   <- canHear env m p False
+        mobE          <- mobTurn m p seenP heardP
+        if heardApproach && isJust seenP then
             return $ wakeE ++ [MobSeen m p] ++ mobE
-        else if isJust heard then
+        else if heardNearby && isJust heardP then
             return $ wakeE ++ [MobHeard m p] ++ mobE
         else if not (Sleeping `elem` flags m) then
             return mobE
@@ -39,8 +41,9 @@ automate m = do
             else if isJust curPath then
                 moveCloser m p (fromJust curPath)
             -- end of path and can hear player, follow that path
-            else if isJust heard then
-                moveCloser m p (fromJust heard)
+            -- TODO FIXME
+            -- else if isJust heard then
+            --     moveCloser m p (fromJust heard)
             else do
                 -- wander randomly
                 let neighbors = aiNeighbors lvl (at m)
@@ -72,11 +75,31 @@ seenPath lvl m1 m2 =
     else
         Nothing
 
+-- there's only a chance the mob can hear the player
+-- TODO more chance if awake?
+canHear :: MonadRandom m => Env -> Mob -> Mob -> Bool -> m Bool
+canHear env m1 m2 isCombat =
+    -- wake up 5 in 6 times if combat is heard
+    let es     = getEventsThisTurn (events env)
+        chance = if hearsCombat es m1 then (5 % 6)
+                 -- 1 or 2 in 6 chance every round *or* dungeon turn if not in combat
+                 else (if isSneaky m2 then (1 % 6) else (2 % 6)) *  (if not isCombat then (1 % 10) else 1)
+    in  if distance (at m1) (at m2) <= hearing m1 then randomChance chance
+        else return False
+
+hearsCombat :: [Event] -> Mob -> Bool
+hearsCombat es m =
+    let f (Damaged atk tgt _) = g atk tgt
+        f (Missed  atk tgt)   = g atk tgt
+        f otherwise           = False
+        -- check if mob can hear attacker or target... uses sight distance so further away mobs stay sleeping
+        g atk tgt             = distance (at atk) (at m) <= fov m || distance (at tgt) (at m) <= hearing m
+    in  not . null $ L.filter f es
+
 heardPath :: DLevel -> Mob -> Mob -> Maybe [Point]
 heardPath lvl m1 m2 =
-    -- TODO should be able to still somewhat track if invisible
-    if isVisible m2 && distance (at m1) (at m2) <= hearing m1 then
-        findAIPath lvl distance (at m2) (at m1)
+    if distance (at m1) (at m2) <= hearing m1 then
+        findPath (dfinder lvl) distance (at m2) (at m1)
     else
         Nothing
 

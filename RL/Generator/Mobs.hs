@@ -16,10 +16,12 @@ data PlayerConfig = PlayerConfig {
 instance GenConfig PlayerConfig where
     generating conf = return True
 
+-- TODO need item config for generating treasure
 data MobConfig = MobConfig {
     maxMobs :: Int,
     minMobs :: Int,
     mobGenChance :: Rational,
+    mobSleepingChance :: Rational,
     difficultyRange :: (Int, Int) -- min - fst, max + snd
 }
 
@@ -55,19 +57,21 @@ generateMob diff = do
     diff' <- max 1 <$> getRandomR (diff - fst (difficultyRange conf), diff + snd (difficultyRange conf))
     r     <- randomChance (mobGenChance conf)
     if length (mobs lvl) < minMobs conf || r then do
-        let tileF p t = not (isStair t) && isPassable t && isNothing (findMobAt p lvl)
+        let tileF p t = not (isStair t) && isPassable t && isNothing (findMobAt p lvl) && not (canSee lvl (player lvl) p)
         p <- randomTile tileF lvl
         m <- pickRarity (mobRarity diff) dngMobs
-        return $ fmap (updateFlags lvl) (moveMob <$> p <*> m)
+        traverse updateFlags (moveMob <$> p <*> m)
     else
         return Nothing
 
-updateFlags :: DLevel -> Mob -> Mob
-updateFlags lvl m = m { flags = [Sleeping] }
--- updateFlags lvl m = let maxDist = 10
---                         pDist = distance (at m) (at (player lvl))
---                         flags = if pDist >= maxDist then [Sleeping] else []
---                     in  m { flags = flags }
+-- random chance to be sleeping or wandering
+updateFlags :: Mob -> Generator MobConfig DLevel Mob
+updateFlags m = do
+    chance <- asks mobSleepingChance
+    lvl    <- getGData
+    r      <- randomChance chance
+    if not (isUndead m) && r then return $ m { flags = [Sleeping] }
+    else return m
 
 dngMobs = [ mob {
                 mobName = "Kobold",
@@ -109,7 +113,8 @@ dngMobs = [ mob {
                hp = 4,
                mhp = 4,
                baseDmg = 1 `d` 6,
-               baseAC  = 7
+               baseAC  = 7,
+               isUndead = True
             },
             mob {
                mobName = "Zombie",
@@ -118,7 +123,8 @@ dngMobs = [ mob {
                mhp = 9,
                baseDmg = 1 `d` 8,
                thac0   = 18,
-               baseAC  = 8
+               baseAC  = 8,
+               isUndead = True
             },
             mob {
                mobName = "Ogre",

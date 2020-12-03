@@ -28,7 +28,8 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    destination    :: Maybe Point -- destination point
+    destination    :: Maybe Point, -- destination point
+    isUndead       :: Bool
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF deriving (Eq, Show)
 
@@ -106,7 +107,9 @@ mob = Mob {
     flags = [],
     inventory = [],
     equipment = MobEquipment Nothing Nothing Nothing,
-    destination = Nothing
+    destination = Nothing,
+    isUndead = False
+    -- TODO DR & weaknesses
 }
 
 -- helper functions for mob management
@@ -141,3 +144,8 @@ isShielded m = isJust (shield (equipment m))
 
 handsFull :: Mob -> Bool
 handsFull = maybe False (twoHanded . fromJust . weaponProperties) . wielding . equipment
+
+isSneaky :: Mob -> Bool
+isSneaky m = let f = (=="Leather Armor") . itemDescription
+             in  maybe True f $ wearing (equipment m)
+

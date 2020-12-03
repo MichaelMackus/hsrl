@@ -41,13 +41,13 @@ doEndTurn conf env =
         else return env
     where
         spawnMobs env = do
+            g <- newStdGen
             let ms = mobs (level env)
-            if length ms < maxMobs conf then do
-                g   <- newStdGen
-                let s = mkGenState (level env) g
-                    (newMs', _) = runGenerator mobGenerator conf s
-                    spawned = filter (not . (`elem` ms)) newMs'
-                return (map MobSpawned spawned)
+                chance = (1 % 6) * (1 % 10) -- random (1/6 every 10 rounds) chance to spawn mobs
+                s = mkGenState (level env) g
+                (newMs', _) = runGenerator mobGenerator (conf { mobSleepingChance = 0, mobGenChance = chance, maxMobs = 1 }) s
+                spawned = filter (not . (`elem` ms)) newMs'
+            if length ms < maxMobs conf then return (map MobSpawned spawned)
             else return []
         doAI env = let ms = mobs (level env)
                    in  go ms env
@@ -118,9 +118,10 @@ mkDefaultConf = do
         prevLevel = Nothing,
         maxDepth  = 5,
         mobConfig = MobConfig {
-            maxMobs = 10,
+            maxMobs = 20,
             minMobs = 4,
-            mobGenChance = (1 % 20),
+            mobGenChance = (1 % 3),
+            mobSleepingChance = (1 % 2),
             difficultyRange = (2, 0)
         },
         itemConfig = ItemConfig {
