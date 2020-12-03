@@ -110,9 +110,9 @@ mkDefaultConf = do
         dheight = 15,
         maxTries = 10,
         prevLevel = Nothing,
-        maxDepth  = 5,
+        maxDepth  = 10,
         mobConfig = MobConfig {
-            maxMobs = 20,
+            maxMobs = 10,
             minMobs = 4,
             mobGenChance = (1 % 3),
             mobSleepingChance = (1 % 2),
@@ -126,7 +126,8 @@ mkDefaultConf = do
         },
         playerConfig = PlayerConfig {
             playerHp = 12,
-            playerFov = 5
+            playerFov = 5,
+            playerItems = replicate 3 (Item "Healing" (Potion Healing))
         }
     }
 
@@ -143,5 +144,5 @@ nextLevel conf = do
             level      = lvl,
             events     = [],
             menu       = NoMenu,
-            identified = []
+            identified = map itemType (inventory (player lvl))
         }

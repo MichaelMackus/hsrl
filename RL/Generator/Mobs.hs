@@ -10,7 +10,8 @@ import Data.Ratio
 
 data PlayerConfig = PlayerConfig {
     playerHp :: Int,
-    playerFov :: Radius
+    playerFov :: Radius,
+    playerItems :: [Item]
 }
 
 instance GenConfig PlayerConfig where
@@ -30,12 +31,13 @@ instance GenConfig MobConfig where
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
-    (PlayerConfig hp fov) <- ask
+    (PlayerConfig hp fov inv) <- ask
     cs <- getGData
     if not (null cs) then
         -- TODO place player randomly around dungeon
-        let p = cmid (cs !! 0)
-        in  markGDone >> return (Just (mkPlayer hp p fov))
+        let p  = cmid (cs !! 0)
+            pl = (mkPlayer hp p fov) { inventory = inv }
+        in  markGDone >> return (Just pl)
     else
         return Nothing
 
@@ -149,11 +151,11 @@ dngMobs = [ mob {
 
 mobRarity :: Difficulty -> Mob -> Rational
 mobRarity d m
-    | d == 1 = case mobName m of
+    | d <= 2 = case mobName m of
                     "Kobold"   -> (1 % 5)
                     "Grid Bug" -> (1 % 3)
                     otherwise  -> (0 % 10)
-    | d == 2 = case mobName m of
+    | d <= 4 = case mobName m of
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 10)
                     otherwise  -> mobRarity 1 m

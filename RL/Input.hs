@@ -51,8 +51,7 @@ keyToEvents k m = do
             KeyRight          -> moveOrAttack East
             KeyLeft           -> moveOrAttack West
             KeyDown           -> moveOrAttack South
-            (KeyChar 'r')     -> if canRest env then return [StartedResting p] else return [FailedRest p]
-            (KeyChar 'R')     -> if canRest env then return [StartedResting p] else return [FailedRest p]
+            (KeyChar 'r')     -> return [MenuChange Inventory]
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
             (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
             (KeyChar 'i')     -> return [MenuChange Inventory]
