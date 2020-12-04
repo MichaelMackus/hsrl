@@ -306,6 +306,7 @@ toMessage e (Teleported      m p)      | isPlayer m = Just $ "You feel disorient
 toMessage e (Mapped          lvl)                   = Just $ "You suddenly understand the layout of the current level."
 toMessage e (GainedTelepathy m)        | isPlayer m = Just $ "You sense nearby danger."
 toMessage e (FailedRest      m)        | isPlayer m = Just $ "You are unable to rest with the sounds of nearby monsters."
+toMessage e (MissileInterrupted m)     | isPlayer m = Just $ "You are unable to concentrate on firing within the melee."
 toMessage e (ThrownProjectile m i _)   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
 toMessage e (FiredProjectile  m l p _) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
 toMessage e otherwise = Nothing

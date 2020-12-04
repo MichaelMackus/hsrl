@@ -165,6 +165,7 @@ neighbors d p@(x, y) f
         in  map fst (filter f (zip ps ts'))
 
 
+touching :: Point -> Point -> Bool
 touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
                                  (p1x + 1 == p2x && p1y == p2y) ||
                                  (p1x == p2x && p1y - 1 == p2y) ||
@@ -231,3 +232,8 @@ mapWidth lvl = length (toTiles lvl !! 0)
 
 mapHeight :: DLevel -> Int
 mapHeight lvl = length (toTiles lvl)
+
+-- is a mob in melee?
+inMelee :: DLevel -> Mob -> Bool
+inMelee lvl m | isPlayer m = not . null $ L.filter (touching (at m) . at) (mobs lvl)
+inMelee lvl m | otherwise  = touching (at m) (at (player lvl))

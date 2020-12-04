@@ -54,8 +54,8 @@ keyToEvents k m = do
             KeyRight          -> moveOrAttack East
             KeyLeft           -> moveOrAttack West
             KeyDown           -> moveOrAttack South
-            (KeyChar 'f')     -> return [MenuChange ProjectileMenu] -- TODO skip to targetting menu if projectile/launcher readied
-            (KeyChar 't')     -> return [MenuChange ProjectileMenu]
+            (KeyChar 'f')     -> return $ tryFire lvl p -- TODO skip to targetting menu if projectile/launcher readied
+            (KeyChar 't')     -> return $ tryFire lvl p
             (KeyChar 'r')     -> return [MenuChange Inventory]
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
             (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
@@ -124,6 +124,11 @@ moveOrAttackAt to = do
         (Just m, _) -> attack p (wielding (equipment p)) m
         (_, Just t) -> if isPassable t then return (moveE ++ stairE) else return []
         otherwise   -> return []
+
+tryFire :: DLevel -> Mob -> [Event]
+tryFire lvl m =
+    if inMelee lvl m then [MissileInterrupted m]
+    else [MenuChange ProjectileMenu]
 
 pickup :: DLevel -> Maybe Event
 pickup lvl = 
