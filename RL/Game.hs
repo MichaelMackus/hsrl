@@ -62,17 +62,20 @@ broadcastEvents c []    = c
 broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
-    broadcast env e@NewGame                  = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@EndOfTurn                = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@(StairsTaken v lvl)      = broadcast' (changeLevel env v lvl) e
-    broadcast env e@(MenuChange  m)          = broadcast' (env { menu = m }) e
-    broadcast env e@(MobSpawned m)           = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
-    broadcast env e@(ItemPickedUp m i)       = broadcast' (env { level = removePickedItem m i (level env) }) e
-    broadcast env e@(Teleported m to)        = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
-    broadcast env e@(Mapped lvl)             = broadcast' (updateSeen (const True) env) e
-    broadcast env e@(Drank m i) | isPlayer m = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
-    broadcast env e@(Read  m i) | isPlayer m = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
-    broadcast env e                          = broadcast' env e
+    broadcast env e@NewGame                   = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
+    broadcast env e@EndOfTurn                 = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
+    broadcast env e@(StairsTaken v lvl)       = broadcast' (changeLevel env v lvl) e
+    broadcast env e@(MenuChange  m)           = broadcast' (env { menu = m }) e
+    broadcast env e@(MobSpawned m)            = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
+    broadcast env e@(ItemPickedUp m i)        = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(Teleported m to)         = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
+    broadcast env e@(Mapped lvl)              = broadcast' (updateSeen (const True) env) e
+    broadcast env e@(Drank m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    broadcast env e@(Read  m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    broadcast env e@(ThrownProjectile m i p)  = broadcast' (env { level = (level env) { items = (p,i):items (level env) } }) e
+    broadcast env e@(FiredProjectile m _ i p) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
+                                                in  broadcast' (env { level = (level env) { items = is } }) e
+    broadcast env e                           = broadcast' env e
 
 broadcast' env e =
         let p       = player (level env)
@@ -108,7 +111,9 @@ instance Client Mob where
     broadcast m (StartedResting  m')       | m == m' = m { flags = L.nub (Resting:flags m) }
     broadcast m (StoppedResting  m')       | m == m' = m { flags = L.delete Resting (flags m) }
     broadcast m (ReadiedProjectile m' i)   | m == m' = m { readied = Just i }
-    broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, inventory = L.delete i (inventory m) } -- TODO drop item
+    broadcast m (TargetChanged   m' p)     | m == m' = m { target = Just p }
+    broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
+    broadcast m (FiredProjectile m' _ i _) | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
 
     broadcast m otherwise = m
 
@@ -117,7 +122,11 @@ removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)
                            in  replaceItemsAt (at m) lvl is
 
 equip :: Mob -> Item -> Mob
-equip m i = if isWeapon i then
+equip m i = if isLauncher i then
+                let launch = launcher (equipment m)
+                in  m { equipment = (equipment m) { launcher = Just i },
+                        inventory = maybeToList launch ++ L.delete i (inventory m) }
+            else if isWeapon i then
                 let weap = wielding (equipment m)
                 in  m { equipment = (equipment m) { wielding = Just i },
                         inventory = maybeToList weap ++ L.delete i (inventory m) }
@@ -131,7 +140,9 @@ equip m i = if isWeapon i then
             else m
 
 removeEquip :: Mob -> Item -> Mob
-removeEquip m i = if isWeapon i then
+removeEquip m i = if isLauncher i then
+                      m { equipment = (equipment m) { launcher = Nothing }, inventory = i:inventory m }
+                  else if isWeapon i then
                       m { equipment = (equipment m) { wielding = Nothing }, inventory = i:inventory m }
                   else if isArmor i then
                       let s     = slot (fromJust (armorProperties i))

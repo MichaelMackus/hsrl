@@ -43,7 +43,7 @@ vtyUI cfg = do
 
 tileToImage :: Env -> (Int, [Tile]) -> Image
 tileToImage env (y, row) = flattenSprites . map spr $ enumerate row
-    where spr (x, _)     = let s = spriteAt (level env) (x, y)
+    where spr (x, _)     = let s = spriteAt env (x, y)
                            in  if spriteChar s == '#' then s { spriteChar = getWallChar env (x,y) }
                                else s
 

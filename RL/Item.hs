@@ -2,7 +2,7 @@ module RL.Item where
 
 import RL.Types
 
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust)
 import qualified Data.List as L
 
 data Item = Item {
@@ -45,8 +45,12 @@ data WeaponProperties = WeaponProperties {
     dmgd :: Dice,
     bonus :: Int, -- positive OR negative bonus to attack & damage rolls
     twoHanded :: Bool,
-    critRange :: Int
+    critRange :: Int,
+    projectileType :: Maybe ProjectileType,
+    launcherType :: Maybe ProjectileType
 } deriving (Eq, Ord)
+
+data ProjectileType = Thrown | Arrow | Bullet deriving (Eq, Ord)
 
 weaponProperties :: Item -> Maybe WeaponProperties
 weaponProperties (Item _ (Weapon prop)) = Just prop
@@ -75,6 +79,21 @@ findItemByName :: String -> [Item] -> Maybe Item
 findItemByName n = L.find f
     where f i = itemDescription i == n
 
+isProjectile :: Item -> Bool
+isProjectile = maybe False (isJust . projectileType) . weaponProperties
+
+isLauncher :: Item -> Bool
+isLauncher = maybe False (isJust . launcherType) . weaponProperties
+
+launchesProjectile :: Item -> Item -> Bool
+launchesProjectile l p = let prop = fromJust . weaponProperties
+                             ltyp = launcherType (prop l)
+                             ptyp = projectileType (prop p)
+                         in  isLauncher l && isProjectile p && ltyp == ptyp
+
+isTwoHanded :: Item -> Bool
+isTwoHanded = maybe False twoHanded . weaponProperties
+
 isWeapon :: Item -> Bool
 isWeapon (Item _ (Weapon _)) = True
 isWeapon otherwise           = False
@@ -91,6 +110,10 @@ isDrinkable = isJust . potionType
 
 isReadable :: Item -> Bool
 isReadable = isJust . scrollType
+
+isFragile :: Item -> Bool
+isFragile i = let prop = fromJust (weaponProperties i)
+              in  isProjectile i && maybe False (==Arrow) (projectileType prop)
 
 scrollType :: Item -> Maybe ScrollType
 scrollType (Item _ (Scroll t)) = Just t
@@ -112,15 +135,20 @@ itemSymbol   (Item _ (Potion _)) = '!'
 itemSymbol   (Item _ (Scroll _)) = '?'
 itemSymbol   (Item _ (Tool)) = '/'
 
-dagger = weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19)
-
-weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20),
+dagger = weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19 (Just Thrown) Nothing)
+bow    = weapon "Bow" (WeaponProperties (1 `d` 6) 0 True 20 Nothing (Just Arrow))
+arrow  = weapon "Arrow" (WeaponProperties (1 `d` 3) 0 True 20 (Just Arrow) Nothing)
+weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20 Nothing Nothing),
             dagger,
-            weapon "Quarterstaff" (WeaponProperties (1 `d` 8) 0 True 20),
-            weapon "Sword" (WeaponProperties (1 `d` 8) 0 False 20),
-            weapon "Two-Handed Sword" (WeaponProperties (1 `d` 10) 0 True 20),
+            weapon "Quarterstaff" (WeaponProperties (1 `d` 8) 0 True 20 Nothing Nothing),
+            weapon "Sword" (WeaponProperties (1 `d` 8) 0 False 20 Nothing Nothing),
+            weapon "Two-Handed Sword" (WeaponProperties (1 `d` 10) 0 True 20 Nothing Nothing),
+            bow,
+            arrow,
+            weapon "Sling" (WeaponProperties (1 `d` 4) 0 True 20 Nothing (Just Bullet)),
+            weapon "Rock" (WeaponProperties (1 `d` 3) 0 True 20 (Just Bullet) Nothing),
             -- TODO generate on last level
-            weapon "Ornate Sword" (WeaponProperties (1 `d` 10) 3 False 19) ]
+            weapon "Ornate Sword" (WeaponProperties (1 `d` 10) 3 False 19 Nothing Nothing) ]
 
 armors = [ armor "Leather Armor" (ArmorProperties 2 Chest),
            armor "Chain Mail" (ArmorProperties 6 Chest),

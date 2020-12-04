@@ -1,5 +1,6 @@
 module RL.Input where
 
+import Debug.Trace
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
 import RL.Event
@@ -7,8 +8,10 @@ import RL.Types
 import RL.Game
 import RL.Pathfinder
 import RL.Random
+import RL.Util
 
 import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMaybe)
+import qualified Data.List as L
 
 -- automate player turn
 automatePlayer :: GameEnv [Event]
@@ -51,7 +54,7 @@ keyToEvents k m = do
             KeyRight          -> moveOrAttack East
             KeyLeft           -> moveOrAttack West
             KeyDown           -> moveOrAttack South
-            (KeyChar 'f')     -> return [MenuChange ProjectileMenu]
+            (KeyChar 'f')     -> return [MenuChange ProjectileMenu] -- TODO skip to targetting menu if projectile/launcher readied
             (KeyChar 't')     -> return [MenuChange ProjectileMenu]
             (KeyChar 'r')     -> return [MenuChange Inventory]
             (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
@@ -75,17 +78,27 @@ keyToEvents k m = do
         e <- maybe (return []) (applyItem lvl p) i
         return (e ++ [MenuChange NoMenu])
     else if menu env == ProjectileMenu then
-        let ch = charFromKey k
-            i  = (`fromInventoryLetter` (inventory p)) =<< ch
-        in  return $ maybe [MenuChange NoMenu] ((:[MenuChange TargetMenu]) . ReadiedProjectile p) i
+        let ch   = charFromKey k
+            i    = (`fromInventoryLetter` (inventory p)) =<< ch
+            targets = L.filter (canSee lvl p) . L.sortBy (comparing (distance (at p))) . map at $ mobs lvl
+            tgtE    = map (TargetChanged p) $ take 1 targets
+        in  if maybe False isProjectile i && length targets > 0 then
+                return $ [MenuChange NoMenu, ReadiedProjectile p (fromJust i), MenuChange TargetMenu] ++ tgtE
+            else
+                return [MenuChange NoMenu]
     else if menu env == TargetMenu then
-        case k of
-            -- TODO keyboard support
-            (KeyMouseLeft to) | canSee lvl p to && isJust (findMobAt to lvl) && isJust (readied p) -> do
-                let m = findMobAt to lvl
-                atkE <- attack p (readied p) (fromJust m)
-                return $ [ThrownProjectile p (fromJust (readied p)) (fromJust m), MenuChange NoMenu] ++ atkE
-            otherwise -> return [MenuChange NoMenu]
+        let targets = L.filter (canSee lvl p) . L.sortBy (comparing (distance (at p))) . map at $ mobs lvl
+        in  case k of
+                (KeyChar    '\t') | length targets > 0 ->
+                    -- change to next target based on tab char
+                    let i   = fromMaybe 0 $ (\t -> L.findIndex (== t) targets) =<< target p
+                        tgt = if i + 1 >= length targets then head targets else targets !! (i + 1)
+                    in  return [TargetChanged p tgt]
+                (KeyEnter) | isJust (target p) && isJust (readied p) ->
+                    fire lvl p (fromJust (readied p))
+                (KeyMouseLeft to) | to `elem` targets && isJust (findMobAt to lvl) && isJust (readied p) ->
+                    fire lvl p (fromJust (readied p))
+                otherwise -> return [MenuChange NoMenu]
     else return []
 
 charFromKey :: Key -> Maybe Char

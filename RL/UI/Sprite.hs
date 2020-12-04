@@ -45,21 +45,19 @@ data Sprite   = Sprite {
 
 -- game is renderable
 getSprites :: Env -> [Either Message Sprite]
-getSprites e = map Right (getMapSprites (level e)) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e)) ++ map Left (otherWindows e)
+getSprites e = map Right (getMapSprites e) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e)) ++ map Left (otherWindows e)
 
 -- helper functions since map/mob isn't renderable without context
 
--- OLD faster func
--- getMapSprites lvl = map getRowSprite . enumerate . unenumerate2d . map sym $ M.toList (tiles lvl)
---     where
---         sym (p, t) = (p, head (spriteStr (sprite (p, t))))
---         getRowSprite ((y), ts) = Sprite (0, y) ts white black
-
-spriteAt :: DLevel -> Point -> Sprite
-spriteAt lvl p = if canPlayerSee p then tileOrMobSprite lvl p
+spriteAt :: Env -> Point -> Sprite
+spriteAt env p = if menu env == TargetMenu && target (player lvl) == Just p then targetingSprite p
+                 else if canPlayerSee p then tileOrMobSprite lvl p
                  else seenTileSprite lvl p
     where
+        lvl = level env
         canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
+
+        targetingSprite p = Sprite p '*' red black
 
         tileColor Floor = white
         tileColor Cavern = grey
@@ -121,8 +119,8 @@ spriteAt lvl p = if canPlayerSee p then tileOrMobSprite lvl p
                                else Sprite p ' ' black black
         stale spr = spr { spriteFgColor = dgrey, spriteBgColor = black }
 
-getMapSprites :: DLevel -> [Sprite]
-getMapSprites lvl = map (spriteAt lvl . fst) . M.toList $ tiles lvl
+getMapSprites :: Env -> [Sprite]
+getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (level env)
 
 getStatusSprites :: DLevel -> [Message]
 getStatusSprites lvl =
@@ -293,20 +291,21 @@ toMessage e (EquipmentRemoved m item) | isPlayer m = Just $ "You have removed th
 toMessage e (MenuChange Inventory) = Just $ "Pick an item to use or equip. Press space to cancel."
 toMessage e (MenuChange ProjectileMenu) = Just $ "Pick a projectile to throw. Press space to cancel."
 toMessage e (MenuChange TargetMenu) = Just $ "Pick a target to throw at. Press space to cancel."
-toMessage e (Drank           m p)   | isPlayer m = Just $ "You drank the " ++ show p ++ "."
-toMessage e (Healed          m n)   | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
-toMessage e (GainedLife      m n)   | isPlayer m = Just $ "Praise the sun! You feel youthful."
-toMessage e (GainedStrength  m n)   | isPlayer m = Just $ "You feel empowered!"
-toMessage e (DrankAcid       m  )   | isPlayer m = Just $ "It BURNS!"
-toMessage e (Vanished        m  )   | isPlayer m = Just $ "You can no longer see yourself!"
-toMessage e (Confused        m  )   | isPlayer m = Just $ "You feel drunk."
-toMessage e (Blinded         m  )   | isPlayer m = Just $ "You can no longer see your surroundings!"
-toMessage e (Read            m s)   | isPlayer m = Just $ "You read the " ++ show s ++ "."
-toMessage e (CastFire        m n)   | isPlayer m = Just $ "Roaring flames erupt all around you!"
-toMessage e (CastLightning   m n)   | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
-toMessage e (Teleported      m p)   | isPlayer m = Just $ "You feel disoriented."
-toMessage e (Mapped          lvl)                = Just $ "You suddenly understand the layout of the current level."
-toMessage e (GainedTelepathy m)     | isPlayer m = Just $ "You sense nearby danger."
-toMessage e (FailedRest      m)     | isPlayer m = Just $ "You are unable to rest with the sounds of nearby monsters."
-toMessage e (ThrownProjectile m i _)| isPlayer m = Just $ "You throw the " ++ show i ++ "."
+toMessage e (Drank           m p)      | isPlayer m = Just $ "You drank the " ++ show p ++ "."
+toMessage e (Healed          m n)      | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
+toMessage e (GainedLife      m n)      | isPlayer m = Just $ "Praise the sun! You feel youthful."
+toMessage e (GainedStrength  m n)      | isPlayer m = Just $ "You feel empowered!"
+toMessage e (DrankAcid       m  )      | isPlayer m = Just $ "It BURNS!"
+toMessage e (Vanished        m  )      | isPlayer m = Just $ "You can no longer see yourself!"
+toMessage e (Confused        m  )      | isPlayer m = Just $ "You feel drunk."
+toMessage e (Blinded         m  )      | isPlayer m = Just $ "You can no longer see your surroundings!"
+toMessage e (Read            m s)      | isPlayer m = Just $ "You read the " ++ show s ++ "."
+toMessage e (CastFire        m n)      | isPlayer m = Just $ "Roaring flames erupt all around you!"
+toMessage e (CastLightning   m n)      | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
+toMessage e (Teleported      m p)      | isPlayer m = Just $ "You feel disoriented."
+toMessage e (Mapped          lvl)                   = Just $ "You suddenly understand the layout of the current level."
+toMessage e (GainedTelepathy m)        | isPlayer m = Just $ "You sense nearby danger."
+toMessage e (FailedRest      m)        | isPlayer m = Just $ "You are unable to rest with the sounds of nearby monsters."
+toMessage e (ThrownProjectile m i _)   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
+toMessage e (FiredProjectile  m l p _) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
 toMessage e otherwise = Nothing

@@ -192,6 +192,7 @@ eventToKey e = case e of
             KeycodeRight     -> Just KeyRight
             KeycodeEscape    -> Just KeyEscape
             KeycodeBackspace -> Just KeyBackspace
+            KeycodeTab       -> Just (KeyChar '\t')
             (Keycode k)      -> let ch = toEnum (fromIntegral k) :: Char
                                 in  if isAlpha k  then Just (KeyChar ch) -- Ctrl doesn't get TextInputEvent
                                     else               Nothing           -- So we can get capitalized symbol from TextInputEvent

@@ -4,7 +4,7 @@ import RL.Event
 import RL.Game
 import RL.Random
 
-import Data.Maybe (fromMaybe, fromJust, maybeToList)
+import Data.Maybe (fromMaybe, fromJust, maybeToList, catMaybes, isJust)
 import qualified Data.List as L
 
 -- TODO miss chance if invis
@@ -45,18 +45,35 @@ rest m =
 
 applyItem :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
 applyItem lvl m i =
-        if isEquippable i then return equipped
-        else if isDrinkable i then drinkPotion m i
-        else if isReadable i then readScroll lvl m i
-        else return []
-    where
-        equipped = let isTwoH = maybe False twoHanded . weaponProperties
-                       isShld = maybe False ((==Hand) . slot) . armorProperties
-                       wield  = fromJust (wielding (equipment m))
-                       shld   = fromJust (shield (equipment m))
-                       wieldE = if isTwoH i && isShielded m then [EquipmentRemoved m shld] else []
-                       shldE  = if isShld i && handsFull  m then [EquipmentRemoved m wield] else []
-                    in wieldE ++ shldE ++ [Equipped m i]
+    if isEquippable i then return (equip m i)
+    else if isDrinkable i then drinkPotion m i
+    else if isReadable i then readScroll lvl m i
+    else return []
+
+-- fire projectile toward the mob's target
+-- TODO unable to fire in melee
+fire :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
+fire lvl attacker proj =
+    if isProjectile proj && isJust (findMobAt (fromJust (target attacker)) lvl) then
+        let m = fromJust (findMobAt (fromJust (target attacker)) lvl)
+            eqp = equipment attacker
+            isLaunching = maybe False (`launchesProjectile` proj) (launcher eqp)
+        -- fire projectile if proper launcher equipped
+        in if isLaunching then do
+               atkE <- attack attacker (launcher eqp) m
+               return $ [FiredProjectile attacker (fromJust (launcher eqp)) proj (at m), MenuChange NoMenu] ++ atkE
+           else do
+               atkE <- attack attacker (Just proj) m
+               return $ [ThrownProjectile attacker proj (at m), MenuChange NoMenu] ++ atkE
+    else return []
+
+equip :: Mob -> Item -> [Event]
+-- TODO why is this removing armor?
+equip m i = let wield  = L.filter isTwoHanded (catMaybes [wielding (equipment m), launcher (equipment m)])
+                shld   = fromJust (shield (equipment m))
+                wieldE = if isTwoHanded i && isShielded m then [EquipmentRemoved m shld] else []
+                shldE  = if isShield    i && handsFull  m then map (EquipmentRemoved m) wield else []
+             in wieldE ++ shldE ++ [Equipped m i]
 
 drinkPotion :: MonadRandom r => Mob -> Item -> r [Event]
 drinkPotion m i = do

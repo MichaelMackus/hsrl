@@ -29,16 +29,18 @@ data Mob = Mob {
     inventory      :: [Item],
     equipment      :: MobEquipment,
     destination    :: Maybe Point, -- destination point
-    readied        :: Maybe Item
+    readied        :: Maybe Item,
+    target         :: Maybe Point
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
     wearing :: Maybe Item,
+    launcher :: Maybe Item,
     shield :: Maybe Item
 }
-equipmentToList eq = catMaybes [wielding eq, wearing eq, shield eq]
+equipmentToList eq = catMaybes [wielding eq, launcher eq, wearing eq, shield eq]
 
 instance Eq Mob where
     m == m' = mobId m == mobId m'
@@ -89,7 +91,7 @@ mkPlayer hp at fov = mob {
     mhp = hp,
     at = at,
     fov = fov,
-    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) Nothing
+    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) Nothing Nothing
 }
 
 isPlayer :: Mob -> Bool
@@ -112,9 +114,10 @@ mob = Mob {
     hearing = 10.0,
     flags = [],
     inventory = [],
-    equipment = MobEquipment Nothing Nothing Nothing,
+    equipment = MobEquipment Nothing Nothing Nothing Nothing,
     destination = Nothing,
-    readied = Nothing
+    readied = Nothing,
+    target = Nothing
     -- TODO DR & weaknesses
 }
 
@@ -149,7 +152,7 @@ isShielded :: Mob -> Bool
 isShielded m = isJust (shield (equipment m))
 
 handsFull :: Mob -> Bool
-handsFull = maybe False (twoHanded . fromJust . weaponProperties) . wielding . equipment
+handsFull m = (maybe False isTwoHanded . wielding $ equipment m) || (maybe False isTwoHanded . launcher $ equipment m)
 
 isSneaky :: Mob -> Bool
 isSneaky m = let f = (=="Leather Armor") . itemDescription
