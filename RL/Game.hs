@@ -95,7 +95,7 @@ instance Client Mob where
     broadcast m (MobHeard m' p)            | m == m' = m { destination = Just (at p) }
     broadcast m (DestinationSet m' p)      | m == m' = m { destination = Just p }
     broadcast m (DestinationAbrupted m' p) | m == m' = m { destination = Nothing }
-    broadcast m (ItemPickedUp m' i)        | m == m' = m { inventory = inventory m ++ [i] }
+    broadcast m (ItemPickedUp m' i)        | m == m' = pickup i m
     broadcast m (Equipped m' i)            | m == m' = equip m i
     broadcast m (EquipmentRemoved m' i)    | m == m' = removeEquip m i
     broadcast m (Read     m' i)            | m == m' = poofItem m i
@@ -116,6 +116,12 @@ instance Client Mob where
     broadcast m (FiredProjectile m' _ i _) | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
 
     broadcast m otherwise = m
+
+pickup :: Item -> Mob -> Mob
+pickup i m = if i `elem` inventory m then
+                 let f (n, i') = if i == i' then (n+1, i') else (n, i')
+                 in  m { inventory = ungroupItems . map f $ groupItems (inventory m) }
+             else m { inventory = inventory m ++ [i] }
 
 removePickedItem :: Mob -> Item -> DLevel -> DLevel
 removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)

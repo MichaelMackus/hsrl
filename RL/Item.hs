@@ -1,6 +1,7 @@
 module RL.Item where
 
 import RL.Types
+import RL.Util (groupBy')
 
 import Data.Maybe (isJust, fromJust)
 import qualified Data.List as L
@@ -62,11 +63,20 @@ data ArmorProperties = ArmorProperties {
 } deriving (Eq, Ord)
 data ArmorSlot = Chest | Hand deriving (Eq, Ord)
 
+groupItems :: [Item] -> [(Int, Item)]
+groupItems = map f . groupBy' (==)
+    where f l = (length l, head l)
+
+ungroupItems :: [(Int, Item)] -> [Item]
+ungroupItems = concat . map f
+    where f (n, i) = replicate n i
+
 inventoryLetters :: [Char]
 inventoryLetters = map toEnum ([fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z'])
 
 fromInventoryLetter :: Char -> [Item] -> Maybe Item
-fromInventoryLetter ch is = L.lookup ch (zip inventoryLetters is)
+fromInventoryLetter ch is = snd . snd <$> L.find f (zip inventoryLetters (groupItems is))
+    where f (ch', (_, i)) = ch == ch'
 
 armorProperties :: Item -> Maybe ArmorProperties
 armorProperties (Item _ (Armor prop)) = Just prop

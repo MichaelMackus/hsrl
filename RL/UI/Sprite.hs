@@ -10,7 +10,7 @@ module RL.UI.Sprite (
 
 import RL.Game
 import RL.UI.Common as UI
-import RL.Util (enumerate, equating)
+import RL.Util (enumerate, equating, groupBy')
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
@@ -138,13 +138,14 @@ otherWindows :: Env -> [Message]
 otherWindows e
     | menu e `elem` [Inventory, ProjectileMenu] =
         let lvl = level e
-            inv = L.groupBy (equating itemType) (inventory (player lvl))
-            eq  = L.groupBy (equating itemType) (equipmentToList (equipment (player lvl)))
-        in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters (concat inv))) ++
-            mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem (concat eq))
+            inv = groupItems (inventory (player lvl))
+            eq  = groupItems (equipmentToList (equipment (player lvl)))
+        in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
+            mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
     | otherwise = []
         where showInvItem (ch, i) = ch:(showItem i)
-              showItem i = " - " ++ showIdentified (identified e) i
+              showItem (1,i) = " - " ++ showIdentified (identified e) i
+              showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified e) i ++ "s" -- TODO pluralize
 
 getMsgSprites :: Env -> [Message]
 getMsgSprites env = let evs        = events env

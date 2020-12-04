@@ -69,3 +69,12 @@ translateList = flip foldl' []
 
 addOrReplace :: Eq k => k -> v -> [(k, v)] -> [(k, v)]
 addOrReplace key value assoc = (key,value):(L.filter ((key /=).fst) assoc)
+
+-- group by non-adjacent
+-- https://stackoverflow.com/questions/53377577/groupby-function-which-groups-non-adjacent-elements
+groupBy' :: (a -> a -> Bool) -> [a] -> [[a]]
+groupBy' f l = reverse (go [] f l) where
+  go acc comp [] = acc
+  go acc comp (h:t) =
+    let (hs, nohs) = L.partition (comp h) t
+    in go ((h:hs):acc) comp nohs
