@@ -36,7 +36,7 @@ playerGenerator = do
     if not (null cs) then
         -- TODO place player randomly around dungeon
         let p  = cmid (cs !! 0)
-            pl = (mkPlayer hp p fov) { inventory = inv }
+            pl = (mkPlayer hp p fov) { inventory = inv, identified = map itemType inv }
         in  markGDone >> return (Just pl)
     else
         return Nothing
@@ -61,6 +61,7 @@ generateMob diff = do
     if length (mobs lvl) < minMobs conf || r then do
         let tileF p t = not (isStair t) && isPassable t && isNothing (findMobAt p lvl) && not (canSee lvl (player lvl) p)
         p <- randomTile tileF lvl
+        -- TODO give mob (identified) items
         m <- pickRarity (mobRarity diff) dngMobs
         traverse updateFlags (moveMob <$> p <*> m)
     else

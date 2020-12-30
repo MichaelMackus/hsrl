@@ -30,7 +30,8 @@ data Mob = Mob {
     equipment      :: MobEquipment,
     destination    :: Maybe Point, -- destination point
     readied        :: Maybe Item,
-    target         :: Maybe Point
+    target         :: Maybe Point,
+    identified     :: [ItemType]
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting deriving (Eq, Show)
 
@@ -114,6 +115,7 @@ mob = Mob {
     hearing = 10.0,
     flags = [],
     inventory = [],
+    identified = [],
     equipment = MobEquipment Nothing Nothing Nothing Nothing,
     destination = Nothing,
     readied = Nothing,

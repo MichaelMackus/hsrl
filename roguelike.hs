@@ -143,6 +143,5 @@ nextLevel conf = do
             dungeon    = DTip lvl,
             level      = lvl,
             events     = [],
-            menu       = NoMenu,
-            identified = map itemType (inventory (player lvl))
+            menu       = NoMenu
         }

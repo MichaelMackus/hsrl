@@ -15,8 +15,7 @@ data Env     = Env {
     dungeon    :: Dungeon,
     level      :: DLevel,
     events     :: [Event],
-    menu       :: Menu,
-    identified :: [ItemType]
+    menu       :: Menu
 }
 
 isPlaying :: Env -> Bool
@@ -70,8 +69,8 @@ instance Client Env where
     broadcast env e@(ItemPickedUp m i)        = broadcast' (env { level = removePickedItem m i (level env) }) e
     broadcast env e@(Teleported m to)         = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
     broadcast env e@(Mapped lvl)              = broadcast' (updateSeen (const True) env) e
-    broadcast env e@(Drank m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
-    broadcast env e@(Read  m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    -- broadcast env e@(Drank m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    -- broadcast env e@(Read  m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
     broadcast env e@(ThrownProjectile m i p)  = broadcast' (env { level = (level env) { items = (p,i):items (level env) } }) e
     broadcast env e@(FiredProjectile m _ i p) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
                                                 in  broadcast' (env { level = (level env) { items = is } }) e
@@ -98,9 +97,9 @@ instance Client Mob where
     broadcast m (ItemPickedUp m' i)        | m == m' = pickup i m
     broadcast m (Equipped m' i)            | m == m' = equip m i
     broadcast m (EquipmentRemoved m' i)    | m == m' = removeEquip m i
-    broadcast m (Read     m' i)            | m == m' = poofItem m i
+    broadcast m (Read     m' i)            | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
     broadcast m (Teleported m' to)         | m == m' = m { at = to }
-    broadcast m (Drank    m' i)            | m == m' = poofItem m i
+    broadcast m (Drank    m' i)            | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
     broadcast m (Healed m' amt)            | m == m' = m { hp = min (mhp m) (hp m + amt) }
     broadcast m (GainedLife m' amt)        | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
     broadcast m (GainedStrength m' str)    | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }

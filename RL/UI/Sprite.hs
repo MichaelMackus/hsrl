@@ -144,8 +144,9 @@ otherWindows e
             mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
     | otherwise = []
         where showInvItem (ch, i) = ch:(showItem i)
-              showItem (1,i) = " - " ++ showIdentified (identified e) i
-              showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified e) i ++ "s" -- TODO pluralize
+              p              = player (level e)
+              showItem (1,i) = " - " ++ showIdentified (identified p) i
+              showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
 
 getMsgSprites :: Env -> [Message]
 getMsgSprites env = let evs        = events env
@@ -285,10 +286,10 @@ toMessage e (Slept m) = Just $ "The " ++ mobName m ++ " has fallen asleep."
 toMessage e (StairsSeen Up) = Just $ "You see stairs going up."
 toMessage e (StairsSeen Down) = Just $ "You see stairs going down."
 toMessage e (ItemsSeen items) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""
-                              in  Just $ "You see a " ++ showIdentified (identified e) (head items) ++ ". " ++ suffix
-toMessage e (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified e) item ++ "."
-toMessage e (Equipped m item) | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified e) item ++ "."
-toMessage e (EquipmentRemoved m item) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified e) item ++ "."
+                              in  Just $ "You see a " ++ showIdentified (identified (player (level e))) (head items) ++ ". " ++ suffix
+toMessage e (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (Equipped m item) | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (EquipmentRemoved m item) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (MenuChange Inventory) = Just $ "Pick an item to use or equip. Press space to cancel."
 toMessage e (MenuChange ProjectileMenu) = Just $ "Pick a projectile to throw. Press space to cancel."
 toMessage e (MenuChange TargetMenu) = Just $ "Pick a target to throw at. Press space to cancel."

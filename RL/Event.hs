@@ -16,6 +16,21 @@ data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Mo
     | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item | EndOfTurn | NewGame
     | MenuChange Menu | QuitGame | Escaped deriving (Eq, Show)
 
+-- TODO separate event types
+-- -- event that updates game state
+-- data UpdateEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point | StairsTaken VerticalDirection DLevel
+--     | ReadiedProjectile Mob Item | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point | TargetChanged Mob Point
+--     | Healed Mob Int | GainedMaxHP Mob Int | GainedStrength Mob Int | GainedFlag MobFlag | LostFlag MobFlag
+--     -- Equipment
+--     | ItemPickedUp Mob Item | ItemIdentified Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
+--     | Drank Mob Item | Read Mob Item 
+--     -- AI & automation
+--     | DestinationSet Mob Point | DestinationAbrupted Mob Point | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
+--     -- misc. game state
+--     | TilesSeen [Point] DLevel | MenuChange Menu | QuitGame | EndOfTurn | NewGame deriving (Eq, Show)
+-- event that only results in a message shown to player
+-- data MessageEvent = StairsSeen VerticalDirection | ItemsSeen [Item] | Drank Mob Item | Read Mob Item 
+
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]

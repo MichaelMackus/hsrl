@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures, DeriveFunctor #-}
 
-module RL.Random (roll, pick, shuffle, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module System.Random, module Control.Monad.Random, module Data.Ratio) where
+module RL.Random (roll, pick, shuffle, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module Control.Monad.Random, module Data.Ratio) where
 
 import RL.Types
 import RL.Map
@@ -10,7 +10,6 @@ import Control.Monad.ST
 import Data.Array.ST
 import Data.Ratio
 import GHC.Arr
-import System.Random
 import qualified Data.List as L
 
 
@@ -97,4 +96,4 @@ instance Monad m => MonadRandom (Roller m) where
     getRandomRs r = Roller $ \g -> return (randomRs r g, g)
 
 instance Monad m => MonadSplit StdGen (Roller m) where
-    getSplit = Roller $ \g -> return (g, snd $ next g)
+    getSplit = Roller $ \g -> return (g, snd $ split g)
