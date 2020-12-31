@@ -86,12 +86,19 @@ spriteAt env p = if menu env == TargetMenu && target (player lvl) == Just p then
         itemColor (Item "Tower Shield"  (Armor  _)) = white
         itemColor (Item n               (Armor  _)) = grey
         itemColor (Item "Quarterstaff"  (Weapon _)) = brown
+        itemColor (Item "Bow"           (Weapon _)) = brown
+        itemColor (Item "Arrow"         (Weapon _)) = brown
         itemColor (Item "Dagger"        (Weapon _)) = dgrey
         itemColor (Item "Mace"          (Weapon _)) = grey
         itemColor (Item "Ornate Sword"  (Weapon _)) = yellow
         itemColor (Item n               (Weapon _)) = lyellow
         itemColor (Item n               (Scroll _)) = white
         itemColor otherwise = white
+
+        featureColor (Chest    _) = yellow
+        featureColor (Fountain 0) = grey
+        featureColor (Fountain _) = blue
+        featureColor Altar        = grey
 
         tileSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         tileSprite lvl p = case findTileAt p lvl of
@@ -110,12 +117,16 @@ spriteAt env p = if menu env == TargetMenu && target (player lvl) == Just p then
                                           else
                                             Nothing
                                Left _  -> Nothing
+        featureSprite :: DLevel -> (Int, Int) -> Maybe Sprite
+        featureSprite lvl p = case L.lookup p (features lvl) of
+                                Just f  -> Just (Sprite p (fromFeature f) (featureColor f) black)
+                                Nothing -> Nothing
         tileOrMobSprite :: DLevel -> (Int, Int) -> Sprite
-        tileOrMobSprite lvl p = let sprites = [mobSprite lvl p, itemSprite lvl p, tileSprite lvl p]
+        tileOrMobSprite lvl p = let sprites = [mobSprite lvl p, featureSprite lvl p, itemSprite lvl p, tileSprite lvl p]
                                     sprite  = listToMaybe (catMaybes sprites)
                                 in  if isJust sprite then fromJust sprite
                                     else Sprite p ' ' black black
-        seenTileSprite lvl p = if p `elem` seen lvl then stale (fromJust (listToMaybe (catMaybes [itemSprite lvl p, tileSprite lvl p])))
+        seenTileSprite lvl p = if p `elem` seen lvl then stale (fromJust (listToMaybe (catMaybes [featureSprite lvl p, itemSprite lvl p, tileSprite lvl p])))
                                else Sprite p ' ' black black
         stale spr = spr { spriteFgColor = dgrey, spriteBgColor = black }
 

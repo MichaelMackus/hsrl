@@ -3,6 +3,7 @@ import RL.Input
 import RL.Game
 import RL.Generator.Dungeon
 import RL.Generator.Mobs
+import RL.Generator.Features
 import RL.UI
 import RL.Random
 
@@ -128,6 +129,11 @@ mkDefaultConf = do
             playerHp = 12,
             playerFov = 5,
             playerItems = dagger:(replicate 3 (Item "Healing" (Potion Healing)))
+        },
+        featureConfig = FeatureConfig {
+            maxFeatures = 5,
+            cellFeatureChance = 1 % 5,
+            fItemAppearances = itemApps
         }
     }
 

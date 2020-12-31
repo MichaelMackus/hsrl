@@ -59,7 +59,7 @@ sdlUI window renderer getFont cfg = UI
                     let x'    = fromIntegral x * fromIntegral fontW
                         y'    = fromIntegral y * fromIntegral fontH
                         dest  = Rectangle (P (V2 x' y')) (V2 (fromIntegral fontW) (fromIntegral fontH))
-                        sprCh = tileChar env s
+                        sprCh = tileSymbol env (spritePos s) (spriteChar s)
                         src   = lookupChar fontS sprCh
                     -- TODO mask not working any more?
                     fontT <- getFont (tileColor sprCh fg) (tileColor sprCh bg)
@@ -115,34 +115,6 @@ tileColor :: Char -> Color -> Color
 -- tileColor '#' (0,0,0) = (100,100,100)
 -- tileColor '#' fg      = fg
 tileColor ch  color   = color
-
--- TODO wall mask to have corners & vert/horiz walls
-tileChar :: Env -> Sprite -> Char
-tileChar env s | spriteChar s == '#' = maybe '#' wallChar (seenWallType env (spritePos s))
--- tileChar env s | spriteChar s == '#' = maybe ' ' wallChar (seenWallType env (spritePos s))
--- tileChar env s | otherwise           = xyToRect s 11 2
-tileChar env s | otherwise           = spriteChar s
-
--- getWallChar :: Env -> Point -> Char
--- getWallChar env p = maybe ' ' wallChar (seenWallType env p)
-
-wallChar :: WallType -> Char
-wallChar WallNESW = xyToChar 12 14
-wallChar WallNSE  = xyToChar 12 12
-wallChar WallNSW  = xyToChar 11 9
-wallChar WallNEW  = xyToChar 12 10
-wallChar WallSEW  = xyToChar 12 11
-wallChar WallNS   = xyToChar 11 10
-wallChar WallSW   = xyToChar 11 11
-wallChar WallSE   = xyToChar 12 9
-wallChar WallNW   = xyToChar 11 12
-wallChar WallNE   = xyToChar 12 8
-wallChar WallEW   = xyToChar 12 13
-wallChar Wall     = xyToChar 11 0
-
-
-xyToChar :: Int -> Int -> Char
-xyToChar row col = toEnum (col + (row * 16)) -- TODO don't hardcode 16 cols
 
 -- lookup char in tile map
 lookupChar :: (Int, Int) -> Char -> Rectangle CInt
@@ -218,3 +190,39 @@ isAlpha k = let x = fromIntegral k
 textToKey :: T.Text -> Key
 textToKey t = let str = T.unpack t
               in  if null str then KeyUnknown else KeyChar (head str)
+
+-- converts an ASCII char to tile
+tileSymbol :: Env -> Point -> Char -> Char
+tileSymbol env p '#' =
+    let wallChar = seenWallType env p
+    in  case wallChar of
+            Just WallNESW -> xyToChar 12 14
+            Just WallNSE  -> xyToChar 12 12
+            Just WallNSW  -> xyToChar 11 9
+            Just WallNEW  -> xyToChar 12 10
+            Just WallSEW  -> xyToChar 12 11
+            Just WallNS   -> xyToChar 11 10
+            Just WallSW   -> xyToChar 11 11
+            Just WallSE   -> xyToChar 12 9
+            Just WallNW   -> xyToChar 11 12
+            Just WallNE   -> xyToChar 12 8
+            Just WallEW   -> xyToChar 12 13
+            Just Wall     -> xyToChar 11 0
+            Nothing       -> '#'
+tileSymbol env p '{' = xyToChar 14 2
+tileSymbol env p '=' = xyToChar 14 9
+-- tileSymbol env p '=' = xyToChar 13 1
+tileSymbol env p '_' = xyToChar 14 3
+tileSymbol env p '0' = xyToChar 13 3
+tileSymbol env p ch  = ch
+--fromFeature Altar = '⛩'
+--fromFeature (_) = '◛'
+--fromFeature (_) = '⌸'
+--fromFeature (_) = '⌸'
+--fromFeature (_) = '⍯'
+--fromFeature (_) = 'Ω'
+--fromFeature (Door _) = '⌻'
+
+xyToChar :: Int -> Int -> Char
+xyToChar row col = toEnum (col + (row * 16)) -- TODO don't hardcode 16 cols
+

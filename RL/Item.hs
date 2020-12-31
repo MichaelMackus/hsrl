@@ -61,7 +61,7 @@ data ArmorProperties = ArmorProperties {
     defense :: Int, -- this is opposite of traditional AD&D - this number is subtracted by 10 for the *true* AC of a mob
     slot    :: ArmorSlot
 } deriving (Eq, Ord)
-data ArmorSlot = Chest | Hand deriving (Eq, Ord)
+data ArmorSlot = Body | Hand deriving (Eq, Ord)
 
 groupItems :: [Item] -> [(Int, Item)]
 groupItems = map f . groupBy' (==)
@@ -160,10 +160,10 @@ weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20 Nothing Nothing
             -- TODO generate on last level
             weapon "Ornate Sword" (WeaponProperties (1 `d` 10) 3 False 19 Nothing Nothing) ]
 
-armors = [ armor "Leather Armor" (ArmorProperties 2 Chest),
-           armor "Chain Mail" (ArmorProperties 6 Chest),
-           armor "Plate Mail" (ArmorProperties 8 Chest),
-           armor "Full Plate" (ArmorProperties 10 Chest),
+armors = [ armor "Leather Armor" (ArmorProperties 2 Body),
+           armor "Chain Mail" (ArmorProperties 6 Body),
+           armor "Plate Mail" (ArmorProperties 8 Body),
+           armor "Full Plate" (ArmorProperties 10 Body),
            armor "Small Shield" (ArmorProperties 1 Hand),
            armor "Tower Shield" (ArmorProperties 2 Hand) ]
 

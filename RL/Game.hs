@@ -137,8 +137,8 @@ equip m i = if isLauncher i then
                         inventory = maybeToList weap ++ L.delete i (inventory m) }
             else if isArmor i then
                 let s     = slot (fromJust (armorProperties i))
-                    worn' = if Chest == s then wearing (equipment m) else shield (equipment m)
-                    eqp'  = if Chest == s then (equipment m) { wearing = Just i }
+                    worn' = if Body == s then wearing (equipment m) else shield (equipment m)
+                    eqp'  = if Body == s then (equipment m) { wearing = Just i }
                             else               (equipment m) { shield  = Just i }
                 in  m { equipment = eqp',
                         inventory = maybeToList worn' ++ (L.delete i $ inventory m) }
@@ -151,7 +151,7 @@ removeEquip m i = if isLauncher i then
                       m { equipment = (equipment m) { wielding = Nothing }, inventory = i:inventory m }
                   else if isArmor i then
                       let s     = slot (fromJust (armorProperties i))
-                          eqp'  = if Chest == s then (equipment m) { wearing = Nothing }
+                          eqp'  = if Body == s then (equipment m) { wearing = Nothing }
                                   else               (equipment m) { shield  = Nothing }
                       in  m { equipment = eqp', inventory = i:inventory m }
                   else m

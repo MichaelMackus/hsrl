@@ -7,6 +7,7 @@ import RL.Random
 
 import Data.Maybe (catMaybes, isNothing)
 import Data.Ratio
+import qualified Data.List as L
 
 data PlayerConfig = PlayerConfig {
     playerHp :: Int,
@@ -59,7 +60,7 @@ generateMob diff = do
     diff' <- max 1 <$> getRandomR (diff - fst (difficultyRange conf), diff + snd (difficultyRange conf))
     r     <- randomChance (mobGenChance conf)
     if length (mobs lvl) < minMobs conf || r then do
-        let tileF p t = not (isStair t) && isPassable t && isNothing (findMobAt p lvl) && not (canSee lvl (player lvl) p)
+        let tileF p t = not (isStair t) && isNothing (L.lookup p (features lvl)) && isPassable t && isNothing (findMobAt p lvl) && not (canSee lvl (player lvl) p)
         p <- randomTile tileF lvl
         -- TODO give mob (identified) items
         m <- pickRarity (mobRarity diff) dngMobs

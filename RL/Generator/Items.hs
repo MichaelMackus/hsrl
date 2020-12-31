@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module RL.Generator.Items (ItemConfig(..), itemsGenerator, randomItemAppearances) where
+module RL.Generator.Items (ItemConfig(..), itemsGenerator, generateChestItems, randomItemAppearances) where
 
 -- generate random items in dungeon
 
@@ -12,7 +12,7 @@ import RL.Random
 import Control.Monad.Reader (ask)
 import Data.Map (Map)
 import Data.Ratio
-import Data.Maybe (isJust, catMaybes, fromJust)
+import Data.Maybe (isJust, catMaybes, fromJust, maybeToList, isNothing)
 import qualified Data.List as L
 import qualified Data.Map as M
 
@@ -30,9 +30,39 @@ itemsGenerator :: Generator ItemConfig DLevel [(Point, Item)]
 itemsGenerator = do
     conf <- ask
     lvl  <- getGData
-    items' <- maybe (items lvl) (:items lvl) <$> generateItem
+    items' <- maybe (items lvl) (:items lvl) <$> generateFloorItem
     setGData (lvl { items = items' })
     return items'
+
+-- generate items in a chest
+generateChestItems :: Difficulty -> Generator ItemConfig [Item] [Item]
+generateChestItems d = do
+    conf <- ask
+    is   <- getGData
+    i    <- generateItem (typeRarity d) (itemRarity d)
+    let is' = maybeToList i ++ is
+    setGData is'
+    return is'
+
+-- generate an item on the floor
+generateFloorItem :: Generator ItemConfig DLevel (Maybe (Point, Item))
+generateFloorItem = do
+    lvl <- getGData
+    let tileF p t = not (isStair t) && isPassable t && isNothing (L.lookup p (features lvl))
+    i   <- generateItem (typeRarity (depth lvl)) (itemRarity (depth lvl)) -- TODO minItems
+    p   <- randomTile tileF lvl
+    return ((,) <$> p <*> i)
+
+-- generate an item using specified rarity functions
+generateItem :: (ItemType -> Rational) -> (Item -> Rational) -> Generator ItemConfig a (Maybe Item)
+generateItem f g = do
+    conf <- ask
+    r    <- randomChance (itemGenChance conf)
+    if r then do
+        fmap (updateAppearance (itemAppearances conf)) <$> randomItem f g
+    else
+        return Nothing
+
 
 randomItemAppearances :: MonadRandom m => m (Map ItemType String)
 randomItemAppearances = do
@@ -41,39 +71,22 @@ randomItemAppearances = do
     scrApps <- M.fromList . f scrolls <$> shuffle scrolls
     return (M.union potApps scrApps)
 
-generateItem :: Generator ItemConfig DLevel (Maybe (Point, Item))
-generateItem = do
-    lvl  <- getGData
-    conf <- ask
-    r    <- randomChance (itemGenChance conf)
-    if length (items lvl) < minItems conf || r then do
-        let tileF _ t = not (isStair t) && isPassable t
-        p <- randomTile tileF lvl
-        i <- fmap (updateAppearance (itemAppearances conf)) <$> pickItem (depth lvl)
-        return ((,) <$> p <*> i)
-    else
-        return Nothing
+randomItem :: MonadRandom m => (ItemType -> Rational) -> (Item -> Rational) -> m (Maybe Item)
+randomItem f g = do
+    t <- pickRarity f itemTypes
+    case t of
+        Just (Weapon _) -> pickRarity g weapons
+        Just (Armor  _) -> pickRarity g armors
+        Just (Potion _) -> pickRarity g potions
+        Just (Scroll _) -> pickRarity g scrolls
+        Just (Tool    ) -> pickRarity g tools
+        otherwise       -> return Nothing
 
 updateAppearance :: Map ItemType String -> Item -> Item
 updateAppearance apps i =
     let app = M.lookup (itemType i) apps
         f s = i { itemDescription = s }
     in  maybe i f app
-
--- pick an item at random for the given depth
-pickItem :: MonadRandom m => Difficulty -> m (Maybe Item)
-pickItem d = do
-    typ <- pickItemType d
-    case typ of
-        Just (Weapon _) -> pickRarity (itemRarity d) weapons
-        Just (Armor  _) -> pickRarity (itemRarity d) armors
-        Just (Potion _) -> pickRarity (itemRarity d) potions
-        Just (Scroll _) -> pickRarity (itemRarity d) scrolls
-        Just (Tool    ) -> pickRarity (itemRarity d) tools
-        otherwise       -> return Nothing
-
-pickItemType :: MonadRandom m => Difficulty -> m (Maybe ItemType)
-pickItemType d = pickRarity (typeRarity d) itemTypes
 
 -- rarity for item types at depth
 typeRarity :: Difficulty -> ItemType -> Rational

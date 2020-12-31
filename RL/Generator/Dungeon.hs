@@ -6,6 +6,7 @@ import RL.Generator.Cells (cells, cmid, cpoint, CellConfig(CellConfig))
 import RL.Generator.Paths (paths, getTileAt)
 import RL.Generator.Mobs (playerGenerator, mobGenerator, MobConfig(..), PlayerConfig(..))
 import RL.Generator.Items
+import RL.Generator.Features
 import RL.Random (StdGen)
 import RL.Util (comparing)
 
@@ -22,7 +23,8 @@ data DungeonConfig = DungeonConfig {
     maxDepth :: Int,
     mobConfig :: MobConfig,
     itemConfig :: ItemConfig,
-    playerConfig :: PlayerConfig
+    playerConfig :: PlayerConfig,
+    featureConfig :: FeatureConfig
 }
 
 instance GenConfig DungeonConfig where
@@ -39,19 +41,24 @@ levelGenerator = do
             d    = maybe 1 ((+1) . depth) prev
             lvl  = toLevel conf d cs ps player
 
-        mobs <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl)
+        -- generate features
+        fs   <- runGenerator' featuresGenerator (featureConfig conf) (mkGenState (lvl, cs))
+        let lvl' = lvl { features = fs }
+
+        -- TODO don't generate on features
+        mobs <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl')
         g    <- getSplit
 
         -- generate up/down stairs
-        let lvl'    = iterMap f lvl
+        let lvl''   = iterMap f lvl'
             f p t   = if p == at player && not (isStair t) then (StairUp prev)
                       else if Just p == lastP && d + 1 <= maxDepth conf then (StairDown nextLvl)
                            else t
             lastP   = cmid <$> listToMaybe (reverse (L.sortBy (comparing' (distance (at player))) cs))
-            nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl' }) (initState g))
+            nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl'' }) (initState g))
 
-        -- generate items
-        items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl')
+        -- generate items TODO don't generate on features
+        items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
 
         return (lvl' { mobs = mobs, items = items })
     where

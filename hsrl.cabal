@@ -36,9 +36,10 @@ executable hsrl
     RL.Generator
     RL.Generator.Cells
     RL.Generator.Dungeon
+    RL.Generator.Features
+    RL.Generator.Items
     RL.Generator.Mobs
     RL.Generator.Paths
-    RL.Generator.Items
     RL.Item
     RL.Input
     RL.Map

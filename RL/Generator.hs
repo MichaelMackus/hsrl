@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, mkGenState, initState, getCounter, resetCounter, getGData, appendGData, setGData, isGDone, markGDone) where
+module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, evalGenerator, mkGenState, initState, getCounter, resetCounter, getGData, appendGData, setGData, isGDone, markGDone) where
 
 import RL.Random
+import RL.Map (DLevel(..))
 
 import Control.Monad.Cont
 import Control.Monad.Reader
@@ -27,6 +28,9 @@ data GenState s = GenState {
 
 runGenerator :: GenConfig c => Generator c s a -> c -> GenState s -> (a, GenState s)
 runGenerator gen conf s = unwrapGenerator (generate gen) conf s
+
+evalGenerator :: GenConfig c => Generator c s a -> c -> GenState s -> a
+evalGenerator gen conf = fst . runGenerator gen conf
 
 -- Wrap a generator in a ContGenerator.
 --

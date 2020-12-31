@@ -44,25 +44,7 @@ vtyUI cfg = do
 tileToImage :: Env -> (Int, [Tile]) -> Image
 tileToImage env (y, row) = flattenSprites . map spr $ enumerate row
     where spr (x, _)     = let s = spriteAt env (x, y)
-                           in  if spriteChar s == '#' then s { spriteChar = getWallChar env (x,y) }
-                               else s
-
-getWallChar :: Env -> Point -> Char
-getWallChar env p = maybe ' ' wallChar (seenWallType env p)
-
-wallChar :: WallType -> Char
-wallChar WallNESW = '╋'
-wallChar WallNSE  = '┣'
-wallChar WallNSW  = '┫'
-wallChar WallNEW  = '┻'
-wallChar WallSEW  = '┳'
-wallChar WallNS   = '┃'
-wallChar WallSW   = '┓'
-wallChar WallSE   = '┏'
-wallChar WallNW   = '┛'
-wallChar WallNE   = '┗'
-wallChar WallEW   = '━'
-wallChar Wall     = '#'
+                           in  s { spriteChar = unicodeSymbol env (x, y) (spriteChar s) } -- TODO CLI switch for unicode
 
 msgToImage :: Message -> Image
 msgToImage msg = let (x,y) = messagePos msg
@@ -89,3 +71,34 @@ toKeyMods = map toKeyMod
           toKeyMod MCtrl  = KeyModCtrl
           toKeyMod MMeta  = KeyModAlt
           toKeyMod MAlt   = KeyModSuper
+
+-- converts an ASCII char to unicode
+unicodeSymbol :: Env -> Point -> Char -> Char
+unicodeSymbol env p '#' =
+    let wallChar = seenWallType env p
+    in  case wallChar of
+            Just WallNESW -> '╋'
+            Just WallNSE  -> '┣'
+            Just WallNSW  -> '┫'
+            Just WallNEW  -> '┻'
+            Just WallSEW  -> '┳'
+            Just WallNS   -> '┃'
+            Just WallSW   -> '┓'
+            Just WallSE   -> '┏'
+            Just WallNW   -> '┛'
+            Just WallNE   -> '┗'
+            Just WallEW   -> '━'
+            Just Wall     -> '#'
+            Nothing       -> ' '
+unicodeSymbol env p '{' = '⌠'
+unicodeSymbol env p '=' = '⚌'
+unicodeSymbol env p '_' = 'π'
+unicodeSymbol env p '0' = 'Θ'
+unicodeSymbol env p ch  = ch
+--fromFeature Altar = '⛩'
+--fromFeature (_) = '◛'
+--fromFeature (_) = '⌸'
+--fromFeature (_) = '⌸'
+--fromFeature (_) = '⍯'
+--fromFeature (_) = 'Ω'
+--fromFeature (Door _) = '⌻'

@@ -38,8 +38,11 @@ data DLevel  = DLevel {
     player :: Player, -- TODO move to env?
     seen  :: [Point], -- seen tiles
     items :: [(Point, Item)],
+    features :: [(Point, Feature)],
     mobs :: [Mob]
 }
+
+data Feature = Fountain Int | Chest [Item] | Altar
 
 allMobs :: DLevel -> [Mob]
 allMobs lvl = (player lvl:mobs lvl)
@@ -63,6 +66,11 @@ fromTile Cavern    = '.'
 fromTile (StairUp _) = '<'
 fromTile (StairDown _) = '>'
 fromTile Rock = '#'
+
+fromFeature :: Feature -> Char
+fromFeature Altar = '_'
+fromFeature (Fountain _) = '{'
+fromFeature (Chest _) = '='
 
 getStairLvl :: Tile -> Maybe DLevel
 getStairLvl (StairUp   lvl) = lvl
@@ -91,7 +99,7 @@ instance Show DLevel where
 
 -- Map constructor
 mkLevel :: Int -> [[Tile]] -> DLevel
-mkLevel depth ts = DLevel depth (M.fromList (enumerate2d ts)) p [] [] []
+mkLevel depth ts = DLevel depth (M.fromList (enumerate2d ts)) p [] [] [] []
     where p = mob
 
 -- blank map
