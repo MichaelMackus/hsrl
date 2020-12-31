@@ -25,7 +25,7 @@ import qualified Data.PQueue.Min as PQ
 -- -> Maybe [a]	        -- An optimal path, if any path exists. This excludes the starting vertex.
 
 findPath :: (Ord a, Ord c, Num c, Show a, Show c)
-         => (a -> Set a)     -- Tile -> Neighbors
+         => (a -> Set a)   -- Tile -> Neighbors
          -> (a -> a -> c)  -- heuristic distance between tiles
          -> a              -- end
          -> a              -- start

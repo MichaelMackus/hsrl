@@ -7,12 +7,13 @@ import RL.Generator.Paths (paths, getTileAt)
 import RL.Generator.Mobs (playerGenerator, mobGenerator, MobConfig(..), PlayerConfig(..))
 import RL.Generator.Items
 import RL.Generator.Features
+import RL.Pathfinder
 import RL.Random (StdGen)
 import RL.Util (comparing)
 
 import Control.Monad.Random (getSplit)
 import Control.Monad.Reader (ask)
-import Data.Maybe (fromMaybe, listToMaybe, isJust, fromJust)
+import Data.Maybe (fromMaybe, listToMaybe, isJust, fromJust, isNothing)
 import qualified Data.List as L
 
 data DungeonConfig = DungeonConfig {
@@ -44,9 +45,6 @@ levelGenerator = do
         -- generate features
         fs   <- runGenerator' featuresGenerator (featureConfig conf) (mkGenState (lvl, cs))
         let lvl' = lvl { features = fs }
-
-        -- TODO don't generate on features
-        mobs <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl')
         g    <- getSplit
 
         -- generate up/down stairs
@@ -57,10 +55,13 @@ levelGenerator = do
             lastP   = cmid <$> listToMaybe (reverse (L.sortBy (comparing' (distance (at player))) cs))
             nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl'' }) (initState g))
 
-        -- generate items TODO don't generate on features
-        items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
-
-        return (lvl' { mobs = mobs, items = items })
+        -- ensure we can reach the end
+        if isJust lastP && isJust (findPath (dfinder lvl'') distance (fromJust lastP) (at player)) then do
+            items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
+            mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl'')
+            return (lvl'' { mobs = mobs, items = items })
+        else
+            levelGenerator
     where
         runGenerator' :: GenConfig c => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
         runGenerator' gen conf f = do
