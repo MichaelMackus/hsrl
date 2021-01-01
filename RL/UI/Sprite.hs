@@ -49,6 +49,7 @@ getSprites e = map Right (getMapSprites e) ++ map Left (getMsgSprites e) ++ map 
 
 -- helper functions since map/mob isn't renderable without context
 
+-- TODO messages are displaying *above* inventory
 spriteAt :: Env -> Point -> Sprite
 spriteAt env p = if menu env == TargetMenu && target (player lvl) == Just p then targetingSprite p
                  else if canPlayerSee p then tileOrMobSprite lvl p
@@ -322,6 +323,7 @@ toMessage e (FailedRest      m)        | isPlayer m = Just $ "You are unable to 
 toMessage e (MissileInterrupted m)     | isPlayer m = Just $ "You are unable to concentrate on firing within the melee."
 toMessage e (ThrownProjectile m i _)   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
 toMessage e (FiredProjectile  m l p _) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
+toMessage e (BandageApplied   m)       | isPlayer m = Just $ "You apply the bandage."
 toMessage e (FeatureInteracted p (Fountain 0)) = Just $ "The fountain has run dry!"
 toMessage e (FeatureInteracted p (Fountain n)) = Just $ "You drink from the fountain."
 toMessage e (FeatureInteracted p (Chest is)) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."

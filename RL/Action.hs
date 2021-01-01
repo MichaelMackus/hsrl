@@ -48,6 +48,14 @@ applyItem lvl m i =
     if isEquippable i then return (equip m i)
     else if isDrinkable i then drinkPotion m i
     else if isReadable i then readScroll lvl m i
+    else if (itemType i == Bandage) then applyBandage m
+    else return []
+
+applyBandage :: MonadRandom r => Mob -> r [Event]
+applyBandage m = do
+    if hp m < mhp m then do
+        healed <- roll (1 `d` 4)
+        return [BandageApplied m, Healed m healed]
     else return []
 
 -- fire projectile toward the mob's target

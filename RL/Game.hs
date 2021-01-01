@@ -116,6 +116,7 @@ instance Client Mob where
     broadcast m (TargetChanged   m' p)     | m == m' = m { target = Just p }
     broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
     broadcast m (FiredProjectile m' _ i _) | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
+    broadcast m (BandageApplied  m')       | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
 
     broadcast m otherwise = m
 

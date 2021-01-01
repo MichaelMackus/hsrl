@@ -80,7 +80,6 @@ randomItem f g = do
         Just (Armor  _) -> pickRarity g armors
         Just (Potion _) -> pickRarity g potions
         Just (Scroll _) -> pickRarity g scrolls
-        Just (Tool    ) -> pickRarity g tools
         otherwise       -> return Nothing
 
 updateAppearance :: Map ItemType String -> Item -> Item
@@ -97,19 +96,19 @@ typeRarity d t
                    (Armor _)  -> 1 % 7
                    (Potion _) -> 1 % 10
                    (Scroll _) -> 1 % 20
-                   (Tool)     -> 0 % 10
+                   (Bandage)  -> 0 % 10
     | d <= 3 = case t of 
                    (Weapon _) -> 1 % 5
                    (Armor _)  -> 1 % 7
                    (Potion _) -> 1 % 5
                    (Scroll _) -> 1 % 10
-                   (Tool)     -> 0 % 7
+                   (Bandage)  -> 0 % 10
     | otherwise = case t of 
                    (Weapon _) -> 1 % 5
                    (Armor _)  -> 1 % 7
                    (Potion _) -> 1 % 3
                    (Scroll _) -> 1 % 4
-                   (Tool)     -> 0 % 5
+                   (Bandage)  -> 0 % 10
 
 -- item rarity at depth
 itemRarity :: Difficulty -> Item -> Rational

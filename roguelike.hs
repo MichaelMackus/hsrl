@@ -128,7 +128,7 @@ mkDefaultConf = do
         playerConfig = PlayerConfig {
             playerHp = 12,
             playerFov = 5,
-            playerItems = dagger:(replicate 3 (Item "Healing" (Potion Healing)))
+            playerItems = dagger:(replicate 5 (Item "Bandage" Bandage)) -- TODO change bandage
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,

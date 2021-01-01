@@ -13,7 +13,7 @@ data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Mo
     | DestinationSet Mob Point | DestinationAbrupted Mob Point
     | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
     | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
-    | FeatureInteracted Point Feature
+    | FeatureInteracted Point Feature | BandageApplied Mob
     | ItemSpawned Point Item | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item | EndOfTurn | NewGame
     | MenuChange Menu | QuitGame | Escaped deriving (Eq, Show)
 
