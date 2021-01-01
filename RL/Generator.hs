@@ -106,6 +106,7 @@ getCounter = Generator $ \c s -> (i s, s)
 resetCounter :: Generator c s ()
 resetCounter = Generator $ \c s -> ((), s { i = -1 }) -- incremented before next iteration
 
+-- TODO MonadError
 instance Monad (Generator c s) where
     gen >>= f = Generator $ \c s ->
         let (r, s') = unwrapGenerator gen c s
