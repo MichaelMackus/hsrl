@@ -42,7 +42,7 @@ data DLevel  = DLevel {
     mobs :: [Mob]
 }
 
-data Feature = Fountain Int | Chest [Item] | Altar
+data Feature = Fountain Int | Chest [Item] | Altar deriving (Eq, Show)
 
 allMobs :: DLevel -> [Mob]
 allMobs lvl = (player lvl:mobs lvl)
@@ -125,6 +125,9 @@ iterMap f lvl = lvl { tiles = M.mapWithKey f (tiles lvl) }
 
 findTileAt :: Point -> DLevel -> Maybe Tile
 findTileAt p lvl = M.lookup p (tiles lvl)
+
+findFeatureAt :: Point -> DLevel -> Maybe Feature
+findFeatureAt p lvl = L.lookup p (features lvl)
 
 findTile :: ((Point, Tile) -> Bool) -> DLevel -> Maybe (Point, Tile)
 findTile f lvl = L.find f (M.toList (tiles lvl))

@@ -132,7 +132,7 @@ mkDefaultConf = do
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,
-            cellFeatureChance = 1 % 5,
+            cellFeatureChance = 1 % 7,
             fItemAppearances = itemApps
         }
     }

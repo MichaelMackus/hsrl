@@ -3,6 +3,7 @@ module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlay
 import RL.Event
 import RL.Map
 import RL.Random
+import RL.Util (addOrReplace)
 
 import Control.Monad.Reader
 import Data.Map (Map)
@@ -69,11 +70,13 @@ instance Client Env where
     broadcast env e@(ItemPickedUp m i)        = broadcast' (env { level = removePickedItem m i (level env) }) e
     broadcast env e@(Teleported m to)         = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
     broadcast env e@(Mapped lvl)              = broadcast' (updateSeen (const True) env) e
-    -- broadcast env e@(Drank m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
-    -- broadcast env e@(Read  m i) | isPlayer m  = broadcast' (env { identified = L.nub (itemType i:identified env) }) e
+    broadcast env e@(ItemSpawned p i)         = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
     broadcast env e@(ThrownProjectile m i p)  = broadcast' (env { level = (level env) { items = (p,i):items (level env) } }) e
     broadcast env e@(FiredProjectile m _ i p) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
                                                 in  broadcast' (env { level = (level env) { items = is } }) e
+    broadcast env e@(FeatureInteracted p f@(Chest _)) = broadcast' (env { level = (level env) { features = L.delete (p, f) (features (level env)) } }) e
+    broadcast env e@(FeatureInteracted p f@(Fountain n)) = broadcast' (env { level = (level env) { features = addOrReplace p (Fountain (max 0 (n - 1))) (features (level env)) } }) e
+
     broadcast env e                           = broadcast' env e
 
 broadcast' env e =

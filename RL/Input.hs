@@ -115,15 +115,24 @@ moveOrAttack dir = do
 moveOrAttackAt :: Point -> GameEnv [Event]
 moveOrAttackAt to = do
     env <- ask
-    let lvl    = level env
-        p      = player lvl
-        moveE  = [Moved p to]
-        stairE = maybe [] (maybeToList . stairF) $ findTileAt to lvl
-        stairF = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
-    case (findMobAt to lvl, findTileAt to lvl) of
-        (Just m, _) -> attack p (wielding (equipment p)) m
-        (_, Just t) -> if isPassable t then return (moveE ++ stairE) else return []
+    let lvl      = level env
+        p        = player lvl
+        moveE    = [Moved p to]
+        stairE   = maybe [] (maybeToList . stairF) $ findTileAt to lvl
+        stairF   = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
+    case (findMobAt to lvl, findTileAt to lvl, findFeatureAt to lvl) of
+        (Just m, _, _) -> attack p (wielding (equipment p)) m
+        (_, _, Just f) -> interactFeature to f
+        (_, Just t, _) -> if isPassable t then return (moveE ++ stairE) else return []
         otherwise   -> return []
+
+interactFeature :: Point -> Feature -> GameEnv [Event]
+interactFeature p (Fountain n) | n > 0 = do
+   pl     <- asks (player . level)
+   healed <- roll (2 `d` 8)
+   return [FeatureInteracted p (Fountain n), Healed pl healed, DestinationAbrupted pl p]
+interactFeature p (Chest is) = return (FeatureInteracted p (Chest is):map (ItemSpawned p) is)
+interactFeature p f = return [FeatureInteracted p f]
 
 tryFire :: DLevel -> Mob -> [Event]
 tryFire lvl m =

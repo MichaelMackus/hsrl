@@ -35,6 +35,7 @@ itemsGenerator = do
     return items'
 
 -- generate items in a chest
+-- TODO minItems
 generateChestItems :: Difficulty -> Generator ItemConfig [Item] [Item]
 generateChestItems d = do
     conf <- ask
