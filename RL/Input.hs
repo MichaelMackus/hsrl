@@ -151,7 +151,7 @@ takeStairs v = do
 startRunning :: Point -> GameEnv [Event]
 startRunning to = ask >>= \env ->
     let p     = player (level env)
-        path  = findPath (dfinder (level env)) distance to (at p)
+        path  = findPath (dfinder (level env) to) distance to (at p)
         destE = if canAutomate env && isNothing (destination p) then [DestinationSet p to] else []
     in  if isJust path && length (fromJust path) > 1 then
             (destE ++) <$> moveOrAttackAt (fromJust path !! 1)

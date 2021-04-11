@@ -37,7 +37,7 @@ automate m = do
         wander :: Mob -> GameEnv [Event]
         wander m = do
                 lvl <- asks level
-                p   <- pick (aiNeighbors lvl (at m))
+                p   <- pick (aiNeighbors lvl (at m) (at m))
                 case p of
                     Just p  -> return [Moved m p]
                     Nothing -> return []
@@ -80,13 +80,15 @@ curMobPath lvl m = (\p -> findOptimalPath lvl distance p (at m)) =<< destination
 
 -- find AI path, first trying to find optimal path around mobs
 -- fallback is naive dfinder to allow mobs to bunch up
-findOptimalPath lvl h end s = let optimal = findPath (aiFinder lvl) h end s
-                              in  if isNothing optimal then findPath (dfinder lvl) h end s else optimal
+findOptimalPath lvl h end s = let optimal = findPath (aiFinder lvl end) h end s
+                              in  if isNothing optimal then findPath (dfinder lvl end) h end s else optimal
 
-aiFinder :: DLevel -> Point -> Set Point
-aiFinder d p = Set.fromList (aiNeighbors d p)
+aiFinder :: DLevel -> Point -> Point -> Set Point
+aiFinder d end p = Set.fromList (aiNeighbors d end p)
 
-aiNeighbors d p = L.filter f (dneighbors d p)
+aiNeighbors :: DLevel -> Point -> Point -> [Point]
+aiNeighbors d end p = L.filter f (dneighbors d p)
     where f p = let m' = findMobAt p d
-                in  isNothing m' || isPlayer (fromJust m')
+                    isntM m' = isNothing m' || isPlayer (fromJust m')
+                in  isntM m' && (isRunnable d p || p == end)
 

@@ -141,6 +141,7 @@ findTileOrMob p lvl =
         err = error ("Error during finding " ++ show p)
     in  maybe (maybe err Left t) Right m
 
+-- passable dungeon neighbors for pathfinding
 dneighbors :: DLevel -> Point -> [Point]
 dneighbors d p = neighbors d p f
     where
@@ -175,8 +176,11 @@ touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
                                  (p1x + 1 == p2x && p1y - 1 == p2y) ||
                                  (p1x + 1 == p2x && p1y + 1 == p2y)
 
-dfinder :: DLevel -> Point -> Set Point
-dfinder d p = Set.fromList (dneighbors d p)
+-- returns passable neighbors around point
+-- considers stairs (mobs?) as impassable, unless end
+dfinder :: DLevel -> Point -> Point -> Set Point
+dfinder d end p = Set.fromList (filter f (dneighbors d p))
+    where f p' = end == p' || isRunnable d p'
 
 -- this passes through non passables
 dfinder' :: DLevel -> Point -> Set Point
@@ -187,6 +191,11 @@ dfinder' d p = Set.fromList (neighbors d p f)
 
 mapDLevel :: (Point -> Tile -> Maybe r) -> DLevel -> [r]
 mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)
+
+-- can mob run through point as part of automation?
+isRunnable :: DLevel -> Point -> Bool
+isRunnable lvl p = let t = findTileAt p lvl
+                   in  maybe False (not . isStair) t
 
 isPassable :: Tile -> Bool
 isPassable Rock = False
