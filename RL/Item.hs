@@ -14,7 +14,7 @@ data Item = Item {
 type ItemName = String
 type RandomName = String
 type ItemRarity = Rational
-data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Bandage deriving (Eq, Ord)
+data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Bandage | Draught deriving (Eq, Ord)
 data PotionType = Healing | Life | Acid | Strength | Invisibility | Confusion | Darkness deriving (Show, Eq, Ord)
 data ScrollType = Fire | Lightning | Teleport | Mapping | Telepathy deriving (Show, Eq, Ord)
 
@@ -27,6 +27,7 @@ instance Show ItemType where
     show (Armor _) = "armor"
     show (Potion t) = "potion"
     show (Scroll t) = "scroll"
+    show (Draught) = "draught"
     show (Bandage) = "bandage"
 
 -- show true name if in identified list
@@ -40,6 +41,7 @@ itemTrueName i = show (i { itemDescription = (typeTrueName (itemType i)) })
           typeTrueName (Armor  _) = itemDescription i
           typeTrueName (Potion t) = show t
           typeTrueName (Scroll t) = show t
+          typeTrueName (Draught ) = itemDescription i
           typeTrueName (Bandage ) = itemDescription i
 
 data WeaponProperties = WeaponProperties {
@@ -133,7 +135,7 @@ potionType :: Item -> Maybe PotionType
 potionType (Item _ (Potion t)) = Just t
 potionType otherwise = Nothing
 
-itemTypes = [ Weapon undefined, Armor undefined, Potion undefined, Scroll undefined, Bandage ]
+itemTypes = [ Weapon undefined, Armor undefined, Potion undefined, Scroll undefined, Bandage, Draught ]
 
 isShield :: Item -> Bool
 isShield i = maybe False ((== Hand) . slot) (armorProperties i)
@@ -143,7 +145,8 @@ itemSymbol   (Item _ (Weapon _)) = ')'
 itemSymbol i@(Item _ (Armor  _)) = if isShield i then '0' else ']'
 itemSymbol   (Item _ (Potion _)) = '!'
 itemSymbol   (Item _ (Scroll _)) = '?'
-itemSymbol   (Item _ (Bandage)) = '~'
+itemSymbol   (Item _ (Bandage))  = '~'
+itemSymbol   (Item _ (Draught))  = '!'
 
 dagger = weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19 (Just Thrown) Nothing)
 bow    = weapon "Bow" (WeaponProperties (1 `d` 6) 0 True 20 Nothing (Just Arrow))
