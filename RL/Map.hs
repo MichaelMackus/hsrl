@@ -206,7 +206,8 @@ mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)
 -- can mob run through point as part of automation?
 isRunnable :: DLevel -> Point -> Bool
 isRunnable lvl p = let t = findTileAt p lvl
-                   in  maybe False (not . isStair) t
+                       f = findFeatureAt p lvl
+                   in  maybe False (not . isStair) t && isNothing f
 
 isPassable :: Tile -> Bool
 isPassable Rock = False
