@@ -186,6 +186,8 @@ eventToKey e = case e of
     (Event _ (KeyboardEvent ed)) | keyboardEventKeyMotion ed == Pressed ->
         case keysymKeycode (keyboardEventKeysym ed) of
             KeycodeReturn    -> Just KeyEnter
+            KeycodeReturn2   -> Just KeyEnter
+            KeycodeKPEnter   -> Just KeyEnter
             KeycodeUp        -> Just KeyUp
             KeycodeDown      -> Just KeyDown
             KeycodeLeft      -> Just KeyLeft
