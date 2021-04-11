@@ -56,7 +56,7 @@ levelGenerator = do
             nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl'' }) (initState g))
 
         -- ensure we can reach the end
-        if isJust lastP && isJust (findPath (dfinder lvl'') distance (fromJust lastP) (at player)) then do
+        if isJust lastP && isJust (findPath (dfinder lvl'' (fromJust lastP)) distance (fromJust lastP) (at player)) then do
             items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
             mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl'')
             return (lvl'' { mobs = mobs, items = items })
