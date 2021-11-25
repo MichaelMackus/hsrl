@@ -6,31 +6,24 @@ import qualified Data.List as L
 
 -- Represents Game events
 
-data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point | StartedResting Mob | StoppedResting Mob | FailedRest Mob
+data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
     | MissileInterrupted Mob | ReadiedProjectile Mob Item | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point | TargetChanged Mob Point
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
     | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy Mob
+    -- TODO new monad for automation - the automation events don't need to be an event
     | DestinationSet Mob Point | DestinationAbrupted Mob Point
     | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
-    | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
+    | Waken Mob | Slept Mob | MobSpawned Mob
+    -- TODO seen/heard events should be based on nearby movement and/or sound, unnecessary
+    | MobSeen Mob Mob | MobHeard Mob Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
+    -- TODO item seen doesn't need event
     | ItemSpawned Point Item | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item | EndOfTurn | NewGame
+    -- TODO new monad for menu change - doesn't need event(s)
     | MenuChange Menu | QuitGame | Escaped | Saved deriving (Eq, Show)
 
--- TODO separate event types
--- -- event that updates game state
--- data UpdateEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point | StairsTaken VerticalDirection DLevel
---     | ReadiedProjectile Mob Item | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point | TargetChanged Mob Point
---     | Healed Mob Int | GainedMaxHP Mob Int | GainedStrength Mob Int | GainedFlag MobFlag | LostFlag MobFlag
---     -- Equipment
---     | ItemPickedUp Mob Item | ItemIdentified Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
---     | Drank Mob Item | Read Mob Item 
---     -- AI & automation
---     | DestinationSet Mob Point | DestinationAbrupted Mob Point | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
---     -- misc. game state
---     | TilesSeen [Point] DLevel | MenuChange Menu | QuitGame | EndOfTurn | NewGame deriving (Eq, Show)
--- event that only results in a message shown to player
--- data MessageEvent = StairsSeen VerticalDirection | ItemsSeen [Item] | Drank Mob Item | Read Mob Item 
+-- TODO separate event types ?
+-- data Message = EventMessage Event | ItemsSeen [Item] | StairsSeen VerticalDirection
 
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
 

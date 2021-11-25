@@ -1,11 +1,20 @@
-module RL.Action where
+module RL.Action (module RL.Action, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Game
 import RL.Random
 
+import Control.Monad.Reader
+import Control.Monad.Writer
 import Data.Maybe (fromMaybe, fromJust, maybeToList, catMaybes, isJust)
 import qualified Data.List as L
+
+class Monad m => GameAction m where
+    getEnv :: m Env
+    insertEvent  :: Event -> m ()
+    insertEvent ev = insertEvents [ev]
+    insertEvents :: [Event] -> m ()
+    insertEvents = mapM_ insertEvent
 
 -- TODO miss chance if invis
 attack :: MonadRandom r => Mob -> Maybe Item -> Mob -> r [Event]
@@ -27,21 +36,6 @@ attack attacker weap target = do
         return $ [e] ++ critE ++ deadE
     else
         return [Missed attacker target]
-
-rest :: Mob -> [Event]
-rest m =
-    if hp m < mhp m then [Healed m 1]
-    else [StoppedResting m]
-        -- if hp m < mhp m then
-        --     if not (isPlayer m) || null (L.filter (canSee lvl m . at) (mobs lvl)) then
-        --         let sinceRest = turnsSince f (events env)
-        --         in  if sinceRest `mod` 100 == 0 then return [Healed m 1]
-        --             else return []
-        --     else return [StoppedResting m]
-        -- else return [StoppedResting m]
-    -- where lvl = level env
-        --   f (StartedResting m') | m == m' = True
-        --   f otherwise                     = False
 
 applyItem :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
 applyItem lvl m i =
@@ -109,6 +103,7 @@ drinkPotion m i = do
              otherwise -> return []
     return ([Drank m i] ++ e)
 
+-- TODO change to be independent of player/mob
 readScroll :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
 readScroll lvl m i = do
     e <- case scrollType i of

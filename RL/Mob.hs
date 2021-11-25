@@ -28,7 +28,6 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    destination    :: Maybe Point, -- destination point
     readied        :: Maybe Item,
     target         :: Maybe Point,
     identified     :: [ItemType]
@@ -117,7 +116,6 @@ mob = Mob {
     inventory = [],
     identified = [],
     equipment = MobEquipment Nothing Nothing Nothing Nothing,
-    destination = Nothing,
     readied = Nothing,
     target = Nothing
     -- TODO DR & weaknesses
@@ -145,10 +143,12 @@ insertMob ms m = m { mobId = maxId + 1 } : ms
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)
 
--- moves mob, resetting the destination if we have reached it
+-- -- moves mob, resetting the destination if we have reached it
+-- moveMob :: Point -> Mob -> Mob
+-- moveMob p m = let dest = if destination m == Just p then Nothing else destination m
+--               in  m { at = p, destination = dest }
 moveMob :: Point -> Mob -> Mob
-moveMob p m = let dest = if destination m == Just p then Nothing else destination m
-              in  m { at = p, destination = dest }
+moveMob p m = m { at = p }
 
 isShielded :: Mob -> Bool
 isShielded m = isJust (shield (equipment m))

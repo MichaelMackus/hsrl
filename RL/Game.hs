@@ -1,22 +1,19 @@
-module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, canRest, isWon, isQuit, module RL.Map, module RL.Event, module Control.Monad.Reader) where
+module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, module RL.Map, module RL.Event) where
 
 import RL.Event
 import RL.Map
 import RL.Random
 import RL.Util (addOrReplace)
 
-import Control.Monad.Reader
 import Data.Map (Map)
 import Data.Maybe (fromMaybe, fromJust, isJust, maybeToList)
 import qualified Data.List as L
 import qualified Data.Map as M
 
-type GameEnv = ReaderT Env (Rand StdGen)
 data Env     = Env {
     dungeon    :: Dungeon,
     level      :: DLevel,
-    events     :: [Event],
-    menu       :: Menu
+    events     :: [Event]
 }
 
 isPlaying :: Env -> Bool
@@ -28,12 +25,6 @@ isWon = const False
 
 isQuit :: Env -> Bool
 isQuit e = isJust (L.find (== QuitGame) (events e))
-
--- checks if we are running to the destination
-isAutomated :: Env -> Bool
-isAutomated env = let lvl = level env
-                      p   = player lvl
-                  in  isJust (destination p) || isResting p
 
 -- checks if we are running to the destination and there are no mobs seen
 canAutomate :: Env -> Bool
@@ -48,10 +39,6 @@ canRest env = let f m = distance (at m) (at p) <= hearing m
                   p   = player (level env)
               in  null (L.filter f (mobs (level env)))
 
--- detects if we're ticking (i.e. AI and other things should be active)
-isTicking :: Env -> Bool
-isTicking = (== NoMenu) . menu
-
 -- represents a client that does something to the state
 class Client c where
     -- broadcast event to client, resulting in state change within client
@@ -65,7 +52,6 @@ instance Client Env where
     broadcast env e@NewGame                   = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
     broadcast env e@EndOfTurn                 = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
     broadcast env e@(StairsTaken v lvl)       = broadcast' (changeLevel env v lvl) e
-    broadcast env e@(MenuChange  m)           = broadcast' (env { menu = m }) e
     broadcast env e@(MobSpawned m)            = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
     broadcast env e@(ItemPickedUp m i)        = broadcast' (env { level = removePickedItem m i (level env) }) e
     broadcast env e@(Teleported m to)         = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
@@ -94,10 +80,6 @@ instance Client Mob where
     broadcast m (Waken m')                 | m == m' = let fs = filter (/= Sleeping) (flags m)
                                                        in  m { flags = fs }
     broadcast m (Slept m')                 | m == m' = m { flags = L.nub (Sleeping:flags m) }
-    broadcast m (MobSeen  m' p)            | m == m' = m { destination = Just (at p) }
-    broadcast m (MobHeard m' p)            | m == m' = m { destination = Just (at p) }
-    broadcast m (DestinationSet m' p)      | m == m' = m { destination = Just p }
-    broadcast m (DestinationAbrupted m' p) | m == m' = m { destination = Nothing }
     broadcast m (ItemPickedUp m' i)        | m == m' = pickup i m
     broadcast m (Equipped m' i)            | m == m' = equip m i
     broadcast m (EquipmentRemoved m' i)    | m == m' = removeEquip m i
@@ -111,8 +93,6 @@ instance Client Mob where
     broadcast m (Confused m')              | m == m' = m { flags = L.nub (ConfusedF:flags m) }
     broadcast m (Blinded m')               | m == m' = m { flags = L.nub (BlindedF:flags m) }
     broadcast m (GainedTelepathy m')       | m == m' = m { flags = L.nub (TelepathicF:flags m) }
-    broadcast m (StartedResting  m')       | m == m' = m { flags = L.nub (Resting:flags m) }
-    broadcast m (StoppedResting  m')       | m == m' = m { flags = L.delete Resting (flags m) }
     broadcast m (ReadiedProjectile m' i)   | m == m' = m { readied = Just i }
     broadcast m (TargetChanged   m' p)     | m == m' = m { target = Just p }
     broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
