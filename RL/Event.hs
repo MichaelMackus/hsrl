@@ -15,7 +15,7 @@ data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Mo
     | Waken Mob | Slept Mob | MobSeen Mob Mob | MobHeard Mob Mob | MobSpawned Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
     | ItemSpawned Point Item | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item | EndOfTurn | NewGame
-    | MenuChange Menu | QuitGame | Escaped deriving (Eq, Show)
+    | MenuChange Menu | QuitGame | Escaped | Saved deriving (Eq, Show)
 
 -- TODO separate event types
 -- -- event that updates game state

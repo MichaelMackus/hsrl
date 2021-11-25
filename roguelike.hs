@@ -25,6 +25,11 @@ gameLoop draw inputEvents endTurn env = do
     draw env              -- draw to screen
     es <- inputEvents env -- wait for user input, and transform into Action
 
+    -- save the game
+    when (Saved `elem` es) $ do
+        writeFile "save.txt" ""
+        mapM_ (appendFile "save.txt") (map (\e -> show e ++ "\n") (events env))
+
     -- broadcast input events & then process end of turn
     env' <- endTurn (broadcastEvents env es)
     let playing = not (isDead (player (level env')) || isQuit env')
@@ -125,6 +130,16 @@ mkDefaultConf = do
             itemGenChance = (1 % 5),
             itemAppearances = itemApps
         },
+        -- TODO start player with ~3 throwing daggers, then we can nerf dagger range?
+        -- TODO add dip command, which wastes/dilutes potion if not acid/poison?
+        -- TODO allow throwing of potions at monsters to observe effects safely
+        -- TODO add quiver/fire command
+        -- TODO torches?
+        -- TODO bundle of arrows/other items
+        -- TODO gold & level up via gold
+        -- TODO monster stashes/hordes
+        -- TODO monster drops/items
+        -- TODO ranged monsters
         playerConfig = PlayerConfig {
             playerHp = 12,
             playerFov = 5,

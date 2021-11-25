@@ -67,10 +67,12 @@ keyToEvents k m = do
             (KeyChar 'W')     -> return [MenuChange Inventory]
             (KeyChar 'e')     -> return [MenuChange Inventory]
             (KeyChar 'q')     -> return [MenuChange Inventory]
+            (KeyChar 's')     -> return [Saved]
             (KeyMouseLeft to) -> if canSee lvl p to || to `elem` seen lvl then startRunning to else return []
             otherwise         -> return []
     else if isConfused p then do
         if k == (KeyChar 'Q') then return [QuitGame]
+        else if k == (KeyChar 's') then return [Saved]
         else moveOrAttack =<< randomDir
     else if menu env == Inventory then do
         let ch = charFromKey k
