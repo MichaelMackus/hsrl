@@ -129,12 +129,15 @@ moveOrAttackAt to = do
         otherwise   -> return []
 
 interactFeature :: Point -> Feature -> GameEnv [Event]
-interactFeature p (Fountain n) | n > 0 = do
-   pl     <- asks (player . level)
-   healed <- roll (2 `d` 8)
-   return [FeatureInteracted p (Fountain n), Healed pl healed, DestinationAbrupted pl p]
-interactFeature p (Chest is) = return (FeatureInteracted p (Chest is):map (ItemSpawned p) is)
-interactFeature p f = return [FeatureInteracted p f]
+interactFeature p f = do
+    pl  <- asks (player . level)
+    evs <- case f of
+                (Fountain n) | n > 0 -> do
+                   healed <- roll (2 `d` 8)
+                   return [FeatureInteracted p (Fountain n), Healed pl healed]
+                (Chest is) -> return (FeatureInteracted p (Chest is):map (ItemSpawned p) is)
+                otherwise  -> return []
+    return (evs ++ [DestinationAbrupted pl p])
 
 tryFire :: DLevel -> Mob -> [Event]
 tryFire lvl m =
