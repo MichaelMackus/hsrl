@@ -60,19 +60,18 @@ drinkDraught m i = do
 
 -- fire projectile toward the mob's target
 -- TODO unable to fire in melee
-fire :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
-fire lvl attacker proj =
-    if isProjectile proj && isJust (findMobAt (fromJust (target attacker)) lvl) then
-        let m = fromJust (findMobAt (fromJust (target attacker)) lvl)
-            eqp = equipment attacker
+fire :: MonadRandom r => DLevel -> Mob -> Item -> Mob -> r [Event]
+fire lvl attacker proj m =
+    if isProjectile proj then
+        let eqp = equipment attacker
             isLaunching = maybe False (`launchesProjectile` proj) (launcher eqp)
         -- fire projectile if proper launcher equipped
         in if isLaunching then do
                atkE <- attack attacker (launcher eqp) m
-               return $ [FiredProjectile attacker (fromJust (launcher eqp)) proj (at m), MenuChange NoMenu] ++ atkE
+               return $ [FiredProjectile attacker (fromJust (launcher eqp)) proj (at m)] ++ atkE
            else do
                atkE <- attack attacker (Just proj) m
-               return $ [ThrownProjectile attacker proj (at m), MenuChange NoMenu] ++ atkE
+               return $ [ThrownProjectile attacker proj (at m)] ++ atkE
     else return []
 
 equip :: Mob -> Item -> [Event]

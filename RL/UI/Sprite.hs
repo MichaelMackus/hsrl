@@ -302,9 +302,10 @@ toMessage e (ItemsSeen items) = let suffix = if length items > 1 then "There are
 toMessage e (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (Equipped m item) | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (EquipmentRemoved m item) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
-toMessage e (MenuChange Inventory) = Just $ "Pick an item to use or equip. Press space to cancel."
-toMessage e (MenuChange ProjectileMenu) = Just $ "Pick a projectile to throw. Press space to cancel."
-toMessage e (MenuChange TargetMenu) = Just $ "Pick a target to throw at. Press space to cancel."
+-- TODO
+-- toMessage e (MenuChange Inventory) = Just $ "Pick an item to use or equip. Press space to cancel."
+-- toMessage e (MenuChange ProjectileMenu) = Just $ "Pick a projectile to throw. Press space to cancel."
+-- toMessage e (MenuChange TargetMenu) = Just $ "Pick a target to throw at. Press space to cancel."
 toMessage e (Drank           m p)      | isPlayer m = Just $ "You drank the " ++ show p ++ "."
 toMessage e (Healed          m n)      | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
 toMessage e (GainedLife      m n)      | isPlayer m = Just $ "Praise the sun! You feel youthful."

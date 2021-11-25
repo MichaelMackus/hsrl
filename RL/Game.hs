@@ -93,10 +93,8 @@ instance Client Mob where
     broadcast m (Confused m')              | m == m' = m { flags = L.nub (ConfusedF:flags m) }
     broadcast m (Blinded m')               | m == m' = m { flags = L.nub (BlindedF:flags m) }
     broadcast m (GainedTelepathy m')       | m == m' = m { flags = L.nub (TelepathicF:flags m) }
-    broadcast m (ReadiedProjectile m' i)   | m == m' = m { readied = Just i }
-    broadcast m (TargetChanged   m' p)     | m == m' = m { target = Just p }
-    broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
-    broadcast m (FiredProjectile m' _ i _) | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
+    broadcast m (ThrownProjectile m' i _)  | m == m' = m { inventory = L.delete i (inventory m) }
+    broadcast m (FiredProjectile m' _ i _) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (BandageApplied  m')       | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
 
     broadcast m otherwise = m

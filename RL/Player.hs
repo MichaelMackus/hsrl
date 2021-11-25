@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (isAutomating, isTicking, handleInput, automatePlayer, runPlayerAction) where
+module RL.Player (InputState(..), isAutomating, isTicking, handleInput, automatePlayer, runPlayerAction) where
 
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
@@ -43,52 +43,104 @@ isTicking :: InputState -> Bool
 isTicking = isNothing . menu
 
 -- handle input from user
+-- TODO simplify and move isConfused to automated player function
 handleInput :: Key -> [KeyMod] -> PlayerAction ()
 handleInput k km = do
     m   <- gets menu
     env <- ask
     let lvl = level env
         p   = player lvl
-    if isNothing m then do -- normal gameplay (not in menu)
-        evs <- case k of
-            (KeyChar 'k')     -> moveOrAttack North
-            (KeyChar 'j')     -> moveOrAttack South
-            (KeyChar 'h')     -> moveOrAttack West
-            (KeyChar 'l')     -> moveOrAttack East
-            (KeyChar 'u')     -> moveOrAttack NE
-            (KeyChar 'y')     -> moveOrAttack NW
-            (KeyChar 'b')     -> moveOrAttack SW
-            (KeyChar 'n')     -> moveOrAttack SE
-            (KeyChar '8')     -> moveOrAttack North
-            (KeyChar '2')     -> moveOrAttack South
-            (KeyChar '4')     -> moveOrAttack West
-            (KeyChar '6')     -> moveOrAttack East
-            (KeyChar '9')     -> moveOrAttack NE
-            (KeyChar '7')     -> moveOrAttack NW
-            (KeyChar '1')     -> moveOrAttack SW
-            (KeyChar '3')     -> moveOrAttack SE
-            KeyUp             -> moveOrAttack North
-            KeyRight          -> moveOrAttack East
-            KeyLeft           -> moveOrAttack West
-            KeyDown           -> moveOrAttack South
-            (KeyChar 'f')     -> return $ tryFire lvl p -- TODO skip to targetting menu if projectile/launcher readied
-            (KeyChar 't')     -> return $ tryFire lvl p
-            (KeyChar 'r')     -> return [MenuChange Inventory]
-            (KeyChar '>')     -> maybeToList <$> (takeStairs Down)
-            (KeyChar '<')     -> maybeToList <$> (takeStairs Up)
-            (KeyChar 'i')     -> return [MenuChange Inventory]
-            (KeyChar 'Q')     -> return [QuitGame]
-            (KeyChar 'g')     -> return (maybeToList (pickup (level env)))
-            (KeyChar ',')     -> return (maybeToList (pickup (level env)))
-            (KeyChar 'w')     -> return [MenuChange Inventory]
-            (KeyChar 'W')     -> return [MenuChange Inventory]
-            (KeyChar 'e')     -> return [MenuChange Inventory]
-            (KeyChar 'q')     -> return [MenuChange Inventory]
-            (KeyChar 's')     -> return [Saved]
-            (KeyMouseLeft to) -> (when (canSee lvl p to || to `elem` seen lvl) $ startRunning to) >> return []
-            otherwise         -> return []
-        insertEvents evs
-    else return () -- TODO menu handling
+    if isConfused p then
+        if k == (KeyChar 'Q') then insertEvent QuitGame
+        else if k == (KeyChar 's') then insertEvent Saved
+        else randomDir >>= moveOrAttack >>= insertEvents
+    else if isNothing m then
+        -- normal gameplay (not in menu or confused)
+        case k of
+            (KeyChar 'k')     -> insertEvents =<< moveOrAttack North
+            (KeyChar 'j')     -> insertEvents =<< moveOrAttack South
+            (KeyChar 'h')     -> insertEvents =<< moveOrAttack West
+            (KeyChar 'l')     -> insertEvents =<< moveOrAttack East
+            (KeyChar 'u')     -> insertEvents =<< moveOrAttack NE
+            (KeyChar 'y')     -> insertEvents =<< moveOrAttack NW
+            (KeyChar 'b')     -> insertEvents =<< moveOrAttack SW
+            (KeyChar 'n')     -> insertEvents =<< moveOrAttack SE
+            (KeyChar '8')     -> insertEvents =<< moveOrAttack North
+            (KeyChar '2')     -> insertEvents =<< moveOrAttack South
+            (KeyChar '4')     -> insertEvents =<< moveOrAttack West
+            (KeyChar '6')     -> insertEvents =<< moveOrAttack East
+            (KeyChar '9')     -> insertEvents =<< moveOrAttack NE
+            (KeyChar '7')     -> insertEvents =<< moveOrAttack NW
+            (KeyChar '1')     -> insertEvents =<< moveOrAttack SW
+            (KeyChar '3')     -> insertEvents =<< moveOrAttack SE
+            KeyUp             -> insertEvents =<< moveOrAttack North
+            KeyRight          -> insertEvents =<< moveOrAttack East
+            KeyLeft           -> insertEvents =<< moveOrAttack West
+            KeyDown           -> insertEvents =<< moveOrAttack South
+            (KeyChar 'f')     -> tryFire lvl p -- TODO skip to targetting menu if projectile/launcher readied
+            (KeyChar 't')     -> tryFire lvl p
+            (KeyChar 'r')     -> changeMenu Inventory
+            (KeyChar '>')     -> insertEvents =<< maybeToList <$> (takeStairs Down)
+            (KeyChar '<')     -> insertEvents =<< maybeToList <$> (takeStairs Up)
+            (KeyChar 'i')     -> changeMenu Inventory
+            (KeyChar 'Q')     -> insertEvent QuitGame
+            (KeyChar 'g')     -> insertEvents (maybeToList (pickup (level env)))
+            (KeyChar ',')     -> insertEvents (maybeToList (pickup (level env)))
+            (KeyChar 'w')     -> changeMenu Inventory
+            (KeyChar 'W')     -> changeMenu Inventory
+            (KeyChar 'e')     -> changeMenu Inventory
+            (KeyChar 'q')     -> changeMenu Inventory
+            (KeyChar 's')     -> insertEvent Saved
+            (KeyMouseLeft to) -> when (canSee lvl p to || to `elem` seen lvl) $ startRunning to
+            otherwise         -> return ()
+    else handleMenu k km (fromJust m)
+
+handleMenu :: Key -> [KeyMod] -> Menu -> PlayerAction ()
+handleMenu k km Inventory = do
+    p   <- player . level <$> getEnv
+    lvl <- level          <$> getEnv
+    let ch = charFromKey k
+        i  = (`fromInventoryLetter` (inventory p)) =<< ch
+    e <- maybe (return []) (applyItem lvl p) i
+    insertEvents e
+    closeMenu
+handleMenu k km ProjectileMenu = do
+    p   <- player . level <$> getEnv
+    lvl <- level          <$> getEnv
+    let ch   = charFromKey k
+        i    = (`fromInventoryLetter` (inventory p)) =<< ch
+        targets = L.filter (canSee lvl p) . L.sortBy (comparing (distance (at p))) . map at $ mobs lvl
+    if maybe False isProjectile i && length targets > 0 then do
+        readyProjectile (fromJust i)
+        changeMenu TargetMenu
+        changeTarget (head targets)
+    else
+        closeMenu
+handleMenu k km TargetMenu = do
+    s   <- get
+    p   <- player . level <$> getEnv
+    lvl <- level          <$> getEnv
+    let targets = L.filter (canSee lvl p) . L.sortBy (comparing (distance (at p))) . map at $ mobs lvl
+    case k of
+        (KeyChar    '\t') | length targets > 0 ->
+            -- change to next target based on tab char
+            let i   = fromMaybe 0 $ (\t -> L.findIndex (== t) targets) =<< target s
+                tgt = if i + 1 >= length targets then head targets else targets !! (i + 1)
+            in  changeTarget tgt
+        (KeyEnter) | isJust (target s) && isJust (readied s) && isJust (findMobAt (fromJust $ target s) lvl) -> do
+            evs <- fire lvl p (fromJust (readied s)) (fromJust (findMobAt (fromJust $ target s) lvl))
+            insertEvents evs
+            clearTarget
+        (KeyMouseLeft to) | to `elem` targets && isJust (findMobAt to lvl) && isJust (readied s) -> do
+            evs <- fire lvl p (fromJust (readied s)) (fromJust (findMobAt to lvl))
+            insertEvents evs
+            clearTarget
+        otherwise -> closeMenu
+handleMenu k km otherwise = return ()
+
+charFromKey :: Key -> Maybe Char
+charFromKey (KeyChar ch) = Just ch
+charFromKey otherwise = Nothing
 
 -- automate player turn
 automatePlayer :: PlayerAction ()
@@ -123,18 +175,17 @@ moveOrAttackAt to = do
 interactFeature :: (MonadRandom m, MonadReader Env m) => Point -> Feature -> m [Event]
 interactFeature p f = do
     pl  <- asks (player . level)
-    evs <- case f of
-                (Fountain n) | n > 0 -> do
-                   healed <- roll (2 `d` 8)
-                   return [FeatureInteracted p (Fountain n), Healed pl healed]
-                (Chest is) -> return (FeatureInteracted p (Chest is):map (ItemSpawned p) is)
-                otherwise  -> return []
-    return (evs ++ [DestinationAbrupted pl p])
+    case f of
+        (Fountain n) | n > 0 -> do
+           healed <- roll (2 `d` 8)
+           return [FeatureInteracted p (Fountain n), Healed pl healed]
+        (Chest is) -> return (FeatureInteracted p (Chest is):map (ItemSpawned p) is)
+        otherwise  -> return []
 
-tryFire :: DLevel -> Mob -> [Event]
+tryFire :: DLevel -> Mob -> PlayerAction ()
 tryFire lvl m =
-    if inMelee lvl m then [MissileInterrupted m]
-    else [MenuChange ProjectileMenu]
+    if inMelee lvl m then return () -- TODO message: [MissileInterrupted m]
+    else changeMenu ProjectileMenu
 
 pickup :: DLevel -> Maybe Event
 pickup lvl = 
@@ -186,3 +237,18 @@ continueRunning = do
                 moveOrAttackAt (fromJust path !! 1)
                 when (fromJust path !! 1 == to) clearDestination
             else clearDestination
+
+readyProjectile :: Item -> PlayerAction ()
+readyProjectile i = modify $ \s -> s { readied = Just i }
+
+changeMenu :: Menu -> PlayerAction ()
+changeMenu m = modify $ \s -> s { menu = Just m }
+
+closeMenu :: PlayerAction ()
+closeMenu = modify $ \s -> s { menu = Nothing }
+
+changeTarget :: Point -> PlayerAction ()
+changeTarget p = modify $ \s -> s { target = Just p }
+
+clearTarget :: PlayerAction ()
+clearTarget = modify $ \s -> s { target = Nothing }
