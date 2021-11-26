@@ -47,7 +47,7 @@ automate = getMob >>= \m -> do
     heard <- canHear (events env) m (player lvl)
     let seen  = canSeeMob lvl m (player lvl)
         path  = findOptimalPath lvl distance (at (player lvl)) (at m)
-    when (heard && isSleeping m) $ insertEvent (Waken m)
+    when (heard && isSleeping m) $ gameEvent (Waken m)
 
     when heard $ updateDestination (at (player lvl))
     when seen  $ updateDestination (at (player lvl))
@@ -66,7 +66,7 @@ wander :: AIAction ()
 wander = getMob >>= \m -> do
     lvl <- asks level
     p   <- pick (aiNeighbors lvl (at m) (at m))
-    when (isJust p) $ insertEvent (Moved m (fromJust p))
+    when (isJust p) $ gameEvent (Moved m (fromJust p))
 
 moveCloser :: Mob -> [Point] -> AIAction ()
 moveCloser p path = getMob >>= \m -> do
@@ -80,7 +80,7 @@ moveCloser p path = getMob >>= \m -> do
             attack m (wielding (equipment m)) p
             clearDestination
         else if isNothing (findMobAt next lvl) then
-            insertEvent $ Moved m next
+            gameEvent $ Moved m next
         else
             clearDestination
     else
@@ -111,8 +111,8 @@ canHear es m1 m2 =
 
 hearsCombat :: [Event] -> Mob -> Bool
 hearsCombat es m =
-    let f (Damaged atk tgt _) = g atk tgt
-        f (Missed  atk tgt)   = g atk tgt
+    let f (GameUpdate (Damaged atk tgt _)) = g atk tgt
+        f (GameUpdate (Missed  atk tgt))   = g atk tgt
         f otherwise           = False
         -- check if mob can hear attacker or target... uses sight distance so further away mobs stay sleeping
         g atk tgt             = distance (at atk) (at m) <= fov m || distance (at tgt) (at m) <= hearing m

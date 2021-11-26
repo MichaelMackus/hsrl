@@ -48,7 +48,7 @@ sdlUI window renderer getFont cfg = UI
         -- draw sprites
         forM_ (getSprites env) $ \spr ->
             case spr of
-                Left (Message (x,y) str fg bg) -> do
+                Left (MessageSprite (x,y) str fg bg) -> do
                     let x' = fromIntegral x * fromIntegral fontW
                         y' = fromIntegral y * fromIntegral fontH
                         dest  = Rectangle (P (V2 x' y')) (V2 (fromIntegral fontW) (fromIntegral fontH))

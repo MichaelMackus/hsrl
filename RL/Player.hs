@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (PlayerAction, InputState(..), defaultInputState, isAutomating, isTicking, handleInput, automatePlayer, runPlayerAction) where
+module RL.Player (PlayerAction, runPlayerAction, InputState(..), defaultInputState, Menu(..), startTurn, isTicking, readyForInput, handleInput) where
 
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
@@ -11,6 +11,7 @@ import RL.Pathfinder
 import RL.Random
 import RL.Util
 
+import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
@@ -18,17 +19,19 @@ import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMa
 import Data.Tuple (swap)
 import qualified Data.List as L
 
-newtype PlayerAction a = PlayerAction { playerAction :: StateT InputState (WriterT [Event] (ReaderT Env (Rand StdGen))) a }
+newtype PlayerAction a = PlayerAction { playerAction :: PlayerT Identity a }
     deriving (Monad, Applicative, Functor, MonadReader Env, MonadState InputState, MonadWriter [Event], MonadRandom)
+
+type PlayerT m a = StateT InputState (WriterT [Event] (ReaderT Env (RandT StdGen m))) a
 
 instance GameAction PlayerAction where
     getEnv = ask
     insertEvents = tell
 
-data InputState   = InputState { menu :: Maybe Menu,
-                                 destination :: Maybe Point,
-                                 readied :: Maybe Item,
-                                 target :: Maybe Point }
+data InputState = InputState { menu :: Maybe Menu,
+                               destination :: Maybe Point,
+                               readied :: Maybe Item,
+                               target :: Maybe Point }
 
 defaultInputState = InputState Nothing Nothing Nothing Nothing
 
@@ -36,25 +39,31 @@ runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> ([Event], In
 runPlayerAction k env s g = let k' = execStateT (playerAction k) s
                             in  swap $ evalRand (runReaderT (runWriterT k') env) g
 
--- checks if we are running to a destination
-isAutomating :: InputState -> Bool
-isAutomating = isJust . destination
+-- start of player turn
+startTurn :: PlayerAction ()
+startTurn = do
+    s   <- get
+    env <- ask
+    t   <- getPlayerTile
+    let lvl = level env
+    -- update seen tiles at start of turn
+    when (isDownStair t) $ seenMessage (StairsSeen Down)
+    when (isUpStair t)   $ seenMessage (StairsSeen Up)
+    let is = findItemsAt (at (player lvl)) lvl
+    when (length is > 0) $ seenMessage (ItemsSeen is)
+    -- run to destination
+    if isJust (destination s) && canAutomate env then continueRunning
+    else clearDestination
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: InputState -> Bool
 isTicking = isNothing . menu
 
--- automate player turn
-automatePlayer :: PlayerAction ()
-automatePlayer = do
-    s   <- get
-    env <- ask
-    when (isJust (destination s)) $
-        if canAutomate env then continueRunning
-        else clearDestination
+-- returns true if we're ready for input from the keyboard (i.e. we're not running to a destination)
+readyForInput :: InputState -> Bool
+readyForInput = isNothing . destination
 
 -- handle input from user
--- TODO simplify and move isConfused to automated player function
 handleInput :: Key -> [KeyMod] -> PlayerAction ()
 handleInput k km = do
     m   <- gets menu
@@ -62,8 +71,8 @@ handleInput k km = do
     let lvl = level env
         p   = player lvl
     if isConfused p then
-        if k == (KeyChar 'Q') then insertEvent QuitGame
-        else if k == (KeyChar 's') then insertEvent Saved
+        if k == (KeyChar 'Q') then gameEvent QuitGame
+        else if k == (KeyChar 's') then gameEvent Saved
         else bump =<< randomDir
     else if isNothing m then
         -- normal gameplay (not in menu or confused)
@@ -94,14 +103,14 @@ handleInput k km = do
             (KeyChar '>')     -> takeStairs Down
             (KeyChar '<')     -> takeStairs Up
             (KeyChar 'i')     -> changeMenu Inventory
-            (KeyChar 'Q')     -> insertEvent QuitGame
-            (KeyChar 'g')     -> insertEvents (maybeToList (pickup (level env)))
-            (KeyChar ',')     -> insertEvents (maybeToList (pickup (level env)))
+            (KeyChar 'Q')     -> gameEvent QuitGame
+            (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
+            (KeyChar ',')     -> gameEvents (maybeToList (pickup (level env)))
             (KeyChar 'w')     -> changeMenu Inventory
             (KeyChar 'W')     -> changeMenu Inventory
             (KeyChar 'e')     -> changeMenu Inventory
             (KeyChar 'q')     -> changeMenu Inventory
-            (KeyChar 's')     -> insertEvent Saved
+            (KeyChar 's')     -> gameEvent Saved
             (KeyMouseLeft to) -> when (canSee lvl p to || to `elem` seen lvl) $ startRunning to
             otherwise         -> return ()
     else handleMenu k km (fromJust m)
@@ -150,6 +159,12 @@ charFromKey :: Key -> Maybe Char
 charFromKey (KeyChar ch) = Just ch
 charFromKey otherwise = Nothing
 
+getPlayerTile :: PlayerAction Tile
+getPlayerTile = do
+    lvl <- level <$> getEnv
+    let t = findTileAt (at (player lvl)) lvl
+    maybe (error "Invalid player tile!") return t
+
 bump :: Dir -> PlayerAction ()
 bump dir = do
     env <- ask
@@ -167,25 +182,26 @@ bumpAt to = do
         (_, _, Just f) -> interactFeature to f
         (_, Just t, _) -> let stairE   = maybe [] (maybeToList . stairF) $ findTileAt to lvl
                               stairF   = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
-                          in  when (isPassable t) $ insertEvents (Moved p to:stairE)
+                          in  when (isPassable t) $ gameEvents (Moved p to:stairE)
         otherwise      -> return ()
 
 interactFeature :: Point -> Feature -> PlayerAction ()
 interactFeature p f = do
     pl  <- asks (player . level)
+    gameEvent $ FeatureInteracted p f
     case f of
         (Fountain n) | n > 0 -> do
            healed <- roll (2 `d` 8)
-           insertEvents [FeatureInteracted p (Fountain n), Healed pl healed]
-        (Chest is) -> insertEvents (FeatureInteracted p (Chest is):map (ItemSpawned p) is)
-        otherwise  -> return ()
+           gameEvent $ Healed pl healed
+        (Chest is) -> gameEvents $ map (ItemSpawned p) is
+        f  -> return ()
 
 tryFire :: DLevel -> Mob -> PlayerAction ()
 tryFire lvl m =
-    if inMelee lvl m then return () -- TODO message: [MissileInterrupted m]
+    if inMelee lvl m then insertMessage InMelee
     else changeMenu ProjectileMenu
 
-pickup :: DLevel -> Maybe Event
+pickup :: DLevel -> Maybe GameEvent
 pickup lvl = 
     let is = findItemsAt (at (player lvl)) lvl
     in  ItemPickedUp (player lvl) <$> listToMaybe is
@@ -197,9 +213,9 @@ takeStairs v = do
         t    = fromMaybe (error "Unable to find stairs tile") $ findTileAt (at p) lvl
         lvl' = getStairLvl t
     if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust lvl' then
-        when (isJust lvl') $ insertEvent $ StairsTaken v (fromJust lvl')
+        when (isJust lvl') $ gameEvent $ StairsTaken v (fromJust lvl')
     else if isNothing lvl' then
-        insertEvent Escaped
+        gameEvent Escaped
     else
         return ()
 
@@ -240,7 +256,9 @@ readyProjectile :: Item -> PlayerAction ()
 readyProjectile i = modify $ \s -> s { readied = Just i }
 
 changeMenu :: Menu -> PlayerAction ()
-changeMenu m = modify $ \s -> s { menu = Just m }
+changeMenu m = do
+    modify $ \s -> s { menu = Just m }
+    insertMessage (MenuChange m)
 
 closeMenu :: PlayerAction ()
 closeMenu = modify $ \s -> s { menu = Nothing }

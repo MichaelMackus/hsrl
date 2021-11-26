@@ -1,5 +1,5 @@
 module RL.UI.Sprite (
-    Message(..),
+    MessageSprite(..),
     Sprite(..),
     getSprites,
     spriteAt,
@@ -29,7 +29,7 @@ brown   = (153, 76, 0)
 orange  = (255, 128, 0)
 lyellow = (255, 255, 204)
 
-data Message = Message {
+data MessageSprite = MessageSprite {
     messagePos :: Point,
     message :: String,
     messageFgColor :: Color,
@@ -44,7 +44,7 @@ data Sprite   = Sprite {
 } deriving (Show, Eq)
 
 -- game is renderable
-getSprites :: Env -> [Either Message Sprite]
+getSprites :: Env -> [Either MessageSprite Sprite]
 getSprites e = map Right (getMapSprites e) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e))
 
 -- helper functions since map/mob isn't renderable without context
@@ -134,7 +134,7 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
 getMapSprites :: Env -> [Sprite]
 getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (level env)
 
-getStatusSprites :: DLevel -> [Message]
+getStatusSprites :: DLevel -> [MessageSprite]
 getStatusSprites lvl =
     let p = player lvl
         hpSprite = (mkMessage (64, 15) (show (hp p))) { messageFgColor = hpColor }
@@ -146,7 +146,7 @@ getStatusSprites lvl =
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
          mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
 
--- otherWindows :: Env -> [Message]
+-- otherWindows :: Env -> [MessageSprite]
 -- otherWindows e
 --     | menu e `elem` [Inventory, ProjectileMenu] =
 --         let lvl = level e
@@ -160,25 +160,25 @@ getStatusSprites lvl =
 --               showItem (1,i) = " - " ++ showIdentified (identified p) i
 --               showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
 
-getMsgSprites :: Env -> [Message]
+getMsgSprites :: Env -> [MessageSprite]
 getMsgSprites env = let evs        = events env
                         recentMsgs = catMaybes (map (toMessage env) (getEventsAfterTurns 2 evs))
                         staleMsgs  = catMaybes (map (toMessage env) (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
                     in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
 
-mkMessages :: Point -> [String] -> [Message]
+mkMessages :: Point -> [String] -> [MessageSprite]
 mkMessages (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, s) = Message (offx, i + offy) s white black
+        toSprite (i, s) = MessageSprite (offx, i + offy) s white black
 
-mkColoredMessages :: Point -> [(String, Color)] -> [Message]
+mkColoredMessages :: Point -> [(String, Color)] -> [MessageSprite]
 mkColoredMessages (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, (s, fg)) = Message (offx, i + offy) s fg black
+        toSprite (i, (s, fg)) = MessageSprite (offx, i + offy) s fg black
 
-mkMessage :: Point -> String -> Message
-mkMessage xy s = Message xy s white black
+mkMessage :: Point -> String -> MessageSprite
+mkMessage xy s = MessageSprite xy s white black
 
 data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
               | WallEW | WallSE | WallSW | WallSEW | WallNESW deriving (Eq, Ord)
@@ -275,58 +275,56 @@ isWall otherwise = False
 
 
 toMessage :: Env -> Event -> Maybe String
-toMessage e (NewGame) = Just $ "You delve underground, searching for your ancestors' sword."
-toMessage e (Escaped) = Just $ "There is no escape. You must avenge your ancestors!"
-toMessage e (Crit attacker target)
+toMessage e (GameUpdate NewGame)   = Just $ "You delve underground, searching for your ancestors' sword."
+toMessage e (GameUpdate (Escaped)) = Just $ "There is no escape. You must avenge your ancestors!"
+toMessage e (GameUpdate (Crit attacker target))
     | isPlayer attacker = Just $ "CRITICAL HIT!"
-toMessage e (Damaged attacker target dmg)
+toMessage e (GameUpdate (Damaged attacker target dmg))
     | isPlayer attacker && isPlayer target = Just $ "You hurt yourself for " ++ show dmg ++ " damage! Be more careful!"
     | isPlayer attacker = Just $ "You hit the " ++ mobName target ++ " for " ++ show dmg ++ " damage"
     | isPlayer target = Just $ "You were hit by the " ++ mobName attacker ++ " for " ++ show dmg
     | otherwise = Just $ "The " ++ mobName attacker ++ " hit the " ++ mobName target ++ " for " ++ show dmg
-toMessage e (Missed attacker target)
+toMessage e (GameUpdate (Missed attacker target))
     | isPlayer attacker = Just $ "You missed the " ++ mobName target
     | isPlayer target = Just $ "The " ++ mobName attacker ++ " missed"
     | otherwise = Just $ "The " ++ mobName attacker ++ " missed the " ++ mobName target
-toMessage e (Died m)
+toMessage e (GameUpdate (Died m))
     | isPlayer m = Just $ "You died! Press space to quit or r to restart a new game."
     | otherwise  = Just $ "You killed the " ++ mobName m
-toMessage e (StairsTaken Up _) = Just $ "You've gone up stairs."
-toMessage e (StairsTaken Down _) = Just $ "You've gone down stairs."
-toMessage e (Waken m) | canSee (level e) (player (level e)) (at m) = Just $ "The " ++ mobName m ++ " wakes up from their slumber."
-toMessage e (Slept m) = Just $ "The " ++ mobName m ++ " has fallen asleep."
-toMessage e (StairsSeen Up) = Just $ "You see stairs going up."
-toMessage e (StairsSeen Down) = Just $ "You see stairs going down."
-toMessage e (ItemsSeen items) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""
-                              in  Just $ "You see a " ++ showIdentified (identified (player (level e))) (head items) ++ ". " ++ suffix
-toMessage e (ItemPickedUp m item) | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
-toMessage e (Equipped m item) | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
-toMessage e (EquipmentRemoved m item) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
--- TODO
--- toMessage e (MenuChange Inventory) = Just $ "Pick an item to use or equip. Press space to cancel."
--- toMessage e (MenuChange ProjectileMenu) = Just $ "Pick a projectile to throw. Press space to cancel."
--- toMessage e (MenuChange TargetMenu) = Just $ "Pick a target to throw at. Press space to cancel."
-toMessage e (Drank           m p)      | isPlayer m = Just $ "You drank the " ++ show p ++ "."
-toMessage e (Healed          m n)      | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
-toMessage e (GainedLife      m n)      | isPlayer m = Just $ "Praise the sun! You feel youthful."
-toMessage e (GainedStrength  m n)      | isPlayer m = Just $ "You feel empowered!"
-toMessage e (DrankAcid       m  )      | isPlayer m = Just $ "It BURNS!"
-toMessage e (Vanished        m  )      | isPlayer m = Just $ "You can no longer see yourself!"
-toMessage e (Confused        m  )      | isPlayer m = Just $ "You feel drunk."
-toMessage e (Blinded         m  )      | isPlayer m = Just $ "You can no longer see your surroundings!"
-toMessage e (Read            m s)      | isPlayer m = Just $ "You read the " ++ show s ++ "."
-toMessage e (CastFire        m n)      | isPlayer m = Just $ "Roaring flames erupt all around you!"
-toMessage e (CastLightning   m n)      | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
-toMessage e (Teleported      m p)      | isPlayer m = Just $ "You feel disoriented."
-toMessage e (Mapped          lvl)                   = Just $ "You suddenly understand the layout of the current level."
-toMessage e (GainedTelepathy m)        | isPlayer m = Just $ "You sense nearby danger."
--- TODO
--- toMessage e (MissileInterrupted m)     | isPlayer m = Just $ "You are unable to concentrate on firing within the melee."
-toMessage e (ThrownProjectile m i _)   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
-toMessage e (FiredProjectile  m l p _) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
-toMessage e (BandageApplied   m)       | isPlayer m = Just $ "You apply the bandage."
-toMessage e (FeatureInteracted p (Fountain 0)) = Just $ "The fountain has run dry!"
-toMessage e (FeatureInteracted p (Fountain n)) = Just $ "You drink from the fountain."
-toMessage e (FeatureInteracted p (Chest is)) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."
-toMessage e (FeatureInteracted p Altar) = Just $ "You pray to the gods."
+toMessage e (GameUpdate (StairsTaken Up _)) = Just $ "You've gone up stairs."
+toMessage e (GameUpdate (StairsTaken Down _)) = Just $ "You've gone down stairs."
+toMessage e (GameUpdate (Waken m)) | canSee (level e) (player (level e)) (at m) = Just $ "The " ++ mobName m ++ " wakes up from their slumber."
+toMessage e (GameUpdate (Slept m)) = Just $ "The " ++ mobName m ++ " has fallen asleep."
+toMessage e (EventMessage (StairsSeen Up)) = Just $ "You see stairs going up."
+toMessage e (EventMessage (StairsSeen Down)) = Just $ "You see stairs going down."
+toMessage e (EventMessage (ItemsSeen items)) = let suffix = if length items > 1 then "There are " ++ show (length items - 1) ++ " more items here." else ""
+                                               in  Just $ "You see a " ++ showIdentified (identified (player (level e))) (head items) ++ ". " ++ suffix
+toMessage e (EventMessage (MenuChange Inventory)) = Just $ "Pick an item to use or equip. Press space to cancel."
+toMessage e (EventMessage (MenuChange ProjectileMenu)) = Just $ "Pick a projectile to throw. Press space to cancel."
+toMessage e (EventMessage (MenuChange TargetMenu)) = Just $ "Pick a target to throw at. Press space to cancel."
+toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
+toMessage e (GameUpdate (ItemPickedUp m item))     | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (GameUpdate (Equipped m item))         | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (GameUpdate (EquipmentRemoved m item)) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (GameUpdate (Drank           m p))     | isPlayer m = Just $ "You drank the " ++ show p ++ "."
+toMessage e (GameUpdate (Healed          m n))     | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
+toMessage e (GameUpdate (GainedLife      m n))     | isPlayer m = Just $ "Praise the sun! You feel youthful."
+toMessage e (GameUpdate (GainedStrength  m n))     | isPlayer m = Just $ "You feel empowered!"
+toMessage e (GameUpdate (DrankAcid       m  ))     | isPlayer m = Just $ "It BURNS!"
+toMessage e (GameUpdate (Vanished        m  ))     | isPlayer m = Just $ "You can no longer see yourself!"
+toMessage e (GameUpdate (Confused        m  ))     | isPlayer m = Just $ "You feel drunk."
+toMessage e (GameUpdate (Blinded         m  ))     | isPlayer m = Just $ "You can no longer see your surroundings!"
+toMessage e (GameUpdate (Read            m s))     | isPlayer m = Just $ "You read the " ++ show s ++ "."
+toMessage e (GameUpdate (CastFire        m n))     | isPlayer m = Just $ "Roaring flames erupt all around you!"
+toMessage e (GameUpdate (CastLightning   m n))     | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
+toMessage e (GameUpdate (Teleported      m p))     | isPlayer m = Just $ "You feel disoriented."
+toMessage e (GameUpdate (Mapped          lvl))                  = Just $ "You suddenly understand the layout of the current level."
+toMessage e (GameUpdate (GainedTelepathy m))       | isPlayer m = Just $ "You sense nearby danger."
+toMessage e (GameUpdate (ThrownProjectile m i _))   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
+toMessage e (GameUpdate (FiredProjectile  m l p _)) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
+toMessage e (GameUpdate (BandageApplied   m))       | isPlayer m = Just $ "You apply the bandage."
+toMessage e (GameUpdate (FeatureInteracted p (Fountain 0))) = Just $ "The fountain has run dry!"
+toMessage e (GameUpdate (FeatureInteracted p (Fountain n))) = Just $ "You drink from the fountain."
+toMessage e (GameUpdate (FeatureInteracted p (Chest is))) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."
+toMessage e (GameUpdate (FeatureInteracted p Altar)) = Just $ "You pray to the gods."
 toMessage e otherwise = Nothing

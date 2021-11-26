@@ -28,16 +28,14 @@ data GameState = GameState { envState :: Env, inputState :: InputState, aiState 
 -- return value is True if player quit
 gameLoop :: UI -> Game Bool
 gameLoop disp = do
-        -- draw map
-        liftIO . uiRender disp =<< gets envState
+        doPlayerAction startTurn
+        renderMap
 
-        -- handle player turn
-        is <- gets inputState
-        if not (isAutomating is) then do
+        -- handle user input
+        ready <- readyForInput <$> gets inputState
+        when ready $ do
             (k, km) <- liftIO $ uiInput disp
             doPlayerAction (handleInput k km)
-        else
-            doPlayerAction automatePlayer
 
         -- handle AI
         ticking <- isTicking <$> gets inputState
@@ -53,7 +51,6 @@ gameLoop disp = do
         else
             isQuit <$> gets envState
     where
-        -- TODO initialize AI if not found
         doAI :: AIAction a -> Id -> Game ()
         doAI k mid = do
                 s <- L.lookup mid <$> gets aiState
@@ -72,7 +69,8 @@ gameLoop disp = do
             let (evs, is') = runPlayerAction k (envState s) (inputState s) g
             put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
         endTurn :: Game ()
-        endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [EndOfTurn] }
+        endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [GameUpdate EndOfTurn] }
+        renderMap = liftIO . uiRender disp =<< gets envState
 
 main = do
     -- allow user to customize display if supported, or tileset
@@ -91,7 +89,7 @@ main = do
     -- initialize game & launch game loop
     let newGame = do
         conf       <- mkDefaultConf
-        e          <- (`broadcast` NewGame) <$> nextLevel conf
+        e          <- (`broadcast` (GameUpdate NewGame)) <$> nextLevel conf
         (quit, s') <- runStateT (gameLoop ui) (defaultGameState e)
         uiRender ui (envState s') -- render last frame
 

@@ -4,25 +4,22 @@ import RL.Map
 import RL.Util (takeWhiles, dropWhiles)
 import qualified Data.List as L
 
--- Represents Game events
+data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
 
-data Event = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
-    | MissileInterrupted Mob | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point
+-- Informational messages displayed to user
+data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu deriving Eq
+data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
+
+-- Represents events that change the game state
+data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
+    | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
     | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy Mob
-    | StairsTaken VerticalDirection DLevel | StairsSeen VerticalDirection
+    | StairsTaken VerticalDirection DLevel
     | Waken Mob | Slept Mob | MobSpawned Mob
-    -- TODO seen/heard events should be based on nearby movement and/or sound, unnecessary
-    | MobSeen Mob Mob | MobHeard Mob Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
-    -- TODO item seen doesn't need event
-    | ItemSpawned Point Item | ItemsSeen [Item] | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item | EndOfTurn | NewGame
-    | QuitGame | Escaped | Saved deriving (Eq, Show)
-
--- TODO separate event types ?
--- data Message = EventMessage Event | ItemsSeen [Item] | StairsSeen VerticalDirection
-
-data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
+    | ItemSpawned Point Item | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
+    | EndOfTurn | NewGame | QuitGame | Escaped | Saved deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]
 getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
@@ -37,10 +34,33 @@ turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)
 
 isEndOfTurn :: Event -> Bool
-isEndOfTurn EndOfTurn = True
-isEndOfTurn otherwise = False
+isEndOfTurn (GameUpdate EndOfTurn) = True
+isEndOfTurn otherwise              = False
 
 isAttacked :: Event -> Bool
-isAttacked (Damaged _ _ _) = True
-isAttacked (Missed  _ _  ) = True
-isAttacked otherwise       = False
+isAttacked (GameUpdate (Damaged _ _ _)) = True
+isAttacked (GameUpdate (Missed  _ _  )) = True
+isAttacked otherwise                    = False
+
+-- check if mob recently moved to this tile
+recentlyMoved :: Mob -> [Event] -> Bool
+recentlyMoved m es = let es' = L.takeWhile (not . f) es
+                         f (GameUpdate (Moved m' _)) = m == m'
+                         f otherwise                 = False
+                     in  (== 1) . length $ L.filter isEndOfTurn es'
+
+-- check if recently picked up on this tile
+recentlyPicked :: Mob -> [Event] -> Bool
+recentlyPicked m es = let es' = L.takeWhile (not . f) es
+                          f (GameUpdate (ItemPickedUp m' _)) = m == m'
+                          f otherwise                        = False
+                      in  (== 1) . length $ L.filter isEndOfTurn es'
+
+-- check if this is a new game since player last moved
+recentGame :: Mob -> [Event] -> Bool
+recentGame m es = let es' = L.takeWhile (not . g) es
+                      f (GameUpdate (Moved m' _)) = m == m'
+                      f otherwise                 = False
+                      g (GameUpdate NewGame)      = True
+                      g otherwise                 = False
+                  in  (== 0) . length $ L.filter f es'

@@ -46,7 +46,7 @@ tileToImage env (y, row) = flattenSprites . map spr $ enumerate row
     where spr (x, _)     = let s = spriteAt env (x, y)
                            in  s { spriteChar = unicodeSymbol env (x, y) (spriteChar s) } -- TODO CLI switch for unicode
 
-msgToImage :: Message -> Image
+msgToImage :: MessageSprite -> Image
 msgToImage msg = let (x,y) = messagePos msg
                  in  translate x y $ string (color msg) (message msg)
     where color spr = withForeColor (withBackColor defAttr (uncurry3 rgbColor (messageBgColor spr))) (uncurry3 rgbColor (messageFgColor spr))
@@ -57,10 +57,10 @@ flattenSprites = horizCat . map msgToImage . foldr f []
           f c (h:t) = if spriteFgColor c == messageFgColor h && spriteBgColor c == messageBgColor h then (concatMsg c h):t
                       else (mkMessage c):h:t
 
-mkMessage :: Sprite -> Message
-mkMessage (Sprite _ ch c c') = Message (0,0) (ch:"") c c'
+mkMessage :: Sprite -> MessageSprite
+mkMessage (Sprite _ ch c c') = MessageSprite (0,0) (ch:"") c c'
 
-concatMsg :: Sprite -> Message -> Message
+concatMsg :: Sprite -> MessageSprite -> MessageSprite
 concatMsg spr msg = msg { message = spriteChar spr:message msg }
 
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
