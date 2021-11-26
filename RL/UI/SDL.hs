@@ -8,6 +8,7 @@ import RL.UI.Sprite
 import RL.Util
 
 import Codec.Picture
+import Control.Monad
 import Data.Char (toUpper, toLower)
 import Data.IORef
 import Data.List (foldl')

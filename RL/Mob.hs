@@ -10,10 +10,11 @@ import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
 -- player/mobs
 type HP     = Int
 type Radius = Double
+type Id     = Int
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
-    mobId          :: Int,
+    mobId          :: Id,
     mobName        :: String,
     symbol         :: Char,
     at             :: Point,

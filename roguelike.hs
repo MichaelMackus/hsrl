@@ -1,5 +1,5 @@
 import RL.AI
-import RL.Input
+import RL.Player
 import RL.Game
 import RL.Generator.Dungeon
 import RL.Generator.Mobs
@@ -7,60 +7,72 @@ import RL.Generator.Features
 import RL.UI
 import RL.Random
 
+import Control.Monad.State
 import Data.List (isInfixOf)
+import Data.Maybe (fromMaybe)
 import Data.Ratio
 import System.Environment
 import System.Exit (exitSuccess)
+import qualified Data.List as L
 
 helpMessages = [ "Usage: hsrl [--vty|--tty] [TILESET_PATH]"
                 ,""
                 ,"TILESET_PATH\tPath to custom tileset. By default uses res/image/Anno_16x16.png"
                 ,"--vty or --tty\tSet to terminal mode (must be built with the vty build flag)." ]
 
+type Game = StateT GameState IO
+data GameState = GameState { envState :: Env, inputState :: InputState, aiState :: [(Id, AIState)] }
+
 -- main game loop
 --
--- first part of returned tuple is whether player has won or not
-gameLoop :: (Env -> IO ()) -> (Env -> IO [Event]) -> (Env -> IO Env) -> Env -> IO (Bool, Env)
-gameLoop draw inputEvents endTurn env = do
-    draw env              -- draw to screen
-    es <- inputEvents env -- wait for user input, and transform into Action
+-- return value is True if player quit
+gameLoop :: UI -> Game Bool
+gameLoop disp = do
+        -- draw map
+        liftIO . uiRender disp =<< gets envState
 
-    -- save the game
-    when (Saved `elem` es) $ do
-        writeFile "save.txt" ""
-        mapM_ (appendFile "save.txt") (map (\e -> show e ++ "\n") (events env))
+        -- handle player turn
+        is <- gets inputState
+        if not (isAutomating is) then do
+            (k, km) <- liftIO $ uiInput disp
+            doPlayerAction (handleInput k km)
+        else
+            doPlayerAction automatePlayer
 
-    -- broadcast input events & then process end of turn
-    env' <- endTurn (broadcastEvents env es)
-    let playing = not (isDead (player (level env')) || isQuit env')
-    if playing then
-        gameLoop draw inputEvents endTurn env'
-    else
-        return (isQuit env', env')
+        -- handle AI
+        ticking <- isTicking <$> gets inputState
+        when ticking $ do
+            ms <- gets (mobs . level . envState)
+            mapM_ (doAI automate . mobId) ms
+            -- spawnMobs -- TODO
+            endTurn
 
-doEndTurn :: MobConfig -> Env -> IO Env
-doEndTurn conf env =
-        if isTicking env then do
-            env'    <- doAI env
-            -- spawned <- spawnMobs env'
-            let spawned = []
-            return $ broadcastEvents env' (spawned ++ [EndOfTurn])
-        else return env
+        playing <- isPlaying <$> gets envState
+        if playing then
+            gameLoop disp
+        else
+            isQuit <$> gets envState
     where
-        doAI env = let ms = mobs (level env)
-                   in  go ms env
-            where go []    env = return env
-                  go (m:t) env = do
-                    es <- evalRand (runReaderT (automate m) env) <$> newStdGen
-                    go t (broadcastEvents env es)
-
-getEvents :: UI -> Env -> IO [Event]
-getEvents disp env = do
-    if not (isAutomated env) then do
-        (k, m) <- uiInput disp
-        return . evalRand (runReaderT (keyToEvents k m) env) =<< newStdGen
-    else
-        return . evalRand (runReaderT automatePlayer env)    =<< newStdGen
+        -- TODO initialize AI if not found
+        doAI :: AIAction a -> Id -> Game ()
+        doAI k mid = do
+                s <- L.lookup mid <$> gets aiState
+                doAI' (fromMaybe (defaultAIState mid) s)
+            where
+                doAI' :: AIState -> Game ()
+                doAI' aist = do
+                    s <- get
+                    g <- liftIO newStdGen
+                    let (evs, aist') = runAI k (envState s) aist g
+                    put $ s { aiState = map (\(i, s) -> if i == mid then (i, aist') else (i, s)) (aiState s), envState = broadcastEvents (envState s) evs }
+        doPlayerAction :: PlayerAction a -> Game ()
+        doPlayerAction k = do
+            s <- get
+            g <- liftIO newStdGen
+            let (evs, is') = runPlayerAction k (envState s) (inputState s) g
+            put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
+        endTurn :: Game ()
+        endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [EndOfTurn] }
 
 main = do
     -- allow user to customize display if supported, or tileset
@@ -80,8 +92,8 @@ main = do
     let newGame = do
         conf       <- mkDefaultConf
         e          <- (`broadcast` NewGame) <$> nextLevel conf
-        (quit, e') <- gameLoop (uiRender ui) (getEvents ui) (doEndTurn (mobConfig conf)) e
-        uiRender ui e' -- render last frame
+        (quit, s') <- runStateT (gameLoop ui) (defaultGameState e)
+        uiRender ui (envState s') -- render last frame
 
         let waitForQuit = do
             -- wait for one last button press
@@ -101,6 +113,9 @@ main = do
     -- putStrLn "-----------------------"
     -- mapM_ putStrLn (reverse (take 9 (catMaybes (map toMessage (events e')))))
     -- putStrLn ""
+
+defaultGameState :: Env -> GameState
+defaultGameState e = GameState e defaultInputState []
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
@@ -163,6 +178,5 @@ nextLevel conf = do
         mkEnv lvl g = Env {
             dungeon    = DTip lvl,
             level      = lvl,
-            events     = [],
-            menu       = NoMenu
+            events     = []
         }

@@ -45,14 +45,14 @@ data Sprite   = Sprite {
 
 -- game is renderable
 getSprites :: Env -> [Either Message Sprite]
-getSprites e = map Right (getMapSprites e) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e)) ++ map Left (otherWindows e)
+getSprites e = map Right (getMapSprites e) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e))
 
 -- helper functions since map/mob isn't renderable without context
 
--- TODO messages are displaying *above* inventory
+-- TODO menu display
 spriteAt :: Env -> Point -> Sprite
-spriteAt env p = if menu env == TargetMenu && target (player lvl) == Just p then targetingSprite p
-                 else if canPlayerSee p then tileOrMobSprite lvl p
+--               if menu env == TargetMenu && target (player lvl) == Just p then targetingSprite p
+spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
                  else seenTileSprite lvl p
     where
         lvl = level env
@@ -146,19 +146,19 @@ getStatusSprites lvl =
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
          mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
 
-otherWindows :: Env -> [Message]
-otherWindows e
-    | menu e `elem` [Inventory, ProjectileMenu] =
-        let lvl = level e
-            inv = groupItems (inventory (player lvl))
-            eq  = groupItems (equipmentToList (equipment (player lvl)))
-        in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
-            mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
-    | otherwise = []
-        where showInvItem (ch, i) = ch:(showItem i)
-              p              = player (level e)
-              showItem (1,i) = " - " ++ showIdentified (identified p) i
-              showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
+-- otherWindows :: Env -> [Message]
+-- otherWindows e
+--     | menu e `elem` [Inventory, ProjectileMenu] =
+--         let lvl = level e
+--             inv = groupItems (inventory (player lvl))
+--             eq  = groupItems (equipmentToList (equipment (player lvl)))
+--         in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
+--             mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
+--     | otherwise = []
+--         where showInvItem (ch, i) = ch:(showItem i)
+--               p              = player (level e)
+--               showItem (1,i) = " - " ++ showIdentified (identified p) i
+--               showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
 
 getMsgSprites :: Env -> [Message]
 getMsgSprites env = let evs        = events env
@@ -320,8 +320,8 @@ toMessage e (CastLightning   m n)      | isPlayer m = Just $ "KABOOM! Lightning 
 toMessage e (Teleported      m p)      | isPlayer m = Just $ "You feel disoriented."
 toMessage e (Mapped          lvl)                   = Just $ "You suddenly understand the layout of the current level."
 toMessage e (GainedTelepathy m)        | isPlayer m = Just $ "You sense nearby danger."
-toMessage e (FailedRest      m)        | isPlayer m = Just $ "You are unable to rest with the sounds of nearby monsters."
-toMessage e (MissileInterrupted m)     | isPlayer m = Just $ "You are unable to concentrate on firing within the melee."
+-- TODO
+-- toMessage e (MissileInterrupted m)     | isPlayer m = Just $ "You are unable to concentrate on firing within the melee."
 toMessage e (ThrownProjectile m i _)   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
 toMessage e (FiredProjectile  m l p _) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
 toMessage e (BandageApplied   m)       | isPlayer m = Just $ "You apply the bandage."
