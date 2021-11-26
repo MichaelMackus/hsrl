@@ -47,7 +47,7 @@ automate = getMob >>= \m -> do
     heard <- canHear (events env) m (player lvl)
     let seen  = canSeeMob lvl m (player lvl)
         path  = findOptimalPath lvl distance (at (player lvl)) (at m)
-    when (heard && isSleeping m) $ insertEvent (Waken m) -- TODO not waking mob
+    when (heard && isSleeping m) $ insertEvent (Waken m)
 
     when heard $ updateDestination (at (player lvl))
     when seen  $ updateDestination (at (player lvl))
@@ -105,7 +105,7 @@ canHear :: MonadRandom m => [Event] -> Mob -> Mob -> m Bool
 canHear es m1 m2 =
     -- wake up 5 in 6 times if combat is heard
     let chance = if hearsCombat es m1 then (5 % 6)
-                 else (if isSneaky m2 then (1 % 6) else (2 % 6)) * (if isSleeping m1 then (1 % 10) else 1)
+                 else (if isSneaky m2 then (1 % 6) else (2 % 6)) * (if isSleeping m1 then (1 % 5) else 1)
     in  if distance (at m1) (at m2) <= hearing m1 then randomChance chance
         else return False
 
