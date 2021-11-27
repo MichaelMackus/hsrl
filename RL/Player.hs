@@ -235,7 +235,7 @@ startRunning to = do
     dest <- gets destination
     let p     = player (level env)
         path  = findPath (dfinder (level env) to) distance to (at p)
-    when (isJust path && length (fromJust path) > 1 && canAutomate env && isNothing dest) $ do
+    when (isJust path && length (fromJust path) > 1) $ do
         setDestination to
         continueRunning
 
@@ -250,6 +250,7 @@ continueRunning = do
         in  if isJust path && length (fromJust path) > 1 then do
                 bumpAt (fromJust path !! 1)
                 when (fromJust path !! 1 == to) clearDestination
+                when (not (canAutomate env))    clearDestination
             else clearDestination
 
 readyProjectile :: Item -> PlayerAction ()
