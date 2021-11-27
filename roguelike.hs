@@ -5,6 +5,7 @@ import RL.Generator.Dungeon
 import RL.Generator.Mobs
 import RL.Generator.Features
 import RL.UI
+import RL.UI.Sprite (getSprites)
 import RL.Random
 
 import Control.Monad.State
@@ -70,7 +71,7 @@ gameLoop disp = do
             put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
         endTurn :: Game ()
         endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [GameUpdate EndOfTurn] }
-        renderMap = liftIO . uiRender disp =<< gets envState
+        renderMap = liftIO . uiRender disp . getSprites =<< gets envState
 
 main = do
     -- allow user to customize display if supported, or tileset
@@ -91,7 +92,7 @@ main = do
         conf       <- mkDefaultConf
         e          <- (`broadcast` (GameUpdate NewGame)) <$> nextLevel conf
         (quit, s') <- runStateT (gameLoop ui) (defaultGameState e)
-        uiRender ui (envState s') -- render last frame
+        uiRender ui (getSprites (envState s')) -- render last frame
 
         let waitForQuit = do
             -- wait for one last button press

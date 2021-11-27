@@ -38,7 +38,7 @@ fromColor (r,g,b) = V4 (fromIntegral r) (fromIntegral g) (fromIntegral b) 255
 
 sdlUI :: Window -> Renderer -> (Color -> Color -> IO Texture) -> UIConfig -> UI
 sdlUI window renderer getFont cfg = UI
-    { uiRender = \env -> do
+    { uiRender = \sprs -> do
         -- clear
         clear renderer
         rendererDrawColor renderer $= V4 0 0 0 255
@@ -46,9 +46,9 @@ sdlUI window renderer getFont cfg = UI
             fontH    = snd (tileSize cfg)
             fontS    = (fontW, fontH)
         -- draw sprites
-        forM_ (getSprites env) $ \spr ->
+        forM_ sprs $ \spr ->
             case spr of
-                Left (MessageSprite (x,y) str fg bg) -> do
+                (MessageSprite (x,y) str (SpriteAttr fg bg)) -> do
                     let x' = fromIntegral x * fromIntegral fontW
                         y' = fromIntegral y * fromIntegral fontH
                         dest  = Rectangle (P (V2 x' y')) (V2 (fromIntegral fontW) (fromIntegral fontH))
@@ -56,14 +56,21 @@ sdlUI window renderer getFont cfg = UI
                         dests = offsetDest str dest
                     fontT <- getFont fg bg
                     forM_ (zip srcs dests) $ \(src, dest) -> copy renderer fontT (Just src) (Just dest)
-                Right s@(Sprite (x,y) ch fg bg) -> do
+                (CharSprite (x,y) ch (SpriteAttr fg bg)) -> do
                     let x'    = fromIntegral x * fromIntegral fontW
                         y'    = fromIntegral y * fromIntegral fontH
                         dest  = Rectangle (P (V2 x' y')) (V2 (fromIntegral fontW) (fromIntegral fontH))
-                        sprCh = tileSymbol env (spritePos s) (spriteChar s)
+                        sprCh = tileSymbol ch
                         src   = lookupChar fontS sprCh
-                    -- TODO mask not working any more?
-                    fontT <- getFont (tileColor sprCh fg) (tileColor sprCh bg)
+                    fontT <- getFont fg bg
+                    copy renderer fontT (Just src) (Just dest)
+                (WallSprite (x,y) w (SpriteAttr fg bg)) -> do
+                    let x'    = fromIntegral x * fromIntegral fontW
+                        y'    = fromIntegral y * fromIntegral fontH
+                        dest  = Rectangle (P (V2 x' y')) (V2 (fromIntegral fontW) (fromIntegral fontH))
+                        sprCh = wallSymbol w
+                        src   = lookupChar fontS sprCh
+                    fontT <- getFont fg bg
                     copy renderer fontT (Just src) (Just dest)
         -- update renderer
         present renderer
@@ -108,14 +115,6 @@ mkFontAtlas rend i atlasRef fg@(r,g,b) bg = do
 
 toPixel :: Color -> PixelRGBA8
 toPixel (r,g,b) = PixelRGBA8 (fromIntegral r) (fromIntegral g) (fromIntegral b) 255
-
--- custom color overrides for SDL frontend
-tileColor :: Char -> Color -> Color
--- tileColor '.' (0,0,0) = (0,0,0)
--- tileColor '.' fg      = (100,100,100)
--- tileColor '#' (0,0,0) = (100,100,100)
--- tileColor '#' fg      = fg
-tileColor ch  color   = color
 
 -- lookup char in tile map
 lookupChar :: (Int, Int) -> Char -> Rectangle CInt
@@ -192,30 +191,29 @@ textToKey :: T.Text -> Key
 textToKey t = let str = T.unpack t
               in  if null str then KeyUnknown else KeyChar (head str)
 
+-- converts wall to tile
+wallSymbol :: WallType -> Char
+wallSymbol WallNESW = xyToChar 12 14
+wallSymbol WallNSE  = xyToChar 12 12
+wallSymbol WallNSW  = xyToChar 11 9
+wallSymbol WallNEW  = xyToChar 12 10
+wallSymbol WallSEW  = xyToChar 12 11
+wallSymbol WallNS   = xyToChar 11 10
+wallSymbol WallSW   = xyToChar 11 11
+wallSymbol WallSE   = xyToChar 12 9
+wallSymbol WallNW   = xyToChar 11 12
+wallSymbol WallNE   = xyToChar 12 8
+wallSymbol WallEW   = xyToChar 12 13
+wallSymbol Wall     = xyToChar 11 0
+
 -- converts an ASCII char to tile
-tileSymbol :: Env -> Point -> Char -> Char
-tileSymbol env p '#' =
-    let wallChar = seenWallType env p
-    in  case wallChar of
-            Just WallNESW -> xyToChar 12 14
-            Just WallNSE  -> xyToChar 12 12
-            Just WallNSW  -> xyToChar 11 9
-            Just WallNEW  -> xyToChar 12 10
-            Just WallSEW  -> xyToChar 12 11
-            Just WallNS   -> xyToChar 11 10
-            Just WallSW   -> xyToChar 11 11
-            Just WallSE   -> xyToChar 12 9
-            Just WallNW   -> xyToChar 11 12
-            Just WallNE   -> xyToChar 12 8
-            Just WallEW   -> xyToChar 12 13
-            Just Wall     -> xyToChar 11 0
-            Nothing       -> '#'
-tileSymbol env p '{' = xyToChar 14 2
-tileSymbol env p '=' = xyToChar 14 9
+tileSymbol :: Char -> Char
+tileSymbol '{' = xyToChar 14 2
+tileSymbol '=' = xyToChar 14 9
 -- tileSymbol env p '=' = xyToChar 13 1
-tileSymbol env p '_' = xyToChar 14 3
-tileSymbol env p '0' = xyToChar 13 3
-tileSymbol env p ch  = ch
+tileSymbol '_' = xyToChar 14 3
+tileSymbol '0' = xyToChar 13 3
+tileSymbol ch  = ch
 --fromFeature Altar = '⛩'
 --fromFeature (_) = '◛'
 --fromFeature (_) = '⌸'

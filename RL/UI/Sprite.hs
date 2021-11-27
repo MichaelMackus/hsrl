@@ -1,6 +1,7 @@
 module RL.UI.Sprite (
-    MessageSprite(..),
     Sprite(..),
+    SpriteAttr(..),
+    Color,
     getSprites,
     spriteAt,
     seenWallType,
@@ -9,7 +10,6 @@ module RL.UI.Sprite (
 ) where
 
 import RL.Game
-import RL.UI.Common as UI
 import RL.Util (enumerate, equating, groupBy')
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
@@ -29,23 +29,19 @@ brown   = (153, 76, 0)
 orange  = (255, 128, 0)
 lyellow = (255, 255, 204)
 
-data MessageSprite = MessageSprite {
-    messagePos :: Point,
-    message :: String,
-    messageFgColor :: Color,
-    messageBgColor :: Color
-} deriving (Show, Eq)
+type Color  = (Int, Int, Int) -- RGB color value
+data Sprite = CharSprite Point Char SpriteAttr | MessageSprite Point String SpriteAttr | WallSprite Point WallType SpriteAttr deriving (Show, Eq)
+data SpriteAttr = SpriteAttr { fgColor :: Color, bgColor :: Color } deriving (Show, Eq)
 
-data Sprite   = Sprite {
-    spritePos :: Point,
-    spriteChar :: Char,
-    spriteFgColor :: Color,
-    spriteBgColor :: Color
-} deriving (Show, Eq)
+data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
+              | WallEW | WallSE | WallSW | WallSEW | WallNESW deriving (Eq, Ord)
+
+instance Show WallType where
+    show _ = "#"
 
 -- game is renderable
-getSprites :: Env -> [Either MessageSprite Sprite]
-getSprites e = map Right (getMapSprites e) ++ map Left (getMsgSprites e) ++ map Left (getStatusSprites (level e))
+getSprites :: Env -> [Sprite]
+getSprites e = getMapSprites e ++ getMsgSprites e ++ getStatusSprites (level e)
 
 -- helper functions since map/mob isn't renderable without context
 
@@ -58,7 +54,7 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
         lvl = level env
         canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
 
-        targetingSprite p = Sprite p '*' red black
+        targetingSprite p = CharSprite p '*' (SpriteAttr red black)
 
         tileColor Floor = white
         tileColor Cavern = grey
@@ -103,41 +99,46 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
 
         tileSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         tileSprite lvl p = case findTileAt p lvl of
-                               Just  t -> Just (Sprite p (fromTile t) (tileColor t) black)
                                Nothing -> Nothing
+                               Just  t -> 
+                                   let charSpr   = CharSprite p (fromTile t) (SpriteAttr (tileColor t) black)
+                                       wallSpr w = WallSprite p w (SpriteAttr (tileColor t) black)
+                                   in  Just $ maybe charSpr wallSpr (seenWallType lvl p)
         itemSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         itemSprite lvl p = case findItemsAt p lvl of
-                               (i:_) -> Just (Sprite p (itemSymbol i) (itemColor i) black)
+                               (i:_) -> Just (CharSprite p (itemSymbol i) (SpriteAttr (itemColor i) black))
                                []    -> Nothing
         mobSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         mobSprite lvl p = case findTileOrMob p lvl of
                                Right m -> if isVisible m then
-                                            Just (Sprite p (symbol m) (mobColor (mobName m)) black)
+                                            Just (CharSprite p (symbol m) (SpriteAttr (mobColor (mobName m)) black))
                                           else if isPlayer m then
-                                            Just (Sprite p ' ' white (50,50,50))
+                                            Just (CharSprite p ' ' (SpriteAttr white (50,50,50)))
                                           else
                                             Nothing
                                Left _  -> Nothing
         featureSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         featureSprite lvl p = case L.lookup p (features lvl) of
-                                Just f  -> Just (Sprite p (fromFeature f) (featureColor f) black)
+                                Just f  -> Just (CharSprite p (fromFeature f) (SpriteAttr (featureColor f) black))
                                 Nothing -> Nothing
         tileOrMobSprite :: DLevel -> (Int, Int) -> Sprite
         tileOrMobSprite lvl p = let sprites = [mobSprite lvl p, featureSprite lvl p, itemSprite lvl p, tileSprite lvl p]
                                     sprite  = listToMaybe (catMaybes sprites)
                                 in  if isJust sprite then fromJust sprite
-                                    else Sprite p ' ' black black
+                                    else CharSprite p ' ' (SpriteAttr black black)
         seenTileSprite lvl p = if p `elem` seen lvl then stale (fromJust (listToMaybe (catMaybes [featureSprite lvl p, itemSprite lvl p, tileSprite lvl p])))
-                               else Sprite p ' ' black black
-        stale spr = spr { spriteFgColor = dgrey, spriteBgColor = black }
+                               else CharSprite p ' ' (SpriteAttr black black)
+        stale (CharSprite    p c _) = CharSprite    p c (SpriteAttr dgrey black)
+        stale (MessageSprite p c _) = MessageSprite p c (SpriteAttr dgrey black)
+        stale (WallSprite    p c _) = WallSprite    p c (SpriteAttr dgrey black)
 
 getMapSprites :: Env -> [Sprite]
 getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (level env)
 
-getStatusSprites :: DLevel -> [MessageSprite]
+getStatusSprites :: DLevel -> [Sprite]
 getStatusSprites lvl =
     let p = player lvl
-        hpSprite = (mkMessage (64, 15) (show (hp p))) { messageFgColor = hpColor }
+        hpSprite = (MessageSprite (64, 15) (show (hp p)) (SpriteAttr hpColor black))
         hpPercent = fromIntegral (hp p) / fromIntegral (mhp p)
         hpColor = if hpPercent >= 1.0 then white
                   else if hpPercent >= 0.7 then green
@@ -146,6 +147,7 @@ getStatusSprites lvl =
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
          mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
 
+-- TODO
 -- otherWindows :: Env -> [MessageSprite]
 -- otherWindows e
 --     | menu e `elem` [Inventory, ProjectileMenu] =
@@ -160,28 +162,25 @@ getStatusSprites lvl =
 --               showItem (1,i) = " - " ++ showIdentified (identified p) i
 --               showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
 
-getMsgSprites :: Env -> [MessageSprite]
+getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env
                         recentMsgs = catMaybes (map (toMessage env) (getEventsAfterTurns 2 evs))
                         staleMsgs  = catMaybes (map (toMessage env) (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
                     in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
 
-mkMessages :: Point -> [String] -> [MessageSprite]
+mkMessages :: Point -> [String] -> [Sprite]
 mkMessages (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, s) = MessageSprite (offx, i + offy) s white black
+        toSprite (i, s) = MessageSprite (offx, i + offy) s (SpriteAttr white black)
 
-mkColoredMessages :: Point -> [(String, Color)] -> [MessageSprite]
+mkColoredMessages :: Point -> [(String, Color)] -> [Sprite]
 mkColoredMessages (offx, offy) = map toSprite . enumerate
     where
-        toSprite (i, (s, fg)) = MessageSprite (offx, i + offy) s fg black
+        toSprite (i, (s, fg)) = MessageSprite (offx, i + offy) s (SpriteAttr fg black)
 
-mkMessage :: Point -> String -> MessageSprite
-mkMessage xy s = MessageSprite xy s white black
-
-data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
-              | WallEW | WallSE | WallSW | WallSEW | WallNESW deriving (Eq, Ord)
+mkMessage :: Point -> String -> Sprite
+mkMessage xy s = MessageSprite xy s (SpriteAttr white black)
 
 wallHasE WallNE    = True
 wallHasE WallNSE   = True
@@ -207,15 +206,14 @@ wallHasS WallNSW   = True
 wallHasS t         = t <= WallNESW && t >= WallSE
 
 -- which part of the wall is seen
-seenWallType :: Env -> Point -> Maybe WallType
-seenWallType env (x,y) =
-    let lvl  = level env
-        f p' = maybe False (not . isWall) (findTileAt p' lvl) && p' `elem` (seen lvl)
+seenWallType :: DLevel -> Point -> Maybe WallType
+seenWallType lvl (x,y) =
+    let f p' = maybe False (not . isWall) (findTileAt p' lvl) && p' `elem` (seen lvl)
         fixWall Wall = if ((x+1),y) `elem` (seen lvl) || ((x-1),y) `elem` (seen lvl) then WallEW
                        else if (x,y+1) `elem` (seen lvl) || (x,y-1) `elem` (seen lvl) then WallNS
                        else Wall
         fixWall t    = t
-    in  fixWall <$> filterWallType f (x,y) <$> wallType env (x,y)
+    in  fixWall <$> filterWallType f (x,y) <$> wallType lvl (x,y)
 
 filterWallType :: (Point -> Bool) -> Point -> WallType -> WallType
 filterWallType f (x,y) t =
@@ -241,33 +239,33 @@ filterWallType f (x,y) t =
         else Wall
 
 -- wall type for different wall tiles
-wallType :: Env -> Point -> Maybe WallType
-wallType env p =
-    if not (maybe False isWall (findTileAt p (level env))) then Nothing
-    else if wallN env p && wallS env p && wallE env p && wallW env p then Just WallNESW
-    else if wallN env p && wallS env p && wallE env p then Just WallNSE
-    else if wallN env p && wallS env p && wallW env p then Just WallNSW
-    else if wallN env p && wallW env p && wallE env p then Just WallNEW
-    else if wallS env p && wallW env p && wallE env p then Just WallSEW
-    else if wallN env p && wallS env p then Just WallNS
-    else if wallW env p && wallS env p then Just WallSW
-    else if wallE env p && wallS env p then Just WallSE
-    else if wallW env p && wallN env p then Just WallNW
-    else if wallE env p && wallN env p then Just WallNE
-    else if wallE env p then Just WallEW
-    else if wallW env p then Just WallEW
-    else if wallS env p then Just WallNS
-    else if wallN env p then Just WallNS
+wallType :: DLevel -> Point -> Maybe WallType
+wallType lvl p =
+    if not (maybe False isWall (findTileAt p lvl)) then Nothing
+    else if wallN lvl p && wallS lvl p && wallE lvl p && wallW lvl p then Just WallNESW
+    else if wallN lvl p && wallS lvl p && wallE lvl p then Just WallNSE
+    else if wallN lvl p && wallS lvl p && wallW lvl p then Just WallNSW
+    else if wallN lvl p && wallW lvl p && wallE lvl p then Just WallNEW
+    else if wallS lvl p && wallW lvl p && wallE lvl p then Just WallSEW
+    else if wallN lvl p && wallS lvl p then Just WallNS
+    else if wallW lvl p && wallS lvl p then Just WallSW
+    else if wallE lvl p && wallS lvl p then Just WallSE
+    else if wallW lvl p && wallN lvl p then Just WallNW
+    else if wallE lvl p && wallN lvl p then Just WallNE
+    else if wallE lvl p then Just WallEW
+    else if wallW lvl p then Just WallEW
+    else if wallS lvl p then Just WallNS
+    else if wallN lvl p then Just WallNS
     else Just Wall
 
-wallN  :: Env -> Point -> Bool
-wallN env (x,y) = maybe False isWall (findTileAt (x, y - 1) (level env))
-wallE  :: Env -> Point -> Bool
-wallE env (x,y) = maybe False isWall (findTileAt (x + 1, y) (level env))
-wallS  :: Env -> Point -> Bool
-wallS env (x,y) = maybe False isWall (findTileAt (x, y + 1) (level env))
-wallW  :: Env -> Point -> Bool
-wallW env (x,y) = maybe False isWall (findTileAt (x - 1, y) (level env))
+wallN  :: DLevel -> Point -> Bool
+wallN lvl (x,y) = maybe False isWall (findTileAt (x, y - 1) lvl)
+wallE  :: DLevel -> Point -> Bool
+wallE lvl (x,y) = maybe False isWall (findTileAt (x + 1, y) lvl)
+wallS  :: DLevel -> Point -> Bool
+wallS lvl (x,y) = maybe False isWall (findTileAt (x, y + 1) lvl)
+wallW  :: DLevel -> Point -> Bool
+wallW lvl (x,y) = maybe False isWall (findTileAt (x - 1, y) lvl)
 
 isWall :: Tile -> Bool
 isWall Rock = True
