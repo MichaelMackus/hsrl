@@ -3,7 +3,7 @@ module RL.UI.Sprite (
     SpriteAttr(..),
     Color,
     getSprites,
-    spriteAt,
+    spritePos,
     seenWallType,
     WallType(..),
     toMessage
@@ -38,6 +38,11 @@ data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
 
 instance Show WallType where
     show _ = "#"
+
+spritePos :: Sprite -> Point
+spritePos (CharSprite    p _ _) = p
+spritePos (WallSprite    p _ _) = p
+spritePos (MessageSprite p _ _) = p
 
 -- game is renderable
 getSprites :: Env -> [Sprite]
