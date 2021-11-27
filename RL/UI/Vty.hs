@@ -9,6 +9,7 @@ import Control.Monad
 import Data.Either (lefts)
 import Data.Maybe (fromJust)
 import Graphics.Vty
+import qualified Data.List as L
 
 vtyUI :: UIConfig -> IO UI
 vtyUI cfg = do
@@ -19,10 +20,7 @@ vtyUI cfg = do
         $ error "Terminal too small for VTY window!"
     disp   <- mkVty vtyCfg
     return UI
-        { uiRender = \sprs ->
-            let bg     = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
-                layers = map sprToImage sprs
-            in  update disp $ (picForLayers layers) { picBackground = bg }
+        { uiRender = update disp . picForLayers . map sprToImage . condenseSprites
         , uiEnd = shutdown disp
         , uiInput = do
             let f e = case e of
@@ -40,7 +38,37 @@ vtyUI cfg = do
             nextEvent disp >>= f
         }
 
--- TODO more performance if we use string for each row in map
+-- condense chars next to each other to message sprite (for VTY performance)
+condenseSprites :: [Sprite] -> [Sprite]
+condenseSprites sprs = map fromVtySprite                $
+                        concat . map (foldr f [])       $
+                        map (L.sortBy (comparing sprX)) $
+                        L.groupBy (equating sprY)       $
+                        L.sortBy (comparing sprY)       $ 
+                        map vtySprite sprs
+    where sprY (VtyS (x,y) _ _) = y
+          sprX (VtyS (x,y) _ _) = x
+          f m (m':xs) = if canCombine m m' then (combine m m'):xs else m:m':xs
+          f m []      = [m]
+
+data VtySprite = VtyS Point String SpriteAttr
+
+canCombine :: VtySprite -> VtySprite -> Bool
+canCombine (VtyS _ _ attr) (VtyS _ _ attr') = attr == attr'
+
+combine :: VtySprite -> VtySprite -> VtySprite
+combine (VtyS pos s attr) (VtyS pos' s' attr') = if pos < pos' then VtyS pos (s ++ s') attr
+                                                 else VtyS pos' (s' ++ s) attr
+
+vtySprite :: Sprite -> VtySprite
+vtySprite (CharSprite    pos ch  attr) = VtyS pos (unicodeSymbol ch:"") attr
+vtySprite (MessageSprite pos str attr) = VtyS pos str attr
+vtySprite (WallSprite    pos w   attr) = VtyS pos (wallSymbol w:"") attr
+
+fromVtySprite :: VtySprite -> Sprite
+fromVtySprite (VtyS pos (s:"") attr) = CharSprite pos s attr
+fromVtySprite (VtyS pos str    attr) = MessageSprite pos str attr
+
 sprToImage :: Sprite -> Image
 sprToImage (CharSprite    (x, y) ch  attr) = translate x y $ char   (sprColor attr) (unicodeSymbol ch)
 sprToImage (MessageSprite (x, y) str attr) = translate x y $ string (sprColor attr) str
