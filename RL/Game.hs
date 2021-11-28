@@ -51,7 +51,8 @@ broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 instance Client Env where
     broadcast env e@(GameUpdate NewGame                 )  = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
     broadcast env e@(GameUpdate EndOfTurn               )  = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = broadcast' (changeLevel env v lvl) e
+    broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = let env' = broadcast' (changeLevel env v lvl) e
+                                                             in  updateSeen (canSee (level env') (player (level env'))) env'
     broadcast env e@(GameUpdate (MobSpawned m)          )  = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
     broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
     broadcast env e@(GameUpdate (Teleported m to)       )  = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
