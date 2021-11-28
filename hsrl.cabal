@@ -41,7 +41,7 @@ executable hsrl
     RL.Generator.Mobs
     RL.Generator.Paths
     RL.Item
-    RL.Input
+    RL.Player
     RL.Map
     RL.Mob
     RL.Pathfinder

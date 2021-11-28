@@ -1,22 +1,19 @@
-module RL.Game (GameEnv, Env(..), Client(..), broadcastEvents, isTicking, isPlaying, isAutomated, canAutomate, canRest, isWon, isQuit, module RL.Map, module RL.Event, module Control.Monad.Reader) where
+module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, module RL.Map, module RL.Event) where
 
 import RL.Event
 import RL.Map
 import RL.Random
 import RL.Util (addOrReplace)
 
-import Control.Monad.Reader
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, fromJust, isJust, maybeToList)
+import Data.Maybe (fromMaybe, fromJust, isJust, maybeToList, catMaybes)
 import qualified Data.List as L
 import qualified Data.Map as M
 
-type GameEnv = ReaderT Env (Rand StdGen)
-data Env     = Env {
-    dungeon    :: Dungeon,
-    level      :: DLevel,
-    events     :: [Event],
-    menu       :: Menu
+data Env = Env {
+    dungeon  :: Dungeon,
+    level    :: DLevel,
+    events   :: [Event]
 }
 
 isPlaying :: Env -> Bool
@@ -27,13 +24,7 @@ isWon :: Env -> Bool
 isWon = const False
 
 isQuit :: Env -> Bool
-isQuit e = isJust (L.find (== QuitGame) (events e))
-
--- checks if we are running to the destination
-isAutomated :: Env -> Bool
-isAutomated env = let lvl = level env
-                      p   = player lvl
-                  in  isJust (destination p) || isResting p
+isQuit e = isJust (L.find (== GameUpdate QuitGame) (events e))
 
 -- checks if we are running to the destination and there are no mobs seen
 canAutomate :: Env -> Bool
@@ -48,10 +39,6 @@ canRest env = let f m = distance (at m) (at p) <= hearing m
                   p   = player (level env)
               in  null (L.filter f (mobs (level env)))
 
--- detects if we're ticking (i.e. AI and other things should be active)
-isTicking :: Env -> Bool
-isTicking = (== NoMenu) . menu
-
 -- represents a client that does something to the state
 class Client c where
     -- broadcast event to client, resulting in state change within client
@@ -62,62 +49,50 @@ broadcastEvents c []    = c
 broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
-    broadcast env e@NewGame                   = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@EndOfTurn                 = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@(StairsTaken v lvl)       = broadcast' (changeLevel env v lvl) e
-    broadcast env e@(MenuChange  m)           = broadcast' (env { menu = m }) e
-    broadcast env e@(MobSpawned m)            = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
-    broadcast env e@(ItemPickedUp m i)        = broadcast' (env { level = removePickedItem m i (level env) }) e
-    broadcast env e@(Teleported m to)         = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
-    broadcast env e@(Mapped lvl)              = broadcast' (updateSeen (const True) env) e
-    broadcast env e@(ItemSpawned p i)         = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
-    broadcast env e@(ThrownProjectile m i p)  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
-                                                in  broadcast' (env { level = (level env) { items = is } }) e
-    broadcast env e@(FiredProjectile m _ i p) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
-                                                in  broadcast' (env { level = (level env) { items = is } }) e
-    broadcast env e@(FeatureInteracted p f@(Chest _)) = broadcast' (env { level = (level env) { features = L.delete (p, f) (features (level env)) } }) e
-    broadcast env e@(FeatureInteracted p f@(Fountain n)) = broadcast' (env { level = (level env) { features = addOrReplace p (Fountain (max 0 (n - 1))) (features (level env)) } }) e
+    broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = broadcast' (changeLevel env v lvl) e
+    broadcast env e@(GameUpdate (MobSpawned m)          )  = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
+    broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(GameUpdate (ItemSpawned p i)       )  = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
+    broadcast env e@(GameUpdate (ThrownProjectile m i p))  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
+                                                             in  broadcast' (env { level = (level env) { items = is } }) e
+    broadcast env e@(GameUpdate (FiredProjectile m _ i p)) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
+                                                             in  broadcast' (env { level = (level env) { items = is } }) e
+    broadcast env e@(GameUpdate (FeatureInteracted p f@(Chest _))) = broadcast' (env { level = (level env) { features = L.delete (p, f) (features (level env)) } }) e
+    broadcast env e@(GameUpdate (FeatureInteracted p f@(Fountain n))) = broadcast' (env { level = (level env) { features = addOrReplace p (Fountain (max 0 (n - 1))) (features (level env)) } }) e
 
-    broadcast env e                           = broadcast' env e
+    broadcast env e = broadcast' env e
 
 broadcast' env e =
         let p       = player (level env)
             lvl     = level env
             ms'     = map (`broadcast` e) (mobs lvl)
-        in  env { level = lvl { player = broadcast p e,
-                                mobs   = aliveMobs ms' },
-                  events = e:events env }
+        in  env { level    = lvl { player = broadcast p e,
+                                   mobs   = aliveMobs ms' },
+                  events   = e:events env }
 
 instance Client Mob where
-    broadcast m (Moved m' to)              | m == m' && canMove m = moveMob to m
-    broadcast m (Damaged _ m' dmg)         | m == m' = m { hp = max 0 (hp m - dmg) }
-    broadcast m (Waken m')                 | m == m' = let fs = filter (/= Sleeping) (flags m)
-                                                       in  m { flags = fs }
-    broadcast m (Slept m')                 | m == m' = m { flags = L.nub (Sleeping:flags m) }
-    broadcast m (MobSeen  m' p)            | m == m' = m { destination = Just (at p) }
-    broadcast m (MobHeard m' p)            | m == m' = m { destination = Just (at p) }
-    broadcast m (DestinationSet m' p)      | m == m' = m { destination = Just p }
-    broadcast m (DestinationAbrupted m' p) | m == m' = m { destination = Nothing }
-    broadcast m (ItemPickedUp m' i)        | m == m' = pickup i m
-    broadcast m (Equipped m' i)            | m == m' = equip m i
-    broadcast m (EquipmentRemoved m' i)    | m == m' = removeEquip m i
-    broadcast m (Read     m' i)            | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
-    broadcast m (Teleported m' to)         | m == m' = m { at = to }
-    broadcast m (Drank    m' i)            | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
-    broadcast m (Healed m' amt)            | m == m' = m { hp = min (mhp m) (hp m + amt) }
-    broadcast m (GainedLife m' amt)        | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
-    broadcast m (GainedStrength m' str)    | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
-    broadcast m (Vanished m')              | m == m' = m { flags = L.nub (Invisible:flags m) }
-    broadcast m (Confused m')              | m == m' = m { flags = L.nub (ConfusedF:flags m) }
-    broadcast m (Blinded m')               | m == m' = m { flags = L.nub (BlindedF:flags m) }
-    broadcast m (GainedTelepathy m')       | m == m' = m { flags = L.nub (TelepathicF:flags m) }
-    broadcast m (StartedResting  m')       | m == m' = m { flags = L.nub (Resting:flags m) }
-    broadcast m (StoppedResting  m')       | m == m' = m { flags = L.delete Resting (flags m) }
-    broadcast m (ReadiedProjectile m' i)   | m == m' = m { readied = Just i }
-    broadcast m (TargetChanged   m' p)     | m == m' = m { target = Just p }
-    broadcast m (ThrownProjectile m' i _)  | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
-    broadcast m (FiredProjectile m' _ i _) | m == m' = m { readied = Nothing, target = Nothing, inventory = L.delete i (inventory m) }
-    broadcast m (BandageApplied  m')       | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
+    broadcast m (GameUpdate (Moved m' to)     )         | m == m' && canMove m = moveMob to m
+    broadcast m (GameUpdate (Damaged _ m' dmg))         | m == m' = m { hp = max 0 (hp m - dmg) }
+    broadcast m (GameUpdate (Waken m')        )         | m == m' = let fs = filter (/= Sleeping) (flags m)
+                                                                    in  m { flags = fs }
+    broadcast m (GameUpdate (Slept m')                ) | m == m' = m { flags = L.nub (Sleeping:flags m) }
+    broadcast m (GameUpdate (ItemPickedUp m' i)       ) | m == m' = pickup i m
+    broadcast m (GameUpdate (Equipped m' i)           ) | m == m' = equip m i
+    broadcast m (GameUpdate (EquipmentRemoved m' i)   ) | m == m' = removeEquip m i
+    broadcast m (GameUpdate (Read     m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
+    broadcast m (GameUpdate (Teleported m' to)        ) | m == m' = m { at = to }
+    broadcast m (GameUpdate (Drank    m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
+    broadcast m (GameUpdate (Healed m' amt)           ) | m == m' = m { hp = min (mhp m) (hp m + amt) }
+    broadcast m (GameUpdate (GainedLife m' amt)       ) | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
+    broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
+    broadcast m (GameUpdate (Vanished m')             ) | m == m' = m { flags = L.nub (Invisible:flags m) }
+    broadcast m (GameUpdate (Confused m')             ) | m == m' = m { flags = L.nub (ConfusedF:flags m) }
+    broadcast m (GameUpdate (Blinded m')              ) | m == m' = m { flags = L.nub (BlindedF:flags m) }
+    broadcast m (GameUpdate (GainedTelepathy m')      ) | m == m' = m { flags = L.nub (TelepathicF:flags m) }
+    broadcast m (GameUpdate (Mapped m' lvl           )) | m == m' = m { flags = L.nub (MappedF (depth lvl):flags m) }
+    broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
+    broadcast m (GameUpdate (FiredProjectile m' _ i _)) | m == m' = m { inventory = L.delete i (inventory m) }
+    broadcast m (GameUpdate (BandageApplied  m')      ) | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
 
     broadcast m otherwise = m
 
@@ -186,54 +161,9 @@ changeLevel env v lvl = do
 -- remove stale flags from mobs/player at end of turn
 updateFlags :: Env -> Env
 updateFlags env = let p                   = player (level env)
-                      isStale Invisible   = turnsSince (== Vanished p) (events env) >= 100
-                      isStale ConfusedF   = turnsSince (== Confused p) (events env) >= 10
-                      isStale BlindedF    = turnsSince (== Blinded  p) (events env) >= 50
-                      isStale TelepathicF = turnsSince (== GainedTelepathy p) (events env) >= 200
+                      isStale Invisible   = turnsSince (== GameUpdate (Vanished p)) (events env) >= 100
+                      isStale ConfusedF   = turnsSince (== GameUpdate (Confused p)) (events env) >= 10
+                      isStale BlindedF    = turnsSince (== GameUpdate (Blinded  p)) (events env) >= 50
+                      isStale TelepathicF = turnsSince (== GameUpdate (GainedTelepathy p)) (events env) >= 200
                       isStale otherwise   = False
                   in  env { level = (level env) { player = p { flags = L.filter (not . isStale) (flags p) } } }
-
--- update newly seen things at end of turn
-updateSeen :: (Point -> Bool) -> Env -> Env
-updateSeen f env =
-    let lvl    = level env
-        p      = player lvl
-        points = M.keys (tiles lvl)
-        seen'  = filter f points
-        -- check what is on the current tile
-        t      = findTileAt (at (player lvl)) lvl 
-        stairE = if isDownStair (fromJust t) then [StairsSeen Down]
-                 else if isUpStair (fromJust t) then [StairsSeen Up]
-                 else []
-        -- check if there are items here
-        is     = findItemsAt (at (player lvl)) lvl
-        itemE  = if length is > 0 then [ItemsSeen is] else []
-        fresh  = not (recentGame p (events env)) && recentlyMoved p (events env)
-        picked = recentlyPicked p (events env)
-    in  env { level  = lvl { seen = L.nub (seen' ++ seen lvl) },
-              events = if fresh then stairE ++ itemE ++ events env
-                       else if picked then itemE ++ events env
-                       else events env }
-
--- check if mob recently moved to this tile
-recentlyMoved :: Mob -> [Event] -> Bool
-recentlyMoved m es = let es' = L.takeWhile (not . f) es
-                         f (Moved m' _) = m == m'
-                         f otherwise    = False
-                     in  (== 0) . length $ L.filter isEndOfTurn es'
-
--- check if recently picked up on this tile
-recentlyPicked :: Mob -> [Event] -> Bool
-recentlyPicked m es = let es' = L.takeWhile (not . f) es
-                          f (ItemPickedUp m' _) = m == m'
-                          f otherwise           = False
-                      in  (== 0) . length $ L.filter isEndOfTurn es'
-
--- check if this is a new game since player last moved
-recentGame :: Mob -> [Event] -> Bool
-recentGame m es = let es' = L.takeWhile (not . g) es
-                      f (Moved m' _) = m == m'
-                      f otherwise    = False
-                      g (NewGame)    = True
-                      g otherwise    = False
-                  in  (== 0) . length $ L.filter f es'

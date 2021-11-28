@@ -4,16 +4,17 @@ import RL.Item
 import RL.Types
 import RL.Util (enumerate1)
 
-import Data.List (find, sort)
+import Data.List (find, sort, filter)
 import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
 
 -- player/mobs
 type HP     = Int
 type Radius = Double
+type Id     = Int
 
 -- this data structure is for a mobile creature
 data Mob = Mob {
-    mobId          :: Int,
+    mobId          :: Id,
     mobName        :: String,
     symbol         :: Char,
     at             :: Point,
@@ -28,12 +29,9 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    destination    :: Maybe Point, -- destination point
-    readied        :: Maybe Item,
-    target         :: Maybe Point,
     identified     :: [ItemType]
 }
-data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting deriving (Eq, Show)
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting | MappedF Depth deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -116,10 +114,7 @@ mob = Mob {
     flags = [],
     inventory = [],
     identified = [],
-    equipment = MobEquipment Nothing Nothing Nothing Nothing,
-    destination = Nothing,
-    readied = Nothing,
-    target = Nothing
+    equipment = MobEquipment Nothing Nothing Nothing Nothing
     -- TODO DR & weaknesses
 }
 
@@ -145,10 +140,12 @@ insertMob ms m = m { mobId = maxId + 1 } : ms
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)
 
--- moves mob, resetting the destination if we have reached it
+-- -- moves mob, resetting the destination if we have reached it
+-- moveMob :: Point -> Mob -> Mob
+-- moveMob p m = let dest = if destination m == Just p then Nothing else destination m
+--               in  m { at = p, destination = dest }
 moveMob :: Point -> Mob -> Mob
-moveMob p m = let dest = if destination m == Just p then Nothing else destination m
-              in  m { at = p, destination = dest }
+moveMob p m = m { at = p }
 
 isShielded :: Mob -> Bool
 isShielded m = isJust (shield (equipment m))
@@ -160,3 +157,7 @@ isSneaky :: Mob -> Bool
 isSneaky m = let f = (=="Leather Armor") . itemDescription
              in  maybe True f $ wearing (equipment m)
 
+mobMapped :: Depth -> Mob -> Bool
+mobMapped d = not . null . filter f . flags
+    where f (MappedF d') = d == d'
+          f otherwise    = False

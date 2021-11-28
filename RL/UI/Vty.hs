@@ -5,9 +5,11 @@ import RL.UI.Common
 import RL.UI.Sprite
 import RL.Util
 
+import Control.Monad
 import Data.Either (lefts)
 import Data.Maybe (fromJust)
 import Graphics.Vty
+import qualified Data.List as L
 
 vtyUI :: UIConfig -> IO UI
 vtyUI cfg = do
@@ -18,12 +20,9 @@ vtyUI cfg = do
         $ error "Terminal too small for VTY window!"
     disp   <- mkVty vtyCfg
     return UI
-        { uiRender = \env ->
-            let bg      = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
-                msgImgs = map msgToImage . lefts $ getSprites env
-                mapImg  = vertCat $ map (tileToImage env) (enumerate (toTiles $ level env))
-                layers  = msgImgs ++ [mapImg]
-            in  update disp $ (picForLayers layers) { picBackground = bg }
+        { uiRender = \spr -> let pic = picForLayers . map sprToImage . condenseSprites $ spr
+                                 bg  = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
+                             in  update disp (pic { picBackground = bg })
         , uiEnd = shutdown disp
         , uiInput = do
             let f e = case e of
@@ -41,27 +40,44 @@ vtyUI cfg = do
             nextEvent disp >>= f
         }
 
-tileToImage :: Env -> (Int, [Tile]) -> Image
-tileToImage env (y, row) = flattenSprites . map spr $ enumerate row
-    where spr (x, _)     = let s = spriteAt env (x, y)
-                           in  s { spriteChar = unicodeSymbol env (x, y) (spriteChar s) } -- TODO CLI switch for unicode
+-- condense chars next to each other to message sprite (for VTY performance)
+condenseSprites :: [Sprite] -> [Sprite]
+condenseSprites sprs = map fromVtySprite                $
+                        concat . map (foldr f [])       $
+                        map (L.sortBy (comparing sprX)) $
+                        L.groupBy (equating sprY)       $
+                        L.sortBy (comparing sprY)       $ 
+                        map vtySprite sprs
+    where sprY (VtyS (x,y) _ _) = y
+          sprX (VtyS (x,y) _ _) = x
+          f m (m':xs) = if canCombine m m' then (combine m m'):xs else m:m':xs
+          f m []      = [m]
 
-msgToImage :: Message -> Image
-msgToImage msg = let (x,y) = messagePos msg
-                 in  translate x y $ string (color msg) (message msg)
-    where color spr = withForeColor (withBackColor defAttr (uncurry3 rgbColor (messageBgColor spr))) (uncurry3 rgbColor (messageFgColor spr))
+data VtySprite = VtyS Point String SpriteAttr
 
-flattenSprites :: [Sprite] -> Image
-flattenSprites = horizCat . map msgToImage . foldr f []
-    where f c []    = [mkMessage c]
-          f c (h:t) = if spriteFgColor c == messageFgColor h && spriteBgColor c == messageBgColor h then (concatMsg c h):t
-                      else (mkMessage c):h:t
+canCombine :: VtySprite -> VtySprite -> Bool
+canCombine (VtyS _ _ attr) (VtyS _ _ attr') = attr == attr'
 
-mkMessage :: Sprite -> Message
-mkMessage (Sprite _ ch c c') = Message (0,0) (ch:"") c c'
+combine :: VtySprite -> VtySprite -> VtySprite
+combine (VtyS pos s attr) (VtyS pos' s' attr') = if pos < pos' then VtyS pos (s ++ s') attr
+                                                 else VtyS pos' (s' ++ s) attr
 
-concatMsg :: Sprite -> Message -> Message
-concatMsg spr msg = msg { message = spriteChar spr:message msg }
+vtySprite :: Sprite -> VtySprite
+vtySprite (CharSprite    pos ch  attr) = VtyS pos (unicodeSymbol ch:"") attr
+vtySprite (MessageSprite pos str attr) = VtyS pos str attr
+vtySprite (WallSprite    pos w   attr) = VtyS pos (wallSymbol w:"") attr
+
+fromVtySprite :: VtySprite -> Sprite
+fromVtySprite (VtyS pos (s:"") attr) = CharSprite pos s attr
+fromVtySprite (VtyS pos str    attr) = MessageSprite pos str attr
+
+sprToImage :: Sprite -> Image
+sprToImage (CharSprite    (x, y) ch  attr) = translate x y $ char   (sprColor attr) (unicodeSymbol ch)
+sprToImage (MessageSprite (x, y) str attr) = translate x y $ string (sprColor attr) str
+sprToImage (WallSprite    (x, y) w   attr) = translate x y $ char   (sprColor attr) (wallSymbol w)
+
+sprColor :: SpriteAttr -> Attr
+sprColor attr = withForeColor (withBackColor defAttr (uncurry3 rgbColor (bgColor attr))) (uncurry3 rgbColor (fgColor attr))
 
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 f (a,b,c) = f a b c
@@ -73,28 +89,26 @@ toKeyMods = map toKeyMod
           toKeyMod MAlt   = KeyModSuper
 
 -- converts an ASCII char to unicode
-unicodeSymbol :: Env -> Point -> Char -> Char
-unicodeSymbol env p '#' =
-    let wallChar = seenWallType env p
-    in  case wallChar of
-            Just WallNESW -> '╋'
-            Just WallNSE  -> '┣'
-            Just WallNSW  -> '┫'
-            Just WallNEW  -> '┻'
-            Just WallSEW  -> '┳'
-            Just WallNS   -> '┃'
-            Just WallSW   -> '┓'
-            Just WallSE   -> '┏'
-            Just WallNW   -> '┛'
-            Just WallNE   -> '┗'
-            Just WallEW   -> '━'
-            Just Wall     -> '#'
-            Nothing       -> ' '
-unicodeSymbol env p '{' = '⌠'
-unicodeSymbol env p '=' = '⚌'
-unicodeSymbol env p '_' = 'π'
-unicodeSymbol env p '0' = 'Θ'
-unicodeSymbol env p ch  = ch
+wallSymbol :: WallType -> Char
+wallSymbol WallNESW = '╋'
+wallSymbol WallNSE  = '┣'
+wallSymbol WallNSW  = '┫'
+wallSymbol WallNEW  = '┻'
+wallSymbol WallSEW  = '┳'
+wallSymbol WallNS   = '┃'
+wallSymbol WallSW   = '┓'
+wallSymbol WallSE   = '┏'
+wallSymbol WallNW   = '┛'
+wallSymbol WallNE   = '┗'
+wallSymbol WallEW   = '━'
+wallSymbol Wall     = '#'
+
+unicodeSymbol :: Char -> Char
+unicodeSymbol '{' = '⌠'
+unicodeSymbol '=' = '⚌'
+unicodeSymbol '_' = 'π'
+unicodeSymbol '0' = 'Θ'
+unicodeSymbol ch  = ch
 --fromFeature Altar = '⛩'
 --fromFeature (_) = '◛'
 --fromFeature (_) = '⌸'

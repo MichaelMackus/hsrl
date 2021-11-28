@@ -1,14 +1,41 @@
-module RL.Action where
+module RL.Action (module RL.Action, module Control.Monad.Reader) where
 
 import RL.Event
 import RL.Game
 import RL.Random
 
+import Control.Monad.Reader
+import Control.Monad.Writer
 import Data.Maybe (fromMaybe, fromJust, maybeToList, catMaybes, isJust)
 import qualified Data.List as L
 
+class Monad m => GameAction m where
+    getEnv :: m Env
+    insertEvent  :: Event -> m ()
+    insertEvent ev = insertEvents [ev]
+    insertEvents :: [Event] -> m ()
+    insertEvents = mapM_ insertEvent
+
+getPlayer :: GameAction m => m Player
+getPlayer = player . level <$> getEnv
+
+insertMessage :: GameAction m => Message   -> m ()
+insertMessage m = insertEvent (EventMessage m)
+
+gameEvent  :: GameAction m => GameEvent -> m ()
+gameEvent e = insertEvent (GameUpdate e)
+gameEvents :: GameAction m => [GameEvent] -> m ()
+gameEvents = insertEvents . map GameUpdate
+
+-- add seen message if recently seen
+seenMessage :: GameAction m => Message -> m ()
+seenMessage m  = getEnv >>= \env ->
+    let p      = player (level env)
+        fresh  = recentGame p (events env) || recentlyMoved p (events env) || recentlyPicked p (events env)
+    in  when fresh $ insertMessage m
+
 -- TODO miss chance if invis
-attack :: MonadRandom r => Mob -> Maybe Item -> Mob -> r [Event]
+attack :: (GameAction m, MonadRandom m) => Mob -> Maybe Item -> Mob -> m ()
 attack attacker weap target = do
     let weapProp  = weaponProperties =<< weap
         weapBonus = fromMaybe 0 (bonus <$> weapProp)
@@ -21,115 +48,96 @@ attack attacker weap target = do
             -- the ornate sword automatically kills enemies on crit
             critDmg = if (itemDescription <$> (wielding (equipment attacker))) == Just "Ornate Sword" then hp target else maxD dmgDie
         dmg <- (+ strength attacker) <$> if crit then return critDmg else roll dmgDie
-        let e = Damaged attacker target dmg
-            critE = if crit then [Crit attacker target] else []
-            deadE = if isDead (target { hp = hp target - dmg }) then [Died target] else []
-        return $ [e] ++ critE ++ deadE
+        gameEvent $ Damaged attacker target dmg
+        when crit $ gameEvent (Crit attacker target)
+        when (isDead (target { hp = hp target - dmg })) $ gameEvent (Died target)
     else
-        return [Missed attacker target]
+        gameEvent (Missed attacker target)
 
-rest :: Mob -> [Event]
-rest m =
-    if hp m < mhp m then [Healed m 1]
-    else [StoppedResting m]
-        -- if hp m < mhp m then
-        --     if not (isPlayer m) || null (L.filter (canSee lvl m . at) (mobs lvl)) then
-        --         let sinceRest = turnsSince f (events env)
-        --         in  if sinceRest `mod` 100 == 0 then return [Healed m 1]
-        --             else return []
-        --     else return [StoppedResting m]
-        -- else return [StoppedResting m]
-    -- where lvl = level env
-        --   f (StartedResting m') | m == m' = True
-        --   f otherwise                     = False
-
-applyItem :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
+applyItem :: (GameAction m, MonadRandom m) => DLevel -> Mob -> Item -> m ()
 applyItem lvl m i =
-    if isEquippable i then return (equip m i)
+    if isEquippable i then equip m i
     else if isDrinkable i then drinkPotion m i
     else if isReadable i then readScroll lvl m i
     else if (itemType i == Bandage) then applyBandage m
     else if (itemType i == Draught) then drinkDraught m i
-    else return []
+    else return ()
 
-applyBandage :: MonadRandom r => Mob -> r [Event]
-applyBandage m = do
-    if hp m < mhp m then do
-        healed <- roll (1 `d` 4)
-        return [BandageApplied m, Healed m healed]
-    else return []
+applyBandage :: (GameAction m, MonadRandom m) => Mob -> m ()
+applyBandage m = when (hp m < mhp m) $ do
+    healed <- roll (1 `d` 4)
+    gameEvents [BandageApplied m, Healed m healed]
 
-drinkDraught :: MonadRandom r => Mob -> Item -> r [Event]
+drinkDraught :: (GameAction m, MonadRandom m) => Mob -> Item -> m ()
 drinkDraught m i = do
     healed <- roll (1 `d` 6)
-    return [Drank m i, Healed m healed]
+    gameEvents [Drank m i, Healed m healed]
 
 -- fire projectile toward the mob's target
 -- TODO unable to fire in melee
-fire :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
-fire lvl attacker proj =
-    if isProjectile proj && isJust (findMobAt (fromJust (target attacker)) lvl) then
-        let m = fromJust (findMobAt (fromJust (target attacker)) lvl)
-            eqp = equipment attacker
-            isLaunching = maybe False (`launchesProjectile` proj) (launcher eqp)
-        -- fire projectile if proper launcher equipped
-        in if isLaunching then do
-               atkE <- attack attacker (launcher eqp) m
-               return $ [FiredProjectile attacker (fromJust (launcher eqp)) proj (at m), MenuChange NoMenu] ++ atkE
-           else do
-               atkE <- attack attacker (Just proj) m
-               return $ [ThrownProjectile attacker proj (at m), MenuChange NoMenu] ++ atkE
-    else return []
+fire :: (GameAction m, MonadRandom m) => DLevel -> Mob -> Item -> Mob -> m ()
+fire lvl attacker proj m = when (isProjectile proj) $ do
+    let eqp = equipment attacker
+        isLaunching = maybe False (`launchesProjectile` proj) (launcher eqp)
+    -- fire projectile if proper launcher equipped
+    if isLaunching then do
+        gameEvent (FiredProjectile attacker (fromJust (launcher eqp)) proj (at m))
+        attack attacker (launcher eqp) m
+    else do
+        gameEvent (ThrownProjectile attacker proj (at m))
+        attack attacker (Just proj) m
 
-equip :: Mob -> Item -> [Event]
+equip :: GameAction m => Mob -> Item -> m ()
 -- TODO why is this removing armor?
-equip m i = let wield  = L.filter isTwoHanded (catMaybes [wielding (equipment m), launcher (equipment m)])
-                shld   = fromJust (shield (equipment m))
-                wieldE = if isTwoHanded i && isShielded m then [EquipmentRemoved m shld] else []
-                shldE  = if isShield    i && handsFull  m then map (EquipmentRemoved m) wield else []
-             in wieldE ++ shldE ++ [Equipped m i]
+equip m i = do
+    let wield  = L.filter isTwoHanded (catMaybes [wielding (equipment m), launcher (equipment m)])
+        shld   = fromJust (shield (equipment m))
+    when (isTwoHanded i && isShielded m) $ gameEvent (EquipmentRemoved m shld)
+    when (isShield    i && handsFull  m) $ gameEvents (map (EquipmentRemoved m) wield)
+    gameEvent (Equipped m i)
 
-drinkPotion :: MonadRandom r => Mob -> Item -> r [Event]
+drinkPotion :: (GameAction m, MonadRandom m) => Mob -> Item -> m ()
 drinkPotion m i = do
-    e <- case potionType i of
-             Just Healing -> do
-                 healed <- roll (1 `d` 8)
-                 return [Healed m healed]
-             Just Life -> do
-                 healed <- roll (1 `d` 8)
-                 return [GainedLife m healed]
-             Just Acid -> do
-                 dmg <- roll (1 `d` 6)
-                 let diedE = if isDead (m { hp = hp m - dmg }) then [Died m] else []
-                 return ([DrankAcid m, Damaged m m dmg] ++ diedE)
-             Just Strength     -> return [GainedStrength m 1]
-             Just Invisibility -> return [Vanished m]
-             Just Confusion    -> return [Confused m]
-             Just Darkness     -> return [Blinded m]
-             otherwise -> return []
-    return ([Drank m i] ++ e)
+    gameEvent (Drank m i)
+    case potionType i of
+         Just Healing -> do
+             healed <- roll (1 `d` 8)
+             gameEvent (Healed m healed)
+         Just Life -> do
+             healed <- roll (1 `d` 8)
+             gameEvent (GainedLife m healed)
+         Just Acid -> do
+             dmg <- roll (1 `d` 6)
+             gameEvents [DrankAcid m, Damaged m m dmg]
+             when (isDead (m { hp = hp m - dmg })) $ gameEvent (Died m)
+         Just Strength     -> gameEvent (GainedStrength m 1)
+         Just Invisibility -> gameEvent (Vanished m)
+         Just Confusion    -> gameEvent (Confused m)
+         Just Darkness     -> gameEvent (Blinded m)
+         otherwise         -> return ()
 
-readScroll :: MonadRandom r => DLevel -> Mob -> Item -> r [Event]
+-- TODO change to be independent of player/mob
+readScroll :: (GameAction m, MonadRandom m) => DLevel -> Mob -> Item -> m ()
 readScroll lvl m i = do
-    e <- case scrollType i of
-             Just Fire -> do
-                 dmg <- roll (6 `d` 6)
-                 let p    = player lvl
-                     ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
-                     dmgE = map (\m -> Damaged p m dmg) ms
-                 return (CastFire m dmg:dmgE)
-             Just Lightning -> do
-                 dmg <- roll (6 `d` 6)
-                 let p    = player lvl
-                     ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
-                     dmgE = map (\m -> Damaged p m dmg) ms
-                 return (CastLightning m dmg:dmgE)
-             Just Teleport     -> do
-                p <- randomPassable lvl
-                return $ maybeToList (Teleported m <$> p)
-             Just Mapping      -> return [Mapped lvl]
-             Just Telepathy    -> return [GainedTelepathy m]
-             otherwise -> return []
-    return ([Read m i] ++ e)
+    gameEvent (Read m i)
+    case scrollType i of
+         Just Fire -> do
+             dmg <- roll (6 `d` 6)
+             let p    = player lvl
+                 ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
+             gameEvent (CastFire m dmg)
+             mapM_ (\m -> gameEvent (Damaged p m dmg)) ms
+         Just Lightning -> do
+             dmg <- roll (6 `d` 6)
+             let p    = player lvl
+                 ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
+             gameEvent (CastLightning m dmg)
+             mapM_ (\m -> gameEvent (Damaged p m dmg)) ms
+         Just Teleport     -> do
+            p <- randomPassable lvl
+            gameEvents $ maybeToList (Teleported m <$> p)
+         Just Mapping      -> gameEvent (Mapped m lvl)
+         Just Telepathy    -> gameEvent (GainedTelepathy m)
+         otherwise         -> return ()
 
 

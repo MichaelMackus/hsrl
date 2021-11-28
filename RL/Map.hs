@@ -33,10 +33,9 @@ atDepth d (DungeonLevel start rest) =
 
 -- the dungeon Map is just a map of Points -> Tiles
 data DLevel  = DLevel {
-    depth :: Int,
+    depth :: Depth,
     tiles :: Map Point Tile,
     player :: Player, -- TODO move to env?
-    seen  :: [Point], -- seen tiles
     items :: [(Point, Item)],
     features :: [(Point, Feature)],
     mobs :: [Mob]
@@ -99,7 +98,7 @@ instance Show DLevel where
 
 -- Map constructor
 mkLevel :: Int -> [[Tile]] -> DLevel
-mkLevel depth ts = DLevel depth (M.fromList (enumerate2d ts)) p [] [] [] []
+mkLevel depth ts = DLevel depth (M.fromList (enumerate2d ts)) p [] [] []
     where p = mob
 
 -- blank map
