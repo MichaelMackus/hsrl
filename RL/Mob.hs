@@ -4,7 +4,7 @@ import RL.Item
 import RL.Types
 import RL.Util (enumerate1)
 
-import Data.List (find, sort)
+import Data.List (find, sort, filter)
 import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
 
 -- player/mobs
@@ -31,7 +31,7 @@ data Mob = Mob {
     equipment      :: MobEquipment,
     identified     :: [ItemType]
 }
-data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting deriving (Eq, Show)
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting | MappedF Depth deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -157,3 +157,7 @@ isSneaky :: Mob -> Bool
 isSneaky m = let f = (=="Leather Armor") . itemDescription
              in  maybe True f $ wearing (equipment m)
 
+mobMapped :: Depth -> Mob -> Bool
+mobMapped d = not . null . filter f . flags
+    where f (MappedF d') = d == d'
+          f otherwise    = False

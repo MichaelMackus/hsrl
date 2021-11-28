@@ -2,6 +2,7 @@ module RL.Types where
 
 import Data.List (sort,unfoldr)
 
+type Depth = Int
 data Dice  = D Int Sides deriving (Eq, Ord)
 type Sides = Int
 

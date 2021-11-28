@@ -1,12 +1,9 @@
 module RL.UI.Sprite (
+    gameSprites,
+    SpriteEnv(..),
     Sprite(..),
     SpriteAttr(..),
     Color,
-    getSprites,
-    envSprites,
-    spritePos,
-    seenWallType,
-    WallType(..),
     toMessage
 ) where
 
@@ -32,22 +29,25 @@ brown   = (153, 76, 0)
 orange  = (255, 128, 0)
 lyellow = (255, 255, 204)
 
-getSprites :: Env -> InputState -> [Sprite]
-getSprites env is = envSprites env ++ inputSprites env is
+data SpriteEnv = SpriteEnv { spriteGame :: Env,
+                             spriteIS   :: InputState,
+                             spriteSeen :: [Point] }
 
-envSprites :: Env -> [Sprite]
-envSprites e = getMapSprites e ++ getMsgSprites e ++ getStatusSprites (level e)
+spriteLevel = level . spriteGame
 
-inputSprites :: Env -> InputState -> [Sprite]
-inputSprites env is =
-    case menu is of
-        Just TargetMenu     -> maybe [] targetMenu (target is)
+gameSprites :: SpriteEnv -> [Sprite]
+gameSprites env = getMapSprites env ++ getMsgSprites (spriteGame env) ++ getStatusSprites (spriteLevel env) ++ inputSprites env
+
+inputSprites :: SpriteEnv -> [Sprite]
+inputSprites env =
+    case menu (spriteIS env) of
+        Just TargetMenu     -> maybe [] targetMenu (target (spriteIS env))
         Just Inventory      -> inventoryMenu
         Just ProjectileMenu -> inventoryMenu
         otherwise           -> []
     where targetMenu  p = [CharSprite p '*' (SpriteAttr red black)]
           inventoryMenu =
-            let lvl                 = level env
+            let lvl                 = spriteLevel env
                 inv                 = groupItems (inventory (player lvl))
                 eq                  = groupItems (equipmentToList (equipment (player lvl)))
                 showInvItem (ch, i) = ch:(showItem i)
@@ -57,11 +57,11 @@ inputSprites env is =
             in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
                 mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
             
-spriteAt :: Env -> Point -> Sprite
+spriteAt :: SpriteEnv -> Point -> Sprite
 spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
                  else seenTileSprite lvl p
     where
-        lvl = level env
+        lvl = spriteLevel env
         canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
 
         tileColor Floor = white
@@ -111,7 +111,7 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
                                Just  t -> 
                                    let charSpr   = CharSprite p (fromTile t) (SpriteAttr (tileColor t) black)
                                        wallSpr w = WallSprite p w (SpriteAttr (tileColor t) black)
-                                   in  Just $ maybe charSpr wallSpr (seenWallType lvl p)
+                                   in  Just $ maybe charSpr wallSpr (seenWallType env p)
         itemSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         itemSprite lvl p = case findItemsAt p lvl of
                                (i:_) -> Just (CharSprite p (itemSymbol i) (SpriteAttr (itemColor i) black))
@@ -134,14 +134,14 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
                                     sprite  = listToMaybe (catMaybes sprites)
                                 in  if isJust sprite then fromJust sprite
                                     else CharSprite p ' ' (SpriteAttr black black)
-        seenTileSprite lvl p = if p `elem` seen lvl then stale (fromJust (listToMaybe (catMaybes [featureSprite lvl p, itemSprite lvl p, tileSprite lvl p])))
+        seenTileSprite lvl p = if p `elem` spriteSeen env then stale (fromJust (listToMaybe (catMaybes [featureSprite lvl p, itemSprite lvl p, tileSprite lvl p])))
                                else CharSprite p ' ' (SpriteAttr black black)
         stale (CharSprite    p c _) = CharSprite    p c (SpriteAttr dgrey black)
         stale (MessageSprite p c _) = MessageSprite p c (SpriteAttr dgrey black)
         stale (WallSprite    p c _) = WallSprite    p c (SpriteAttr dgrey black)
 
-getMapSprites :: Env -> [Sprite]
-getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (level env)
+getMapSprites :: SpriteEnv -> [Sprite]
+getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (spriteLevel env)
 
 getStatusSprites :: DLevel -> [Sprite]
 getStatusSprites lvl =
@@ -199,11 +199,12 @@ wallHasS WallNSW   = True
 wallHasS t         = t <= WallNESW && t >= WallSE
 
 -- which part of the wall is seen
-seenWallType :: DLevel -> Point -> Maybe WallType
-seenWallType lvl (x,y) =
-    let f p' = maybe False (not . isWall) (findTileAt p' lvl) && p' `elem` (seen lvl)
-        fixWall Wall = if ((x+1),y) `elem` (seen lvl) || ((x-1),y) `elem` (seen lvl) then WallEW
-                       else if (x,y+1) `elem` (seen lvl) || (x,y-1) `elem` (seen lvl) then WallNS
+seenWallType :: SpriteEnv -> Point -> Maybe WallType
+seenWallType env (x,y) =
+    let lvl  = spriteLevel env
+        f p' = maybe False (not . isWall) (findTileAt p' lvl) && p' `elem` (spriteSeen env)
+        fixWall Wall = if ((x+1),y) `elem` (spriteSeen env) || ((x-1),y) `elem` (spriteSeen env) then WallEW
+                       else if (x,y+1) `elem` (spriteSeen env) || (x,y-1) `elem` (spriteSeen env) then WallNS
                        else Wall
         fixWall t    = t
     in  fixWall <$> filterWallType f (x,y) <$> wallType lvl (x,y)
@@ -309,7 +310,7 @@ toMessage e (GameUpdate (Read            m s))     | isPlayer m = Just $ "You re
 toMessage e (GameUpdate (CastFire        m n))     | isPlayer m = Just $ "Roaring flames erupt all around you!"
 toMessage e (GameUpdate (CastLightning   m n))     | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
 toMessage e (GameUpdate (Teleported      m p))     | isPlayer m = Just $ "You feel disoriented."
-toMessage e (GameUpdate (Mapped          lvl))                  = Just $ "You suddenly understand the layout of the current level."
+toMessage e (GameUpdate (Mapped          m _))     | isPlayer m = Just $ "You suddenly understand the layout of the current level."
 toMessage e (GameUpdate (GainedTelepathy m))       | isPlayer m = Just $ "You sense nearby danger."
 toMessage e (GameUpdate (ThrownProjectile m i _))   | isPlayer m = Just $ "You throw the " ++ show i ++ "."
 toMessage e (GameUpdate (FiredProjectile  m l p _)) | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."

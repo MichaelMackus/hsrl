@@ -5,7 +5,7 @@ import RL.Generator.Dungeon
 import RL.Generator.Mobs
 import RL.Generator.Features
 import RL.UI
-import RL.UI.Sprite (getSprites, envSprites)
+import RL.UI.Sprite
 import RL.Random
 
 import Control.Monad.State
@@ -67,14 +67,13 @@ gameLoop disp = do
         doPlayerAction k = do
             s <- get
             g <- liftIO newStdGen
-            let (evs, is') = runPlayerAction k (envState s) (inputState s) g
+            let (evs, is') = execPlayerAction k (envState s) (inputState s) g
             put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
         endTurn :: Game ()
         endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [GameUpdate EndOfTurn] }
         renderMap = do
-            env <- gets envState
-            is  <- gets inputState
-            liftIO (uiRender disp (getSprites env is))
+            s <- get
+            liftIO (uiRender disp (gameSprites (spriteEnv s)))
 
 main = do
     -- allow user to customize display if supported, or tileset
@@ -95,7 +94,7 @@ main = do
         conf       <- mkDefaultConf
         e          <- (`broadcast` (GameUpdate NewGame)) <$> nextLevel conf
         (quit, s') <- runStateT (gameLoop ui) (defaultGameState e)
-        uiRender ui (envSprites (envState s')) -- render last frame
+        uiRender ui (gameSprites (spriteEnv s')) -- render last frame
 
         let waitForQuit = do
             -- wait for one last button press
@@ -182,3 +181,7 @@ nextLevel conf = do
             level      = lvl,
             events     = []
         }
+
+spriteEnv :: GameState -> SpriteEnv
+spriteEnv (GameState env is _) = let ps = seenAtDepth (depth (level env)) is
+                                 in  SpriteEnv env is ps

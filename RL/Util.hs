@@ -1,10 +1,14 @@
 module RL.Util where
 
+import Control.Monad (when)
 import Data.Maybe (isJust)
 import Data.Foldable (foldl')
 import qualified Data.List as L
 
 -- helper functions
+
+whenM :: Monad m => m Bool -> m () -> m ()
+whenM f k = f >>= \r -> when r k
 
 enumerate :: [a] -> [(Int, a)]
 enumerate = zip [0..]

@@ -133,7 +133,7 @@ readScroll lvl m i = do
          Just Teleport     -> do
             p <- randomPassable lvl
             gameEvents $ maybeToList (Teleported m <$> p)
-         Just Mapping      -> gameEvent (Mapped lvl)
+         Just Mapping      -> gameEvent (Mapped m lvl)
          Just Telepathy    -> gameEvent (GainedTelepathy m)
          otherwise         -> return ()
 

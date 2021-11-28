@@ -14,7 +14,7 @@ data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
 data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
     | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int | Vanished Mob | Appeared Mob | Confused Mob | Sobered Mob | Blinded Mob | Unblinded Mob
-    | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped DLevel | GainedTelepathy Mob
+    | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point | Mapped Mob DLevel | GainedTelepathy Mob
     | StairsTaken VerticalDirection DLevel
     | Waken Mob | Slept Mob | MobSpawned Mob
     | FeatureInteracted Point Feature | BandageApplied Mob

@@ -49,14 +49,9 @@ broadcastEvents c []    = c
 broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
-    broadcast env e@(GameUpdate NewGame                 )  = broadcast' (updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@(GameUpdate EndOfTurn               )  = broadcast' (updateFlags $ updateSeen (canSee (level env) (player (level env))) env) e
-    broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = let env' = broadcast' (changeLevel env v lvl) e
-                                                             in  updateSeen (canSee (level env') (player (level env'))) env'
+    broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = broadcast' (changeLevel env v lvl) e
     broadcast env e@(GameUpdate (MobSpawned m)          )  = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
     broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
-    broadcast env e@(GameUpdate (Teleported m to)       )  = updateSeen (canSee (level env) (player (level env))) $ broadcast' env e
-    broadcast env e@(GameUpdate (Mapped lvl)            )  = broadcast' (updateSeen (const True) env) e
     broadcast env e@(GameUpdate (ItemSpawned p i)       )  = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
     broadcast env e@(GameUpdate (ThrownProjectile m i p))  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
                                                              in  broadcast' (env { level = (level env) { items = is } }) e
@@ -94,6 +89,7 @@ instance Client Mob where
     broadcast m (GameUpdate (Confused m')             ) | m == m' = m { flags = L.nub (ConfusedF:flags m) }
     broadcast m (GameUpdate (Blinded m')              ) | m == m' = m { flags = L.nub (BlindedF:flags m) }
     broadcast m (GameUpdate (GainedTelepathy m')      ) | m == m' = m { flags = L.nub (TelepathicF:flags m) }
+    broadcast m (GameUpdate (Mapped m' lvl           )) | m == m' = m { flags = L.nub (MappedF (depth lvl):flags m) }
     broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (FiredProjectile m' _ i _)) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (BandageApplied  m')      ) | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
@@ -171,11 +167,3 @@ updateFlags env = let p                   = player (level env)
                       isStale TelepathicF = turnsSince (== GameUpdate (GainedTelepathy p)) (events env) >= 200
                       isStale otherwise   = False
                   in  env { level = (level env) { player = p { flags = L.filter (not . isStale) (flags p) } } }
-
--- -- update newly seen tiles at end of turn
-updateSeen :: (Point -> Bool) -> Env -> Env
-updateSeen f env =
-    let lvl    = level env
-        points = M.keys (tiles lvl)
-        seen'  = filter f points
-    in  env { level = lvl { seen = L.nub (seen' ++ seen lvl) } }

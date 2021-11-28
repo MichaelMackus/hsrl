@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (PlayerAction, runPlayerAction, InputState(..), defaultInputState, Menu(..), startTurn, isTicking, readyForInput, handleInput) where
+module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), startTurn, isTicking, readyForInput, handleInput, seenAtDepth) where
 
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
@@ -18,6 +18,7 @@ import Control.Monad.Writer
 import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMaybe)
 import Data.Tuple (swap)
 import qualified Data.List as L
+import qualified Data.Map  as M
 
 newtype PlayerAction a = PlayerAction { playerAction :: PlayerT Identity a }
     deriving (Monad, Applicative, Functor, MonadReader Env, MonadState InputState, MonadWriter [Event], MonadRandom)
@@ -31,27 +32,28 @@ instance GameAction PlayerAction where
 data InputState = InputState { menu :: Maybe Menu,
                                destination :: Maybe Point,
                                readied :: Maybe Item,
-                               target :: Maybe Point }
+                               target :: Maybe Point,
+                               seen :: [(Depth, [Point])] }
 
-defaultInputState = InputState Nothing Nothing Nothing Nothing
+defaultInputState = InputState Nothing Nothing Nothing Nothing []
 
-runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> ([Event], InputState)
-runPlayerAction k env s g = let k' = execStateT (playerAction k) s
-                            in  swap $ evalRand (runReaderT (runWriterT k') env) g
+runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> (a, ([Event], InputState))
+runPlayerAction k env s g = let k'             = runStateT (playerAction k) s
+                                ((r, is), evs) =  evalRand (runReaderT (runWriterT k') env) g
+                            in  (r, (evs, is))
+
+execPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> ([Event], InputState)
+execPlayerAction k env s g = snd $ runPlayerAction k env s g
+
+evalPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> a
+evalPlayerAction k env s g = fst $ runPlayerAction k env s g
 
 -- start of player turn
 startTurn :: PlayerAction ()
 startTurn = do
     s   <- get
     env <- ask
-    t   <- getPlayerTile
-    let lvl = level env
-    -- update seen tiles at start of turn
-    when (isDownStair t) $ seenMessage (StairsSeen Down)
-    when (isUpStair t)   $ seenMessage (StairsSeen Up)
-    let is = findItemsAt (at (player lvl)) lvl
-    when (length is > 0) $ seenMessage (ItemsSeen is)
-    -- run to destination
+    updateSeen
     if isJust (destination s) && canAutomate env then continueRunning
     else clearDestination
 
@@ -111,7 +113,7 @@ handleInput k km = do
             (KeyChar 'e')     -> changeMenu Inventory
             (KeyChar 'q')     -> changeMenu Inventory
             (KeyChar 's')     -> gameEvent Saved
-            (KeyMouseLeft to) -> when (canSee lvl p to || to `elem` seen lvl) $ startRunning to
+            (KeyMouseLeft to) -> whenM (hasSeen to) $ startRunning to
             otherwise         -> return ()
     else handleMenu k km (fromJust m)
 
@@ -269,3 +271,42 @@ changeTarget p = modify $ \s -> s { target = Just p }
 
 clearTarget :: PlayerAction ()
 clearTarget = modify $ \s -> s { target = Nothing }
+
+-- -- update newly seen tiles at end of turn
+updateSeen :: PlayerAction ()
+updateSeen = do
+    lvl  <- asks level
+    -- update seen tiles
+    updateSeenDepth (depth lvl) =<< seenTiles
+    -- add messages for currently seen tile
+    t    <- getPlayerTile
+    when (isDownStair t) $ seenMessage (StairsSeen Down)
+    when (isUpStair t)   $ seenMessage (StairsSeen Up)
+    let is = findItemsAt (at (player lvl)) lvl
+    when (length is > 0) $ seenMessage (ItemsSeen is)
+
+updateSeenDepth :: Depth -> [Point] -> PlayerAction ()
+updateSeenDepth d ts = modify $ \s -> s { seen = (d, ts):filter f (seen s) }
+    where f (d', _) = d /= d'
+
+seenTiles :: PlayerAction [Point]
+seenTiles = do
+    lvl <- asks level
+    ts  <- getSeen
+    let p      = player lvl
+        points = M.keys (tiles lvl)
+    if mobMapped (depth lvl) p then return points
+    else return $ ts ++ (filter (canSee lvl p) points)
+
+getSeen :: PlayerAction [Point]
+getSeen = asks level >>= \lvl -> seenAtDepth (depth lvl) <$> get
+
+seenAtDepth :: Depth -> InputState -> [Point]
+seenAtDepth d is = fromMaybe [] (L.lookup d (seen is))
+
+hasSeen :: Point -> PlayerAction Bool
+hasSeen p = do
+    lvl <- asks level
+    ps  <- getSeen
+    let pl = player lvl
+    return $ p `elem` ps || canSee lvl pl p
