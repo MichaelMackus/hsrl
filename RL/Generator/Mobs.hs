@@ -104,6 +104,15 @@ dngMobs = [ mob {
                 baseAC  = 9
             },
             mob {
+                mobName = "Rat",
+                symbol = 'r',
+                hp = 2,
+                mhp = 2,
+                baseDmg = 1 `d` 2,
+                thac0   = 22,
+                baseAC  = 9
+            },
+            mob {
                -- TODO fast
                mobName = "Orc",
                symbol = 'o',
@@ -153,19 +162,24 @@ dngMobs = [ mob {
 
 mobRarity :: Difficulty -> Mob -> Rational
 mobRarity d m
-    | d <= 2 = case mobName m of
-                    "Kobold"   -> (1 % 5)
+    | d <= 3 = case mobName m of
+                    "Kobold"   -> (1 % 10)
                     "Grid Bug" -> (1 % 3)
+                    "Rat"      -> (1 % 5)
                     otherwise  -> (0 % 10)
-    | d <= 4 = case mobName m of
-                    "Goblin"   -> (1 % 5)
-                    "Orc"      -> (1 % 10)
+    | d <= 5 = case mobName m of
+                    "Kobold"   -> (1 % 5)
+                    "Goblin"   -> (1 % 10)
                     otherwise  -> mobRarity 1 m
     | d < 10 = case mobName m of
-                    "Skeleton" -> (1 % 7)
-                    "Zombie"   -> (1 % 10)
-                    otherwise  -> mobRarity 2 m
+                    "Goblin"   -> (1 % 5)
+                    "Orc"      -> (1 % 10)
+                    "Skeleton" -> (1 % 15)
+                    otherwise  -> mobRarity 5 m
     | d >= 10 = case mobName m of
-                    "Black Dragon" -> (1 % 20)
+                    "Orc"          -> (1 % 5)
+                    "Skeleton"     -> (1 % 7)
+                    "Zombie"       -> (1 % 10)
                     "Ogre"         -> (1 % 15)
-                    otherwise      -> mobRarity 3 m
+                    "Black Dragon" -> (1 % 20)
+                    otherwise      -> mobRarity 9 m

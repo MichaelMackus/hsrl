@@ -133,10 +133,11 @@ itemRarity d (Item _         (Scroll t)) = scrollRarities t
 itemRarity d otherwise = (0 % 10)
 
 potionRarities :: PotionType -> Rational
-potionRarities Healing = (1 % 5)
-potionRarities Acid = (1 % 5)
-potionRarities Darkness = (1 % 5)
-potionRarities _ = (1 % 10)
+potionRarities Healing   = (1 % 8)
+potionRarities Acid      = (1 % 12)
+potionRarities Darkness  = (1 % 12)
+potionRarities Confusion = (1 % 12)
+potionRarities _         = (1 % 10)
 
 scrollRarities :: ScrollType -> Rational
 scrollRarities _ = (1 % 10)
