@@ -321,7 +321,7 @@ seenTiles = do
     let p      = player lvl
         points = M.keys (tiles lvl)
     if mobMapped (depth lvl) p then return points
-    else return $ ts ++ (filter (canSee lvl p) points)
+    else return $ L.nub(ts ++ (filter (canSee lvl p) points))
 
 getSeen :: PlayerAction [Point]
 getSeen = asks level >>= \lvl -> seenAtDepth (depth lvl) <$> get
