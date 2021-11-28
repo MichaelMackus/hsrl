@@ -20,7 +20,9 @@ vtyUI cfg = do
         $ error "Terminal too small for VTY window!"
     disp   <- mkVty vtyCfg
     return UI
-        { uiRender = update disp . picForLayers . map sprToImage . condenseSprites
+        { uiRender = \spr -> let pic = picForLayers . map sprToImage . condenseSprites $ spr
+                                 bg  = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
+                             in  update disp (pic { picBackground = bg })
         , uiEnd = shutdown disp
         , uiInput = do
             let f e = case e of
