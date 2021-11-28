@@ -99,7 +99,7 @@ handleInput k km = do
             KeyRight          -> bump East
             KeyLeft           -> bump West
             KeyDown           -> bump South
-            (KeyChar 'f')     -> tryFire lvl p -- TODO skip to targetting menu if projectile/launcher readied
+            (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
             (KeyChar 'r')     -> changeMenu Inventory
             (KeyChar '>')     -> takeStairs Down
@@ -119,18 +119,17 @@ handleInput k km = do
 
 handleMenu :: Key -> [KeyMod] -> Menu -> PlayerAction ()
 handleMenu k km Inventory = do
-    p   <- player . level <$> getEnv
-    lvl <- level          <$> getEnv
+    p   <- getPlayer
+    lvl <- level <$> getEnv
     let ch = charFromKey k
         i  = (`fromInventoryLetter` (inventory p)) =<< ch
     when (isJust i) $ applyItem lvl p (fromJust i)
     closeMenu
 handleMenu k km ProjectileMenu = do
-    p   <- player . level <$> getEnv
-    lvl <- level          <$> getEnv
+    p <- getPlayer
     let ch   = charFromKey k
         i    = (`fromInventoryLetter` (inventory p)) =<< ch
-        targets = L.filter (canSee lvl p) . L.sortBy (comparing (distance (at p))) . map at $ mobs lvl
+    targets <- getTargets
     if maybe False isProjectile i && length targets > 0 then do
         readyProjectile (fromJust i)
         changeMenu TargetMenu
@@ -141,22 +140,26 @@ handleMenu k km TargetMenu = do
     s   <- get
     p   <- player . level <$> getEnv
     lvl <- level          <$> getEnv
-    let targets = L.filter (canSee lvl p) . L.sortBy (comparing (distance (at p))) . map at $ mobs lvl
-    case k of
-        (KeyChar    '\t') | length targets > 0 ->
-            -- change to next target based on tab char
-            let i   = fromMaybe 0 $ (\t -> L.findIndex (== t) targets) =<< target s
-                tgt = if i + 1 >= length targets then head targets else targets !! (i + 1)
-            in  changeTarget tgt
-        (KeyEnter) | isJust (target s) && isJust (readied s) && isJust (findMobAt (fromJust $ target s) lvl) -> do
-            fire lvl p (fromJust (readied s)) (fromJust (findMobAt (fromJust $ target s) lvl))
+    rdy <- getReadied
+    let fireF to = do
+            fire lvl p (fromJust rdy) (fromJust (findMobAt to lvl))
             clearTarget
             closeMenu
-        (KeyMouseLeft to) | to `elem` targets && isJust (findMobAt to lvl) && isJust (readied s) -> do
-            fire lvl p (fromJust (readied s)) (fromJust (findMobAt to lvl))
-            clearTarget
-            closeMenu
-        otherwise -> closeMenu
+    if isJust (target s) && isJust rdy then do
+        targets <- getTargets
+        case k of
+            (KeyChar 'r') -> changeMenu ProjectileMenu
+            (KeyChar '\t') | length targets > 0 ->
+                -- change to next target based on tab char
+                let i   = fromMaybe 0 $ (\t -> L.findIndex (== t) targets) =<< target s
+                    tgt = if i + 1 >= length targets then head targets else targets !! (i + 1)
+                in  changeTarget tgt
+            (KeyChar 'f')     | isJust (findMobAt (fromJust $ target s) lvl)   -> fireF (fromJust $ target s)
+            (KeyChar 't')     | isJust (findMobAt (fromJust $ target s) lvl)   -> fireF (fromJust $ target s)
+            (KeyEnter)        | isJust (findMobAt (fromJust $ target s) lvl)   -> fireF (fromJust $ target s)
+            (KeyMouseLeft to) | to `elem` targets && isJust (findMobAt to lvl) -> fireF to
+            otherwise -> closeMenu
+    else closeMenu
 handleMenu k km otherwise = return ()
 
 charFromKey :: Key -> Maybe Char
@@ -200,10 +203,19 @@ interactFeature p f = do
         (Chest is) -> gameEvents $ map (ItemSpawned p) is
         f  -> return ()
 
+-- attempt to fire if readied weapon
 tryFire :: DLevel -> Mob -> PlayerAction ()
 tryFire lvl m =
     if inMelee lvl m then insertMessage InMelee
-    else changeMenu ProjectileMenu
+    else do
+        rdy     <- getReadied
+        targets <- getTargets
+        if isJust rdy then
+            if length targets > 0 then do
+                changeMenu TargetMenu
+                changeTarget (head targets)
+            else return ()
+        else changeMenu ProjectileMenu
 
 pickup :: DLevel -> Maybe GameEvent
 pickup lvl = 
@@ -258,7 +270,18 @@ continueRunning = do
             else clearDestination
 
 readyProjectile :: Item -> PlayerAction ()
-readyProjectile i = modify $ \s -> s { readied = Just i }
+readyProjectile i = do
+    modify $ \s -> s { readied = Just i }
+    insertMessage (Readied i)
+
+-- get readied item from pack
+getReadied :: PlayerAction (Maybe Item)
+getReadied = do
+    p <- getPlayer
+    r <- gets readied
+    case r of
+        Nothing -> return Nothing
+        Just i  -> return $ L.find (== i) (inventory p)
 
 changeMenu :: Menu -> PlayerAction ()
 changeMenu m = do
@@ -312,3 +335,9 @@ hasSeen p = do
     ps  <- getSeen
     let pl = player lvl
     return $ p `elem` ps || canSee lvl pl p
+
+getTargets :: PlayerAction [Point]
+getTargets = do
+    env <- getEnv 
+    p   <- getPlayer
+    return (L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))

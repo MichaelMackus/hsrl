@@ -293,8 +293,9 @@ toMessage e (EventMessage (ItemsSeen items)) = let suffix = if length items > 1 
                                                in  Just $ "You see a " ++ showIdentified (identified (player (level e))) (head items) ++ ". " ++ suffix
 toMessage e (EventMessage (MenuChange Inventory)) = Just $ "Pick an item to use or equip. Press space to cancel."
 toMessage e (EventMessage (MenuChange ProjectileMenu)) = Just $ "Pick a projectile to throw. Press space to cancel."
-toMessage e (EventMessage (MenuChange TargetMenu)) = Just $ "Pick a target to throw at. Press space to cancel."
+toMessage e (EventMessage (MenuChange TargetMenu)) = Just $ "Pick a target to fire at. Press r to ready something else, space to cancel."
 toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
+toMessage e (EventMessage (Readied i)) = Just $ "You have readied the " ++ show i
 toMessage e (GameUpdate (ItemPickedUp m item))     | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Equipped m item))         | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (EquipmentRemoved m item)) | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
