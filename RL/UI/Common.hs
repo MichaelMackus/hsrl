@@ -5,7 +5,6 @@ import Data.IORef
 import Data.Maybe (listToMaybe)
 
 import RL.Game
-import RL.UI.Sprite
 
 import qualified Data.List as L
 
@@ -32,6 +31,21 @@ data UI = UI { uiEnd    :: IO ()              -- shut down
 -- monad for rendering - this way we only draw what has changed
 type RenderM = StateT [Sprite] IO
 
+type Color  = (Int, Int, Int) -- RGB color value
+data Sprite = CharSprite Point Char SpriteAttr | MessageSprite Point String SpriteAttr | WallSprite Point WallType SpriteAttr deriving (Show, Eq)
+data SpriteAttr = SpriteAttr { fgColor :: Color, bgColor :: Color } deriving (Show, Eq)
+
+data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
+              | WallEW | WallSE | WallSW | WallSEW | WallNESW deriving (Eq, Ord)
+
+instance Show WallType where
+    show _ = "#"
+
+spritePos :: Sprite -> Point
+spritePos (CharSprite    p _ _) = p
+spritePos (WallSprite    p _ _) = p
+spritePos (MessageSprite p _ _) = p
+
 -- make a new renderer in the IO monad
 mkRenderer :: (a -> RenderM ()) -> IO (a -> IO ())
 mkRenderer k = do
@@ -57,8 +71,4 @@ changed s newS = filter (\spr -> not (spr `elem` s)) newS
 updateChanged :: [Sprite] -> [Sprite] -> [Sprite]
 updateChanged s newS = L.nubBy f (newS ++ s)
     where f a b = spritePos a == spritePos b
-
-spriteAt :: Point -> [Sprite] -> Maybe Sprite
-spriteAt p = listToMaybe . filter f
-    where f spr = spritePos spr == p
 

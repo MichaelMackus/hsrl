@@ -3,6 +3,7 @@ module RL.UI.Sprite (
     SpriteAttr(..),
     Color,
     getSprites,
+    envSprites,
     spritePos,
     seenWallType,
     WallType(..),
@@ -10,6 +11,8 @@ module RL.UI.Sprite (
 ) where
 
 import RL.Game
+import RL.Player
+import RL.UI.Common
 import RL.Util (enumerate, equating, groupBy')
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
@@ -29,37 +32,37 @@ brown   = (153, 76, 0)
 orange  = (255, 128, 0)
 lyellow = (255, 255, 204)
 
-type Color  = (Int, Int, Int) -- RGB color value
-data Sprite = CharSprite Point Char SpriteAttr | MessageSprite Point String SpriteAttr | WallSprite Point WallType SpriteAttr deriving (Show, Eq)
-data SpriteAttr = SpriteAttr { fgColor :: Color, bgColor :: Color } deriving (Show, Eq)
+getSprites :: Env -> InputState -> [Sprite]
+getSprites env is = envSprites env ++ inputSprites env is
 
-data WallType = Wall   | WallNS | WallNE | WallNW  | WallNSE | WallNSW | WallNEW
-              | WallEW | WallSE | WallSW | WallSEW | WallNESW deriving (Eq, Ord)
+envSprites :: Env -> [Sprite]
+envSprites e = getMapSprites e ++ getMsgSprites e ++ getStatusSprites (level e)
 
-instance Show WallType where
-    show _ = "#"
-
-spritePos :: Sprite -> Point
-spritePos (CharSprite    p _ _) = p
-spritePos (WallSprite    p _ _) = p
-spritePos (MessageSprite p _ _) = p
-
--- game is renderable
-getSprites :: Env -> [Sprite]
-getSprites e = getMapSprites e ++ getMsgSprites e ++ getStatusSprites (level e)
-
--- helper functions since map/mob isn't renderable without context
-
--- TODO menu display
+inputSprites :: Env -> InputState -> [Sprite]
+inputSprites env is =
+    case menu is of
+        Just TargetMenu     -> maybe [] targetMenu (target is)
+        Just Inventory      -> inventoryMenu
+        Just ProjectileMenu -> inventoryMenu
+        otherwise           -> []
+    where targetMenu  p = [CharSprite p '*' (SpriteAttr red black)]
+          inventoryMenu =
+            let lvl                 = level env
+                inv                 = groupItems (inventory (player lvl))
+                eq                  = groupItems (equipmentToList (equipment (player lvl)))
+                showInvItem (ch, i) = ch:(showItem i)
+                p                   = player lvl
+                showItem (1,i)      = " - " ++ showIdentified (identified p) i
+                showItem (n,i)      = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
+            in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
+                mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
+            
 spriteAt :: Env -> Point -> Sprite
---               if menu env == TargetMenu && target (player lvl) == Just p then targetingSprite p
 spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
                  else seenTileSprite lvl p
     where
         lvl = level env
         canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
-
-        targetingSprite p = CharSprite p '*' (SpriteAttr red black)
 
         tileColor Floor = white
         tileColor Cavern = grey
@@ -151,21 +154,6 @@ getStatusSprites lvl =
                   else red
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
          mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
-
--- TODO
--- otherWindows :: Env -> [MessageSprite]
--- otherWindows e
---     | menu e `elem` [Inventory, ProjectileMenu] =
---         let lvl = level e
---             inv = groupItems (inventory (player lvl))
---             eq  = groupItems (equipmentToList (equipment (player lvl)))
---         in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
---             mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
---     | otherwise = []
---         where showInvItem (ch, i) = ch:(showItem i)
---               p              = player (level e)
---               showItem (1,i) = " - " ++ showIdentified (identified p) i
---               showItem (n,i) = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
 
 getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env
