@@ -151,9 +151,11 @@ handleMenu k km TargetMenu = do
         (KeyEnter) | isJust (target s) && isJust (readied s) && isJust (findMobAt (fromJust $ target s) lvl) -> do
             fire lvl p (fromJust (readied s)) (fromJust (findMobAt (fromJust $ target s) lvl))
             clearTarget
+            closeMenu
         (KeyMouseLeft to) | to `elem` targets && isJust (findMobAt to lvl) && isJust (readied s) -> do
             fire lvl p (fromJust (readied s)) (fromJust (findMobAt to lvl))
             clearTarget
+            closeMenu
         otherwise -> closeMenu
 handleMenu k km otherwise = return ()
 
