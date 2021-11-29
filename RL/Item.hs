@@ -66,8 +66,9 @@ data ArmorProperties = ArmorProperties {
 data ArmorSlot = Body | Hand deriving (Eq, Ord)
 
 groupItems :: [Item] -> [(Int, Item)]
-groupItems = map f . groupBy' (==)
-    where f l = (length l, head l)
+groupItems = map f . groupBy' g
+    where f l    = (length l, head l)
+          g i i' = i == i' && isStackable i
 
 ungroupItems :: [(Int, Item)] -> [Item]
 ungroupItems = concat . map f
@@ -90,6 +91,9 @@ armorSlot i = slot <$> armorProperties i
 findItemByName :: String -> [Item] -> Maybe Item
 findItemByName n = L.find f
     where f i = itemDescription i == n
+
+isStackable :: Item -> Bool
+isStackable i = isProjectile i || isReadable i || isDrinkable i
 
 isProjectile :: Item -> Bool
 isProjectile = maybe False (isJust . projectileType) . weaponProperties
