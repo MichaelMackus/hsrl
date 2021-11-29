@@ -10,7 +10,7 @@ import RL.Random
 
 import Control.Monad.State
 import Data.List (isInfixOf)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Ratio
 import System.Environment
 import System.Exit (exitSuccess)
@@ -118,7 +118,8 @@ main = do
     -- putStrLn ""
 
 defaultGameState :: Env -> GameState
-defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) defaultInputState []
+defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) is []
+    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Dagger") . itemDescription) (inventory (player (level e)))) }
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
