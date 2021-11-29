@@ -45,6 +45,7 @@ inputSprites env =
     case menu (spriteIS env) of
         Just TargetMenu     -> maybe [] targetMenu (target (spriteIS env))
         Just Inventory      -> inventoryMenu
+        Just DropMenu       -> inventoryMenu
         Just ProjectileMenu -> inventoryMenu
         otherwise           -> []
     where targetMenu  p = [CharSprite p '*' (SpriteAttr red black)]
@@ -304,9 +305,11 @@ toMessage e (EventMessage (ItemsSeen items)) = let suffix = if length items > 1 
 toMessage e (EventMessage (MenuChange Inventory)) = Just $ "Pick an item to use or equip. Press space to cancel."
 toMessage e (EventMessage (MenuChange ProjectileMenu)) = Just $ "Pick a projectile to throw. Press space to cancel."
 toMessage e (EventMessage (MenuChange TargetMenu)) = Just $ "Pick a target to fire at. Press r to ready something else, space to cancel."
+toMessage e (EventMessage (MenuChange DropMenu)) = Just $ "Pick an item to drop onto the ground."
 toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
 toMessage e (EventMessage (Readied i)) = Just $ "You have readied the " ++ show i
-toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up the " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (GameUpdate (ItemDropped  m item))          | isPlayer m = Just $ "You have dropped the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Equipped m item))              | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (EquipmentRemoved m item))      | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Drank           m p))          | isPlayer m = Just $ "You drank the " ++ show p ++ "."

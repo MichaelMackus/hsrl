@@ -10,7 +10,7 @@ data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
 
 -- Informational messages displayed to user
 data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item deriving Eq
-data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
+data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu | DropMenu deriving (Eq, Show)
 
 -- Represents events that change the game state
 data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
@@ -21,7 +21,7 @@ data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob 
     | StairsTaken VerticalDirection DLevel
     | Waken Mob | Slept Mob | MobSpawned Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
-    | ItemSpawned Point Item | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
+    | ItemSpawned Point Item | ItemPickedUp Mob Item | ItemDropped Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
     | EndOfTurn | NewGame | QuitGame | Escaped | Saved deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]

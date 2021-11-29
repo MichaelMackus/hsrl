@@ -106,6 +106,7 @@ handleInput k km = do
             (KeyChar 'i')     -> changeMenu Inventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
+            (KeyChar 'd')     -> changeMenu DropMenu
             (KeyChar ',')     -> gameEvents (maybeToList (pickup (level env)))
             (KeyChar 'w')     -> changeMenu Inventory
             (KeyChar 'W')     -> changeMenu Inventory
@@ -123,6 +124,13 @@ handleMenu k km Inventory = do
     let ch = charFromKey k
         i  = (`fromInventoryLetter` (inventory p)) =<< ch
     when (isJust i) $ applyItem lvl p (fromJust i)
+    closeMenu
+handleMenu k km DropMenu = do
+    p   <- getPlayer
+    lvl <- level <$> getEnv
+    let ch = charFromKey k
+        i  = (`fromInventoryLetter` (inventory p)) =<< ch
+    when (isJust i) $ gameEvent (ItemDropped p (fromJust i))
     closeMenu
 handleMenu k km ProjectileMenu = do
     p <- getPlayer

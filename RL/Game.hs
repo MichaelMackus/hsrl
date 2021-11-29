@@ -52,6 +52,7 @@ instance Client Env where
     broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = broadcast' (changeLevel env v lvl) e
     broadcast env e@(GameUpdate (MobSpawned m)          )  = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
     broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(GameUpdate (ItemDropped  m i)      )  = broadcast' (env { level = (level env) { items = (at m, i):items (level env) } }) e
     broadcast env e@(GameUpdate (ItemSpawned p i)       )  = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
     broadcast env e@(GameUpdate (ThrownProjectile m i p))  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
                                                              in  broadcast' (env { level = (level env) { items = is } }) e
@@ -77,6 +78,7 @@ instance Client Mob where
                                                                     in  m { flags = fs }
     broadcast m (GameUpdate (Slept m')                ) | m == m' = m { flags = L.nub (Sleeping:flags m) }
     broadcast m (GameUpdate (ItemPickedUp m' i)       ) | m == m' = pickup i m
+    broadcast m (GameUpdate (ItemDropped  m' i)       ) | m == m' = poofItem m i
     broadcast m (GameUpdate (Equipped m' i)           ) | m == m' = equip m i
     broadcast m (GameUpdate (EquipmentRemoved m' i)   ) | m == m' = removeEquip m i
     broadcast m (GameUpdate (Read     m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
