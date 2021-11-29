@@ -20,21 +20,21 @@ vtyUI cfg = do
         $ error "Terminal too small for VTY window!"
     disp   <- mkVty vtyCfg
     return UI
-        { uiRender = \spr -> let pic = picForLayers . map sprToImage . condenseSprites $ spr
+        { uiRender = \spr -> let pic = picForLayers . map sprToImage . condenseSprites . reverse $ spr
                                  bg  = Background ' ' (withBackColor defAttr (rgbColor 0 0 0))
                              in  update disp (pic { picBackground = bg })
         , uiEnd = shutdown disp
         , uiInput = do
             let f e = case e of
-                        (EvKey (KChar c)        mods) -> return ((KeyChar c), toKeyMods mods)
-                        (EvKey KUp              mods) -> return (KeyUp, toKeyMods mods)
-                        (EvKey KDown            mods) -> return (KeyDown, toKeyMods mods)
-                        (EvKey KRight           mods) -> return (KeyRight, toKeyMods mods)
-                        (EvKey KLeft            mods) -> return (KeyLeft, toKeyMods mods)
-                        (EvKey KEnter           mods) -> return (KeyEnter, toKeyMods mods)
-                        (EvKey KEsc             mods) -> return (KeyEscape, toKeyMods mods)
-                        (EvKey KBS              mods) -> return (KeyBackspace, toKeyMods mods)
-                        (EvMouseDown x y BLeft  mods) -> return ((KeyMouseLeft (x, y)), toKeyMods mods)
+                        (EvKey (KChar c)        mods) -> return ((KeyChar c),            toKeyMods mods)
+                        (EvKey KUp              mods) -> return (KeyUp,                  toKeyMods mods)
+                        (EvKey KDown            mods) -> return (KeyDown,                toKeyMods mods)
+                        (EvKey KRight           mods) -> return (KeyRight,               toKeyMods mods)
+                        (EvKey KLeft            mods) -> return (KeyLeft,                toKeyMods mods)
+                        (EvKey KEnter           mods) -> return (KeyEnter,               toKeyMods mods)
+                        (EvKey KEsc             mods) -> return (KeyEscape,              toKeyMods mods)
+                        (EvKey KBS              mods) -> return (KeyBackspace,           toKeyMods mods)
+                        (EvMouseDown x y BLeft  mods) -> return ((KeyMouseLeft (x, y)),  toKeyMods mods)
                         (EvMouseDown x y BRight mods) -> return ((KeyMouseRight (x, y)), toKeyMods mods)
                         otherwise                     -> nextEvent disp >>= f
             nextEvent disp >>= f
@@ -42,21 +42,21 @@ vtyUI cfg = do
 
 -- condense chars next to each other to message sprite (for VTY performance)
 condenseSprites :: [Sprite] -> [Sprite]
-condenseSprites sprs = map fromVtySprite                $
-                        concat . map (foldr f [])       $
-                        map (L.sortBy (comparing sprX)) $
-                        L.groupBy (equating sprY)       $
-                        L.sortBy (comparing sprY)       $ 
+condenseSprites sprs = map fromVtySprite          $
+                        concat . map (foldr f []) $
+                        map (L.sortBy sortF)      $
+                        L.groupBy (equating sprY) $
+                        L.sortBy (comparing sprY) $ 
                         map vtySprite sprs
-    where sprY (VtyS (x,y) _ _) = y
-          sprX (VtyS (x,y) _ _) = x
+    where sprY  (VtyS (x,y) _ _) = y
+          sortF (VtyS (x,y) str _) (VtyS (x',y') str' _) = if x == x' then compare (length str') (length str) else compare x x'
           f m (m':xs) = if canCombine m m' then (combine m m'):xs else m:m':xs
           f m []      = [m]
 
 data VtySprite = VtyS Point String SpriteAttr
 
 canCombine :: VtySprite -> VtySprite -> Bool
-canCombine (VtyS _ _ attr) (VtyS _ _ attr') = attr == attr'
+canCombine (VtyS (x,_) str attr) (VtyS (x',_) str' attr') = attr == attr' && x + length str == x'
 
 combine :: VtySprite -> VtySprite -> VtySprite
 combine (VtyS pos s attr) (VtyS pos' s' attr') = if pos < pos' then VtyS pos (s ++ s') attr
