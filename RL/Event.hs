@@ -3,7 +3,7 @@ module RL.Event where
 import RL.Map
 import RL.Util (takeWhiles, dropWhiles)
 
-import Data.Maybe (isNothing)
+import Data.Maybe (isNothing, isJust)
 import qualified Data.List as L
 
 data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
@@ -35,7 +35,7 @@ getEventsThisTurn = L.takeWhile (not . isEndOfTurn)
 
 occurredThisTurn :: (Event -> Bool) -> [Event] -> Bool
 occurredThisTurn f es = let es' = L.takeWhile (not . f) es
-                       in  isNothing $ L.find isEndOfTurn es'
+                        in  isJust (L.find f es) && isNothing (L.find isEndOfTurn es')
 
 turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)
@@ -62,10 +62,7 @@ recentlyPicked m es = let f (GameUpdate (ItemPickedUp m' _)) = m == m'
                       in  occurredThisTurn f es
 
 -- check if this is a new game since player last moved
-recentGame :: Mob -> [Event] -> Bool
-recentGame m es = let es' = L.takeWhile (not . g) es
-                      f (GameUpdate (Moved m' _)) = m == m'
-                      f otherwise                 = False
-                      g (GameUpdate NewGame)      = True
-                      g otherwise                 = False
-                  in  (== 0) . length $ L.filter f es'
+recentGame :: [Event] -> Bool
+recentGame es = let f (GameUpdate NewGame) = True
+                    f otherwise            = False
+                in  occurredThisTurn f es

@@ -94,7 +94,7 @@ main = do
     -- initialize game & launch game loop
     let newGame = do
         conf       <- mkDefaultConf
-        e          <- (`broadcast` (GameUpdate NewGame)) <$> nextLevel conf
+        e          <- nextLevel conf
         (quit, s') <- runStateT (gameLoop ui) (defaultGameState e)
         uiRender ui (gameSprites (spriteEnv s')) -- render last frame
 
@@ -118,7 +118,7 @@ main = do
     -- putStrLn ""
 
 defaultGameState :: Env -> GameState
-defaultGameState e = GameState e defaultInputState []
+defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) defaultInputState []
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24

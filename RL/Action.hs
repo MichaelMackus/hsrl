@@ -31,7 +31,7 @@ gameEvents = insertEvents . map GameUpdate
 seenMessage :: GameAction m => Message -> m ()
 seenMessage m  = getEnv >>= \env ->
     let p      = player (level env)
-        fresh  = recentGame p (events env) || recentlyMoved p (events env) || recentlyPicked p (events env)
+        fresh  = recentGame (events env) || recentlyMoved p (events env) || recentlyPicked p (events env)
         newMsg = not (occurredThisTurn (== EventMessage m) (events env))
     in  when (fresh && newMsg) $ insertMessage m
 
