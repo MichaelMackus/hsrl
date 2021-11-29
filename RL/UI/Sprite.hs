@@ -55,8 +55,9 @@ inputSprites env =
                 eq                  = groupItems (equipmentToList (equipment (player lvl)))
                 showInvItem (ch, i) = ch:(showItem i)
                 p                   = player lvl
-                showItem (1,i)      = " - " ++ showIdentified (identified p) i
-                showItem (n,i)      = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
+                readyStr i          = if readied (spriteIS env) == Just i then " (readied)" else ""
+                showItem (1,i)      = " - " ++ showIdentified (identified p) i ++ readyStr i
+                showItem (n,i)      = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" ++ readyStr i -- TODO pluralize
             in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
                 mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
             
