@@ -112,9 +112,9 @@ drinkPotion m i = do
              gameEvents [DrankAcid m, Damaged m m dmg]
              when (isDead (m { hp = hp m - dmg })) $ gameEvent (Died m)
          Just Strength     -> gameEvent (GainedStrength m 1)
-         Just Invisibility -> gameEvent (Vanished m)
-         Just Confusion    -> gameEvent (Confused m)
-         Just Darkness     -> gameEvent (Blinded m)
+         Just Invisibility -> gameEvent $ GainedMobFlag m Invisible
+         Just Confusion    -> gameEvent $ GainedMobFlag m ConfusedF
+         Just Darkness     -> gameEvent $ GainedMobFlag m BlindedF
          otherwise         -> return ()
 
 -- TODO change to be independent of player/mob
@@ -137,8 +137,8 @@ readScroll lvl m i = do
          Just Teleport     -> do
             p <- randomPassable lvl
             gameEvents $ maybeToList (Teleported m <$> p)
-         Just Mapping      -> gameEvent (Mapped m lvl)
-         Just Telepathy    -> gameEvent (GainedTelepathy m)
+         Just Mapping      -> gameEvent $ GainedMobFlag m (MappedF (depth lvl))
+         Just Telepathy    -> gameEvent $ GainedMobFlag m TelepathicF
          otherwise         -> return ()
 
 

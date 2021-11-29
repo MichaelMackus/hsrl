@@ -1,4 +1,4 @@
-module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, module RL.Map, module RL.Event) where
+module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Map, module RL.Event) where
 
 import RL.Event
 import RL.Map
@@ -85,11 +85,8 @@ instance Client Mob where
     broadcast m (GameUpdate (Healed m' amt)           ) | m == m' = m { hp = min (mhp m) (hp m + amt) }
     broadcast m (GameUpdate (GainedLife m' amt)       ) | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
     broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
-    broadcast m (GameUpdate (Vanished m')             ) | m == m' = m { flags = L.nub (Invisible:flags m) }
-    broadcast m (GameUpdate (Confused m')             ) | m == m' = m { flags = L.nub (ConfusedF:flags m) }
-    broadcast m (GameUpdate (Blinded m')              ) | m == m' = m { flags = L.nub (BlindedF:flags m) }
-    broadcast m (GameUpdate (GainedTelepathy m')      ) | m == m' = m { flags = L.nub (TelepathicF:flags m) }
-    broadcast m (GameUpdate (Mapped m' lvl           )) | m == m' = m { flags = L.nub (MappedF (depth lvl):flags m) }
+    broadcast m (GameUpdate (GainedMobFlag m' f)      ) | m == m' = m { flags = L.nub (f:flags m) }
+    broadcast m (GameUpdate (RemovedMobFlag m' f)     ) | m == m' = m { flags = L.delete f (flags m) }
     broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (FiredProjectile m' _ i _)) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (BandageApplied  m')      ) | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
@@ -158,12 +155,19 @@ changeLevel env v lvl = do
                 f  (p, _) = lvl { player = pl { at = p } }
             in  f <$> t
 
+turnsSinceMobF :: Mob -> MobFlag -> [Event] -> Int
+turnsSinceMobF m flag = let f (GameUpdate (GainedMobFlag m' flag')) = m == m' && flag == flag'
+                            f otherwise                             = False
+                        in  length . L.filter isEndOfTurn . takeWhile (not . f)
+
 -- remove stale flags from mobs/player at end of turn
 updateFlags :: Env -> Env
-updateFlags env = let p                   = player (level env)
-                      isStale Invisible   = turnsSince (== GameUpdate (Vanished p)) (events env) >= 100
-                      isStale ConfusedF   = turnsSince (== GameUpdate (Confused p)) (events env) >= 10
-                      isStale BlindedF    = turnsSince (== GameUpdate (Blinded  p)) (events env) >= 50
-                      isStale TelepathicF = turnsSince (== GameUpdate (GainedTelepathy p)) (events env) >= 200
-                      isStale otherwise   = False
-                  in  env { level = (level env) { player = p { flags = L.filter (not . isStale) (flags p) } } }
+updateFlags env = let isStale m Invisible   = turnsSinceMobF m Invisible   (events env) >= 100
+                      isStale m ConfusedF   = turnsSinceMobF m ConfusedF   (events env) >= 10
+                      isStale m BlindedF    = turnsSinceMobF m BlindedF    (events env) >= 50
+                      isStale m TelepathicF = turnsSinceMobF m TelepathicF (events env) >= 200
+                      isStale m otherwise   = False
+                      removeFlag m f        = GameUpdate (RemovedMobFlag m f)
+                      evF        m          = map (removeFlag m) (L.filter (isStale m) (flags m))
+                      evs                   = concat $ evF (player (level env)):(map evF (mobs (level env)))
+                  in  broadcastEvents env evs

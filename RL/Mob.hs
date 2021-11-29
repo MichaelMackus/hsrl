@@ -31,7 +31,7 @@ data Mob = Mob {
     equipment      :: MobEquipment,
     identified     :: [ItemType]
 }
-data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | Resting | MappedF Depth deriving (Eq, Show)
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -71,9 +71,6 @@ isVisible m = not (Invisible `elem` flags m)
 
 isUndead :: Mob -> Bool
 isUndead m = Undead `elem` flags m
-
-isResting :: Mob -> Bool
-isResting m = Resting `elem` flags m
 
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)

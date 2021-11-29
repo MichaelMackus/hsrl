@@ -72,7 +72,7 @@ gameLoop disp = do
                     let (evs, is') = execPlayerAction k (envState s) (inputState s) g
                     put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
         endTurn :: Game ()
-        endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [GameUpdate EndOfTurn] }
+        endTurn = modify $ \s -> s { envState = broadcastEvents (updateFlags (envState s)) [GameUpdate EndOfTurn] }
         renderMap = do
             s <- get
             liftIO (uiRender disp (gameSprites (spriteEnv s)))
@@ -161,7 +161,7 @@ mkDefaultConf = do
         playerConfig = PlayerConfig {
             playerHp = 12,
             playerFov = 5,
-            playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught))
+            playerItems = dagger:(scroll "asdf" Mapping):(scroll "zsdf" Telepathy):(potion "asdf" Invisibility):(potion "zsdf" Confusion):(replicate 3 (Item "Magic Draught" Draught))
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,

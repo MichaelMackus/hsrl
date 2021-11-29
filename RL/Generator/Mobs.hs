@@ -1,6 +1,6 @@
 module RL.Generator.Mobs (playerGenerator, mobGenerator, PlayerConfig(..), MobConfig(..)) where
 
-import RL.Game
+import RL.Game hiding (updateFlags)
 import RL.Generator
 import RL.Generator.Cells (Cell, cmid)
 import RL.Random
