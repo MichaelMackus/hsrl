@@ -64,7 +64,7 @@ generateMob diff = do
         p <- randomTile tileF lvl
         -- TODO give mob (identified) items
         m <- pickRarity (mobRarity diff) dngMobs
-        traverse updateFlags (moveMob <$> p <*> m)
+        traverse updateFlags ((\p m -> m { at = p }) <$> p <*> m)
     else
         return Nothing
 
@@ -84,7 +84,8 @@ dngMobs = [ mob {
                 hp = 2,
                 mhp = 2,
                 baseDmg = 1 `d` 4,
-                baseAC  = 6
+                baseAC  = 6,
+                speed = 20
             },
             mob {
                 mobName = "Goblin",
@@ -92,7 +93,8 @@ dngMobs = [ mob {
                 hp = 3,
                 mhp = 3,
                 baseDmg = 1 `d` 6,
-                baseAC  = 6
+                baseAC  = 6,
+                speed = 20
             },
             mob {
                 mobName = "Grid Bug",
@@ -101,7 +103,8 @@ dngMobs = [ mob {
                 mhp = 2,
                 baseDmg = 1 `d` 2,
                 thac0   = 22,
-                baseAC  = 9
+                baseAC  = 9,
+                speed = 20
             },
             mob {
                 mobName = "Rat",
@@ -110,16 +113,17 @@ dngMobs = [ mob {
                 mhp = 2,
                 baseDmg = 1 `d` 2,
                 thac0   = 22,
-                baseAC  = 9
+                baseAC  = 9,
+                speed = 20
             },
             mob {
-               -- TODO fast
                mobName = "Orc",
                symbol = 'o',
                hp = 4,
                mhp = 4,
                baseDmg = 1 `d` 6,
-               baseAC  = 6
+               baseAC  = 6,
+               speed = 40
             },
             mob {
                mobName = "Skeleton",
@@ -128,7 +132,8 @@ dngMobs = [ mob {
                mhp = 4,
                baseDmg = 1 `d` 6,
                baseAC  = 7,
-               flags = [Undead]
+               flags = [Undead],
+               speed = 20
             },
             mob {
                mobName = "Zombie",
@@ -138,7 +143,8 @@ dngMobs = [ mob {
                baseDmg = 1 `d` 8,
                thac0   = 18,
                baseAC  = 8,
-               flags = [Undead]
+               flags = [Undead],
+               speed = 20
             },
             mob {
                mobName = "Ogre",
@@ -147,7 +153,8 @@ dngMobs = [ mob {
                mhp = 19,
                baseDmg = 1 `d` 10,
                thac0   = 15,
-               baseAC  = 5
+               baseAC  = 5,
+               speed = 30
             },
             mob {
                mobName = "Black Dragon",
@@ -156,7 +163,8 @@ dngMobs = [ mob {
                mhp = 31,
                baseDmg = 2 `d` 10,
                thac0   = 13,
-               baseAC  = 2
+               baseAC  = 2,
+               speed = 30 -- TODO flying?
             }
           ]
 

@@ -29,7 +29,9 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    identified     :: [ItemType]
+    identified     :: [ItemType],
+    speed          :: Int,
+    turnsSinceMove :: Int   -- when turnsSinceMove * speed >= 40, the mob can move
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
 
@@ -52,7 +54,8 @@ canAttack :: Mob -> Bool
 canAttack = canMove
 
 canMove :: Mob -> Bool
-canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0
+canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0 && turnsSinceMove m * speed m >= movementCost
+    where movementCost = 40
 
 isSleeping :: Mob -> Bool
 isSleeping m = Sleeping `elem` flags m
@@ -111,7 +114,9 @@ mob = Mob {
     flags = [],
     inventory = [],
     identified = [],
-    equipment = MobEquipment Nothing Nothing Nothing Nothing
+    equipment = MobEquipment Nothing Nothing Nothing Nothing,
+    speed = 40,
+    turnsSinceMove = 0
     -- TODO DR & weaknesses
 }
 
@@ -137,12 +142,8 @@ insertMob ms m = m { mobId = maxId + 1 } : ms
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)
 
--- -- moves mob, resetting the destination if we have reached it
--- moveMob :: Point -> Mob -> Mob
--- moveMob p m = let dest = if destination m == Just p then Nothing else destination m
---               in  m { at = p, destination = dest }
 moveMob :: Point -> Mob -> Mob
-moveMob p m = m { at = p }
+moveMob p m = m { at = p, turnsSinceMove = 0 }
 
 isShielded :: Mob -> Bool
 isShielded m = isJust (shield (equipment m))
