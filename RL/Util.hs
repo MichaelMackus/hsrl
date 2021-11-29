@@ -82,3 +82,13 @@ groupBy' f l = reverse (go [] f l) where
   go acc comp (h:t) =
     let (hs, nohs) = L.partition (comp h) t
     in go ((h:hs):acc) comp nohs
+
+wrapString :: String -> Int -> [String]
+wrapString str len = reverse $ foldl' f [] (words str)
+    where f (line:xs) w = let line' = line ++ " " ++ w
+                          in  if length line' <= len then line':xs else w:line:xs
+          f [] w        = w:[]
+
+takeLast :: Int -> [a] -> [a]
+takeLast n xs = let len = length xs
+                in  drop (max 0 $ len - n) xs

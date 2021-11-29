@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module RL.UI.Sprite (
     gameSprites,
     SpriteEnv(..),
@@ -10,7 +12,7 @@ module RL.UI.Sprite (
 import RL.Game
 import RL.Player
 import RL.UI.Common
-import RL.Util (enumerate, equating, groupBy')
+import RL.Util
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
@@ -161,12 +163,19 @@ getMsgSprites env = let evs        = events env
                         recentMsgs = catMaybes (map (toMessage env) (getEventsAfterTurns 2 evs))
                         staleMsgs  = catMaybes (map (toMessage env) (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
-                    in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
+                    in  mkColoredMessages (0, 15) . takeLast 9 . wrapMessages . reverse . take 9 $ msgs
 
 mkMessages :: Point -> [String] -> [Sprite]
 mkMessages (offx, offy) = map toSprite . enumerate
     where
         toSprite (i, s) = MessageSprite (offx, i + offy) s (SpriteAttr white black)
+
+maxMessageWidth = 59
+
+wrapMessages :: [(String, Color)] -> [(String, Color)]
+wrapMessages = foldr f []
+    where f (str, clr) xs = if length str > maxMessageWidth then (map (, clr) $ wrapString str maxMessageWidth) ++ xs
+                            else (str, clr):xs
 
 mkColoredMessages :: Point -> [(String, Color)] -> [Sprite]
 mkColoredMessages (offx, offy) = map toSprite . enumerate
@@ -268,8 +277,8 @@ isWall otherwise = False
 
 
 toMessage :: Env -> Event -> Maybe String
-toMessage e (GameUpdate NewGame)   = Just $ "You delve underground, searching for your ancestors' sword."
-toMessage e (GameUpdate (Escaped)) = Just $ "There is no escape. You must avenge your ancestors!"
+toMessage e (GameUpdate NewGame)   = Just $ "You have spent your life in squalor and filth among the rogues. You have heard many rumors of great treasures beneath this dungeon. This is your chance to earn fame and fortune."
+toMessage e (GameUpdate (Escaped)) = Just $ "There is no escape. You must redeem your ancestors!"
 toMessage e (GameUpdate (Crit attacker target))
     | isPlayer attacker = Just $ "CRITICAL HIT!"
 toMessage e (GameUpdate (Damaged attacker target dmg))
