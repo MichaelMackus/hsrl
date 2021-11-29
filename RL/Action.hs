@@ -32,7 +32,8 @@ seenMessage :: GameAction m => Message -> m ()
 seenMessage m  = getEnv >>= \env ->
     let p      = player (level env)
         fresh  = recentGame p (events env) || recentlyMoved p (events env) || recentlyPicked p (events env)
-    in  when fresh $ insertMessage m
+        newMsg = not (occurredThisTurn (== EventMessage m) (events env))
+    in  when (fresh && newMsg) $ insertMessage m
 
 -- TODO miss chance if invis
 attack :: (GameAction m, MonadRandom m) => Mob -> Maybe Item -> Mob -> m ()

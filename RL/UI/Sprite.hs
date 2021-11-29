@@ -75,6 +75,7 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
         mobColor "Grid Bug" = purple
         mobColor "Orc" = yellow
         mobColor "Zombie" = dgrey
+        mobColor "Rat" = brown
         mobColor otherwise = white
 
         itemColor (Item "Blue"          (Potion _)) = blue

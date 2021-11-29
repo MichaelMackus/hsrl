@@ -29,7 +29,7 @@ data GameState = GameState { envState :: Env, inputState :: InputState, aiState 
 -- return value is True if player quit
 gameLoop :: UI -> Game Bool
 gameLoop disp = do
-        doPlayerAction startTurn
+        doPlayerAction automatePlayer
         renderMap
 
         -- handle user input
@@ -64,11 +64,13 @@ gameLoop disp = do
                     let (evs, aist') = runAI k (envState s) aist g
                     put $ s { aiState = map (\(i, s) -> if i == mid then (i, aist') else (i, s)) (aiState s), envState = broadcastEvents (envState s) evs }
         doPlayerAction :: PlayerAction a -> Game ()
-        doPlayerAction k = do
-            s <- get
-            g <- liftIO newStdGen
-            let (evs, is') = execPlayerAction k (envState s) (inputState s) g
-            put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
+        doPlayerAction k = doA k >> doA updateSeen
+            where doA :: PlayerAction a -> Game ()
+                  doA k = do
+                    s <- get
+                    g <- liftIO newStdGen
+                    let (evs, is') = execPlayerAction k (envState s) (inputState s) g
+                    put $ s { inputState = is', envState = broadcastEvents (envState s) evs }
         endTurn :: Game ()
         endTurn = modify $ \s -> s { envState = broadcastEvents (envState s) [GameUpdate EndOfTurn] }
         renderMap = do

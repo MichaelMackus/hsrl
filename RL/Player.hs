@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), startTurn, isTicking, readyForInput, handleInput, seenAtDepth) where
+module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, automatePlayer, isTicking, readyForInput, handleInput, seenAtDepth) where
 
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
@@ -48,12 +48,11 @@ execPlayerAction k env s g = snd $ runPlayerAction k env s g
 evalPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> a
 evalPlayerAction k env s g = fst $ runPlayerAction k env s g
 
--- start of player turn
-startTurn :: PlayerAction ()
-startTurn = do
+-- attempt to automate player turn if running
+automatePlayer :: PlayerAction ()
+automatePlayer = do
     s   <- get
     env <- ask
-    updateSeen
     if isJust (destination s) && canAutomate env then continueRunning
     else clearDestination
 
@@ -300,11 +299,11 @@ clearTarget = modify $ \s -> s { target = Nothing }
 -- -- update newly seen tiles at end of turn
 updateSeen :: PlayerAction ()
 updateSeen = do
-    lvl  <- asks level
+    lvl <- asks level
     -- update seen tiles
     updateSeenDepth (depth lvl) =<< seenTiles
     -- add messages for currently seen tile
-    t    <- getPlayerTile
+    t   <- getPlayerTile
     when (isDownStair t) $ seenMessage (StairsSeen Down)
     when (isUpStair t)   $ seenMessage (StairsSeen Up)
     let is = findItemsAt (at (player lvl)) lvl

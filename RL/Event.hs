@@ -2,6 +2,8 @@ module RL.Event where
 
 import RL.Map
 import RL.Util (takeWhiles, dropWhiles)
+
+import Data.Maybe (isNothing)
 import qualified Data.List as L
 
 data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
@@ -30,6 +32,10 @@ getEventsBeforeTurns n = dropWhiles ((< n) . length . filter isEndOfTurn)
 getEventsThisTurn :: [Event] -> [Event]
 getEventsThisTurn = L.takeWhile (not . isEndOfTurn)
 
+occurredThisTurn :: (Event -> Bool) -> [Event] -> Bool
+occurredThisTurn f es = let es' = L.takeWhile (not . f) es
+                       in  isNothing $ L.find isEndOfTurn es'
+
 turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)
 
@@ -44,17 +50,15 @@ isAttacked otherwise                    = False
 
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool
-recentlyMoved m es = let es' = L.takeWhile (not . f) es
-                         f (GameUpdate (Moved m' _)) = m == m'
+recentlyMoved m es = let f (GameUpdate (Moved m' _)) = m == m'
                          f otherwise                 = False
-                     in  (== 1) . length $ L.filter isEndOfTurn es'
+                     in  occurredThisTurn f es
 
 -- check if recently picked up on this tile
 recentlyPicked :: Mob -> [Event] -> Bool
-recentlyPicked m es = let es' = L.takeWhile (not . f) es
-                          f (GameUpdate (ItemPickedUp m' _)) = m == m'
+recentlyPicked m es = let f (GameUpdate (ItemPickedUp m' _)) = m == m'
                           f otherwise                        = False
-                      in  (== 1) . length $ L.filter isEndOfTurn es'
+                      in  occurredThisTurn f es
 
 -- check if this is a new game since player last moved
 recentGame :: Mob -> [Event] -> Bool
