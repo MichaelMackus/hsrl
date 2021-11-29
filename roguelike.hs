@@ -161,7 +161,8 @@ mkDefaultConf = do
         playerConfig = PlayerConfig {
             playerHp = 12,
             playerFov = 5,
-            playerItems = dagger:(scroll "asdf" Mapping):(scroll "zsdf" Telepathy):(potion "asdf" Invisibility):(potion "zsdf" Confusion):(replicate 3 (Item "Magic Draught" Draught))
+            -- playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught)) -- TODO make fountains give magic draught
+            playerItems = replicate 3 dagger
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,
