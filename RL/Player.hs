@@ -101,8 +101,8 @@ handleInput k km = do
             (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
             (KeyChar 'r')     -> changeMenu Inventory
-            (KeyChar '>')     -> takeStairs Down
-            (KeyChar '<')     -> takeStairs Up
+            (KeyChar '>')     -> goStairs Down
+            (KeyChar '<')     -> goStairs Up
             (KeyChar 'i')     -> changeMenu Inventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
@@ -229,15 +229,24 @@ pickup lvl =
     let is = findItemsAt (at (player lvl)) lvl
     in  ItemPickedUp (player lvl) <$> listToMaybe is
 
+-- take stairs or goto up/down stair
+goStairs :: VerticalDirection -> PlayerAction ()
+goStairs v = do
+    lvl <- asks level
+    t   <- getPlayerTile
+    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust (getStairLvl t) then takeStairs v
+    else do
+        ts <- getSeen
+        let to = fst <$> findTile (\(_, t) -> v == Up && isUpStair t || v == Down && isDownStair t) lvl
+        when (isJust to && fromJust to `elem` ts) $ startRunning (fromJust to)
+
 takeStairs :: VerticalDirection -> PlayerAction ()
 takeStairs v = do
-    lvl <- asks level
-    let p    = player lvl
-        t    = fromMaybe (error "Unable to find stairs tile") $ findTileAt (at p) lvl
-        lvl' = getStairLvl t
-    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust lvl' then
-        when (isJust lvl') $ gameEvent $ StairsTaken v (fromJust lvl')
-    else if isNothing lvl' then
+    t <- getPlayerTile
+    let lvl = getStairLvl t
+    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust lvl then
+        when (isJust lvl) $ gameEvent $ StairsTaken v (fromJust lvl)
+    else if isNothing lvl then
         gameEvent Escaped
     else
         return ()
