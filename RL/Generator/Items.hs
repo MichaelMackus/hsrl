@@ -30,7 +30,7 @@ itemsGenerator :: Generator ItemConfig DLevel [(Point, Item)]
 itemsGenerator = do
     conf <- ask
     lvl  <- getGData
-    items' <- maybe (items lvl) (:items lvl) <$> generateFloorItem
+    items' <- (++ (items lvl)) <$> generateFloorItems
     setGData (lvl { items = items' })
     return items'
 
@@ -40,29 +40,30 @@ generateChestItems :: Difficulty -> Generator ItemConfig [Item] [Item]
 generateChestItems d = do
     conf <- ask
     is   <- getGData
-    i    <- generateItem (typeRarity d) (itemRarity d)
-    let is' = maybeToList i ++ is
+    i    <- generateItems (typeRarity d) (itemRarity d)
+    let is' = i ++ is
     setGData is'
     return is'
 
 -- generate an item on the floor
-generateFloorItem :: Generator ItemConfig DLevel (Maybe (Point, Item))
-generateFloorItem = do
+generateFloorItems :: Generator ItemConfig DLevel [(Point, Item)]
+generateFloorItems = do
     lvl <- getGData
     let tileF p t = not (isStair t) && isPassable t && isNothing (L.lookup p (features lvl))
-    i   <- generateItem (typeRarity (depth lvl)) (itemRarity (depth lvl)) -- TODO minItems
+    is  <- generateItems (typeRarity (depth lvl)) (itemRarity (depth lvl)) -- TODO minItems
     p   <- randomTile tileF lvl
-    return ((,) <$> p <*> i)
+    return $ maybe [] (\p -> map (p, ) is) p
 
 -- generate an item using specified rarity functions
-generateItem :: (ItemType -> Rational) -> (Item -> Rational) -> Generator ItemConfig a (Maybe Item)
-generateItem f g = do
+generateItems :: (ItemType -> Rational) -> (Item -> Rational) -> Generator ItemConfig a [Item]
+generateItems f g = do
     conf <- ask
     r    <- randomChance (itemGenChance conf)
     if r then do
-        fmap (updateAppearance (itemAppearances conf)) <$> randomItem f g
+        i <- fmap (updateAppearance (itemAppearances conf)) <$> randomItem f g
+        return (concat . map (\i -> if i == arrow then replicate 10 arrow else [i]) $ maybeToList i)
     else
-        return Nothing
+        return []
 
 
 randomItemAppearances :: MonadRandom m => m (Map ItemType String)
@@ -134,7 +135,7 @@ itemRarity d otherwise = (0 % 10)
 
 potionRarities :: PotionType -> Rational
 potionRarities Healing   = (1 % 8)
-potionRarities Acid      = (1 % 12)
+potionRarities Acid      = (0 % 12) -- temporarily disable in order to encourage random use of potions
 potionRarities Darkness  = (1 % 12)
 potionRarities Confusion = (1 % 12)
 potionRarities _         = (1 % 10)
