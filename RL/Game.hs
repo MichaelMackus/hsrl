@@ -1,4 +1,4 @@
-module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Map, module RL.Event) where
+module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, retreatedFrom, module RL.Map, module RL.Event) where
 
 import RL.Event
 import RL.Map
@@ -54,6 +54,7 @@ instance Client Env where
     broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
     broadcast env e@(GameUpdate (ItemDropped  m i)      )  = broadcast' (env { level = (level env) { items = (at m, i):items (level env) } }) e
     broadcast env e@(GameUpdate (ItemSpawned p i)       )  = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
+    broadcast env e@(GameUpdate EndOfTurn               )  = broadcast' (updateMovePoints env) e
     broadcast env e@(GameUpdate (ThrownProjectile m i p))  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
                                                              in  broadcast' (env { level = (level env) { items = is } }) e
     broadcast env e@(GameUpdate (FiredProjectile m _ i p)) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
@@ -73,7 +74,6 @@ broadcast' env e =
 
 instance Client Mob where
     broadcast m (GameUpdate (Moved m' to)     )         | m == m' && canMove m = moveMob to m
-    broadcast m (GameUpdate EndOfTurn         )                   = m { movementPoints = min (max movementCost (speed m)) (movementPoints m + speed m) } -- TODO this isn't going to work well for speeds > 40
     broadcast m (GameUpdate (Damaged _ m' dmg))         | m == m' = m { hp = max 0 (hp m - dmg) }
     broadcast m (GameUpdate (Waken m')        )         | m == m' = let fs = filter (/= Sleeping) (flags m)
                                                                     in  m { flags = fs }
@@ -174,3 +174,15 @@ updateFlags env = let isStale m Invisible   = turnsSinceMobF m Invisible   (even
                       evF        m          = map (removeFlag m) (L.filter (isStale m) (flags m))
                       evs                   = concat $ evF (player (level env)):(map evF (mobs (level env)))
                   in  broadcastEvents env evs
+
+
+updateMovePoints :: Env -> Env
+updateMovePoints env = let lvl = level env
+                       in  env { level = lvl { player = incMovePoints lvl (player lvl), mobs = map (incMovePoints lvl) (mobs lvl) } }
+
+-- increment mob movement points
+incMovePoints :: DLevel -> Mob -> Mob
+incMovePoints lvl m = 
+    let maxM = if speed m < movementCost then movementCost + speed m else speed m
+    in  if inMelee lvl m then m { movementPoints = speed m } -- don't increment points unless out of melee (can't move until next round after attack)
+        else m { movementPoints = min maxM (movementPoints m + speed m) } -- TODO this isn't going to work well for speeds > 40
