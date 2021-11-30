@@ -25,6 +25,9 @@ paths cs = do
     else do
         ps' <- nub . (ps ++) . concat <$> forM reachable (`generatePath` unreachable)
         setGData ps'
+        -- TODO possible endless loop here!
+        -- TODO probably need a new monad that will return error if
+        -- TODO issue during generation (then we can retry with new seed)
         resetCounter -- keep generating until all paths are reachable
         return ps'
 

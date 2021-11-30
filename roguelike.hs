@@ -150,12 +150,15 @@ mkDefaultConf = do
             itemAppearances = itemApps
         },
         -- TODO start player with ~3 throwing daggers, then we can nerf dagger range?
+        -- TODO add chance of daggers to break
+        -- TODO don't end turn after cancelling menu
         -- TODO add dip command, which wastes/dilutes potion if not acid/poison?
         -- TODO allow throwing of potions at monsters to observe effects safely
         -- TODO add quiver/fire command
         -- TODO torches?
         -- TODO bundle of arrows/other items
         -- TODO gold & level up via gold
+        -- TODO monster AI on other levels (can simplify to only those near **stairs**)
         -- TODO monster stashes/hordes
         -- TODO monster drops/items
         -- TODO ranged monsters

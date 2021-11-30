@@ -2,6 +2,10 @@
 
 module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, automatePlayer, isTicking, readyForInput, handleInput, seenAtDepth) where
 
+-- TODO when automating, there's a delay waiting for movement points
+-- TODO should have an impementation of retreat (monsters may attack the fleeing player at a bonus... note in OSE this depends on initiative roll, so 50/50 chance monster doesn't get AoO)
+-- TODO monster morale should have an effect as well, this way player gets AoO too
+
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
 import RL.Event
