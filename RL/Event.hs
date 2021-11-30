@@ -6,10 +6,10 @@ import RL.Util (takeWhiles, dropWhiles)
 import Data.Maybe (isNothing, isJust)
 import qualified Data.List as L
 
-data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
+data Event = EventMessage Message | GameUpdate GameEvent deriving (Eq, Show)
 
 -- Informational messages displayed to user
-data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item deriving Eq
+data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | AttackOfOpportunity Mob Mob deriving (Eq, Show)
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu | DropMenu deriving (Eq, Show)
 
 -- Represents events that change the game state
@@ -33,9 +33,11 @@ getEventsBeforeTurns n = dropWhiles ((< n) . length . filter isEndOfTurn)
 getEventsThisTurn :: [Event] -> [Event]
 getEventsThisTurn = L.takeWhile (not . isEndOfTurn)
 
+filterEventsThisTurn :: (Event -> Bool) -> [Event] -> [Event]
+filterEventsThisTurn f = L.filter f . getEventsThisTurn
+
 occurredThisTurn :: (Event -> Bool) -> [Event] -> Bool
-occurredThisTurn f es = let es' = L.takeWhile (not . f) es
-                        in  isJust (L.find f es) && isNothing (L.find isEndOfTurn es')
+occurredThisTurn f es = not . null $ filterEventsThisTurn f es
 
 turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)
@@ -48,6 +50,10 @@ isAttacked :: Event -> Bool
 isAttacked (GameUpdate (Damaged _ _ _)) = True
 isAttacked (GameUpdate (Missed  _ _  )) = True
 isAttacked otherwise                    = False
+
+isMoved :: Event -> Bool
+isMoved (GameUpdate (Moved _ _)) = True
+isMoved otherwise                = False
 
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool

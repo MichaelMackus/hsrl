@@ -186,3 +186,14 @@ incMovePoints lvl m =
     let maxM = if speed m < movementCost then movementCost + speed m else speed m
     in  if inMelee lvl m then m { movementPoints = speed m } -- don't increment points unless out of melee (can't move until next round after attack)
         else m { movementPoints = min maxM (movementPoints m + speed m) } -- TODO this isn't going to work well for speeds > 40
+
+
+-- get list of enmies that retreated from the melee
+retreatedFrom :: Env -> Mob -> [Mob]
+retreatedFrom env m = let lvl                         = level env
+                          enemies                     = if isPlayer m then mobs lvl else [player lvl]
+                          f (GameUpdate (Moved m' p)) = m' `elem` enemies && isVisible m' && touching (at m) (at m') && not (touching (at m) p)
+                          f otherwise                 = False
+                          g (GameUpdate (Moved m' p)) = findMob (mobId m') enemies
+                          g otherwise                 = Nothing
+                      in  catMaybes . map g . filterEventsThisTurn f $ events env

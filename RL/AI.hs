@@ -53,6 +53,8 @@ automate = getMob >>= \m -> do
     when seen  $ updateDestination (at (player lvl))
     curPath <- curMobPath
 
+    attackRetreating m
+
     if (seen || heard) && isJust path then
        moveCloser (player lvl) (fromJust path)
     else if not (null curPath) then

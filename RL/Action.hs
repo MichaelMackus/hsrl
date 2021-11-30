@@ -27,6 +27,13 @@ gameEvent e = insertEvent (GameUpdate e)
 gameEvents :: GameAction m => [GameEvent] -> m ()
 gameEvents = insertEvents . map GameUpdate
 
+-- TODO movement action based on mob speed
+-- walkAt :: GameAction m => Mob -> Point -> m ()
+
+-- TODO 
+-- canMove :: GameAction m => Mob -> m Bool
+-- canMove 
+
 -- add seen message if recently seen
 seenMessage :: GameAction m => Message -> m ()
 seenMessage m  = getEnv >>= \env ->
@@ -34,6 +41,14 @@ seenMessage m  = getEnv >>= \env ->
         fresh  = recentGame (events env) || recentlyMoved p (events env) || recentlyPicked p (events env)
         newMsg = not (occurredThisTurn (== EventMessage m) (events env))
     in  when (fresh && newMsg) $ insertMessage m
+
+-- activated AoO for mobs that are retreating
+attackRetreating :: (GameAction m, MonadRandom m) => Mob -> m ()
+attackRetreating m = do
+    env <- getEnv
+    forM_ (retreatedFrom env m) $ \target -> do
+        insertMessage $ AttackOfOpportunity m target
+        attack m (wielding (equipment m)) target
 
 attack :: (GameAction m, MonadRandom m) => Mob -> Maybe Item -> Mob -> m ()
 attack attacker weap target = do
@@ -89,9 +104,8 @@ fire lvl attacker proj m = when (isProjectile proj) $ do
         attack attacker (Just proj) m
 
 equip :: GameAction m => Mob -> Item -> m ()
--- TODO why is this removing armor?
 equip m i = do
-    let wield  = L.filter isTwoHanded (catMaybes [wielding (equipment m), launcher (equipment m)])
+    let wield  = L.filter isTwoHanded (catMaybes [wielding (equipment m)])
         shld   = fromJust (shield (equipment m))
     when (isTwoHanded i && isShielded m) $ gameEvent (EquipmentRemoved m shld)
     when (isShield    i && handsFull  m) $ gameEvents (map (EquipmentRemoved m) wield)
