@@ -119,7 +119,7 @@ main = do
 
 defaultGameState :: Env -> GameState
 defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) is []
-    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Arrow") . itemDescription) (inventory (player (level e)))) }
+    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Dagger") . itemDescription) (inventory (player (level e)))) }
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
