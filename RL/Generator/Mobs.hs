@@ -171,20 +171,23 @@ dngMobs = [ mob {
 mobRarity :: Difficulty -> Mob -> Rational
 mobRarity d m
     | d <= 3 = case mobName m of
-                    "Kobold"   -> (1 % 10)
+                    "Kobold"   -> (1 % 7)
                     "Grid Bug" -> (1 % 3)
                     "Rat"      -> (1 % 5)
                     otherwise  -> (0 % 10)
     | d <= 5 = case mobName m of
                     "Kobold"   -> (1 % 5)
-                    "Goblin"   -> (1 % 10)
-                    otherwise  -> mobRarity 1 m
-    | d < 10 = case mobName m of
+                    "Goblin"   -> (1 % 7)
+                    "Grid Bug" -> (1 % 3)
+                    "Rat"      -> (1 % 5)
+                    otherwise  -> (0 % 10)
+    | d <= 10 = case mobName m of
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 10)
+                    "Ogre"     -> (1 % 15)
                     "Skeleton" -> (1 % 15)
                     otherwise  -> mobRarity 5 m
-    | d >= 10 = case mobName m of
+    | d > 10 = case mobName m of
                     "Orc"          -> (1 % 5)
                     "Skeleton"     -> (1 % 7)
                     "Zombie"       -> (1 % 10)
