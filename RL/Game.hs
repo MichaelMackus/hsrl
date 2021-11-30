@@ -73,7 +73,7 @@ broadcast' env e =
 
 instance Client Mob where
     broadcast m (GameUpdate (Moved m' to)     )         | m == m' && canMove m = moveMob to m
-    broadcast m (GameUpdate EndOfTurn         )                   = m { turnsSinceMove = turnsSinceMove m + 1 } -- TODO this isn't going to work well for higher speeds
+    broadcast m (GameUpdate EndOfTurn         )                   = m { movementPoints = min (max movementCost (speed m)) (movementPoints m + speed m) } -- TODO this isn't going to work well for speeds > 40
     broadcast m (GameUpdate (Damaged _ m' dmg))         | m == m' = m { hp = max 0 (hp m - dmg) }
     broadcast m (GameUpdate (Waken m')        )         | m == m' = let fs = filter (/= Sleeping) (flags m)
                                                                     in  m { flags = fs }

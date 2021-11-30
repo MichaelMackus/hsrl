@@ -119,7 +119,7 @@ main = do
 
 defaultGameState :: Env -> GameState
 defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) is []
-    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Dagger") . itemDescription) (inventory (player (level e)))) }
+    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Arrow") . itemDescription) (inventory (player (level e)))) }
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
@@ -163,7 +163,7 @@ mkDefaultConf = do
             playerHp = 12,
             playerFov = 5,
             -- playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught)) -- TODO make fountains give magic draught
-            playerItems = replicate 3 dagger
+            playerItems = dagger:(replicate 20 arrow)
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,

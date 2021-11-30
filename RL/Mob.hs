@@ -31,7 +31,7 @@ data Mob = Mob {
     equipment      :: MobEquipment,
     identified     :: [ItemType],
     speed          :: Int,
-    turnsSinceMove :: Int   -- when turnsSinceMove * speed >= 40, the mob can move
+    movementPoints :: Int   -- when movementPoints >= speed, the mob can move
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
 
@@ -54,8 +54,14 @@ canAttack :: Mob -> Bool
 canAttack = canMove
 
 canMove :: Mob -> Bool
-canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0 && turnsSinceMove m * speed m >= movementCost
-    where movementCost = 40
+canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0 && movementPoints m >= movementCost
+
+moveMob :: Point -> Mob -> Mob
+moveMob p m = m { at = p, movementPoints = max 0 (movementPoints m - movementCost) }
+
+-- cost of mob movement per game turn
+movementCost :: Int
+movementCost = 40
 
 isSleeping :: Mob -> Bool
 isSleeping m = Sleeping `elem` flags m
@@ -90,7 +96,8 @@ mkPlayer hp at fov = mob {
     mhp = hp,
     at = at,
     fov = fov,
-    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) Nothing Nothing
+    movementPoints = 40,
+    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing
 }
 
 isPlayer :: Mob -> Bool
@@ -116,7 +123,7 @@ mob = Mob {
     identified = [],
     equipment = MobEquipment Nothing Nothing Nothing Nothing,
     speed = 40,
-    turnsSinceMove = 0
+    movementPoints = 0
     -- TODO DR & weaknesses
 }
 
@@ -141,9 +148,6 @@ insertMob ms m = m { mobId = maxId + 1 } : ms
 
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)
-
-moveMob :: Point -> Mob -> Mob
-moveMob p m = m { at = p, turnsSinceMove = 0 }
 
 isShielded :: Mob -> Bool
 isShielded m = isJust (shield (equipment m))
