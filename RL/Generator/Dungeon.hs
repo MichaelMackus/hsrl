@@ -42,26 +42,31 @@ levelGenerator = do
             d    = maybe 1 ((+1) . depth) prev
             lvl  = toLevel conf d cs ps player
 
-        -- generate features
-        fs   <- runGenerator' featuresGenerator (featureConfig conf) (mkGenState (lvl, cs))
-        let lvl' = lvl { features = L.filter (\(p,f) -> p /= at player) fs }
-        g    <- getSplit
-
         -- generate up/down stairs
-        lastP <- pick (L.filter (\p -> isNothing (L.lookup p (features lvl')) && p /= at player) (map cmid cs))
-        let lvl''   = iterMap f lvl'
+        lastP <- pick (L.filter (\p -> isNothing (L.lookup p (features lvl)) && p /= at player) (map cmid cs))
+        g     <- getSplit
+        let lvl'    = iterMap f lvl
             f p t   = if p == at player && not (isStair t) then (StairUp prev)
                       else if Just p == lastP && d + 1 <= maxDepth conf then (StairDown nextLvl)
                            else t
-            nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl'' }) (initState g))
+            nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl' }) (initState g))
+
+        -- generate features
+        fs   <- runGenerator' featuresGenerator (featureConfig conf) (mkGenState (lvl, cs))
+        let lvl'' = lvl' { features = L.filter (\(p,f) -> p /= at player && maybe True (not . isStair) (findTileAt p lvl')) fs }
+
+        -- TODO if we're on last level, generate ornate sword (win condition)
+        -- when (d + 1 >= maxDepth conf) $ do
 
         -- ensure we can reach the end
         if isJust lastP && isJust (findPath (dfinder lvl'' (fromJust lastP)) distance (fromJust lastP) (at player)) then do
             items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
             mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl'')
+            markGDone
             return (lvl'' { mobs = mobs, items = items })
         else
-            levelGenerator
+            -- force up/down stair in case we reach iteration limit
+            return lvl''
     where
         runGenerator' :: GenConfig c => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
         runGenerator' gen conf f = do
