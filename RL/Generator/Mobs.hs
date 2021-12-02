@@ -1,5 +1,7 @@
 module RL.Generator.Mobs (playerGenerator, mobGenerator, PlayerConfig(..), MobConfig(..)) where
 
+-- TODO make deeper dungeon much more difficult
+
 import RL.Game hiding (updateFlags)
 import RL.Generator
 import RL.Generator.Cells (Cell, cmid)
@@ -164,7 +166,7 @@ dngMobs = [ mob {
                baseDmg = 2 `d` 10,
                thac0   = 13,
                baseAC  = 2,
-               speed = 30 -- TODO flying?
+               speed = 30  -- TODO flying
             }
           ]
 
@@ -181,16 +183,18 @@ mobRarity d m
                     "Grid Bug" -> (1 % 3)
                     "Rat"      -> (1 % 5)
                     otherwise  -> (0 % 10)
-    | d <= 10 = case mobName m of
+    | d <  15 = case mobName m of
+                    "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 10)
+                    "Skeleton" -> (1 % 10)
+                    "Zombie"   -> (1 % 10)
                     "Ogre"     -> (1 % 15)
-                    "Skeleton" -> (1 % 15)
-                    otherwise  -> mobRarity 5 m
-    | d > 10 = case mobName m of
+                    otherwise  -> (0 % 10)
+    | d >= 15 = case mobName m of
                     "Orc"          -> (1 % 5)
-                    "Skeleton"     -> (1 % 7)
-                    "Zombie"       -> (1 % 10)
-                    "Ogre"         -> (1 % 15)
+                    "Skeleton"     -> (1 % 5)
+                    "Zombie"       -> (1 % 7)
+                    "Ogre"         -> (1 % 10)
                     "Black Dragon" -> (1 % 20)
                     otherwise      -> mobRarity 9 m

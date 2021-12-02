@@ -15,9 +15,12 @@ import Data.Maybe (maybeToList)
 
 data FeatureConfig = FeatureConfig {
     maxFeatures :: Int,
-    cellFeatureChance :: Rational, -- chance for a cell feature (Chest, Altar, or Fountain)
     fItemAppearances :: Map ItemType String
 }
+
+cellFeatureChance :: Int -> Rational
+cellFeatureChance d | d <= 3 = 1 % 3
+cellFeatureChance otherwise  = 1 % 6
 
 instance GenConfig FeatureConfig where
     generating conf = (< maxFeatures conf) <$> getCounter
@@ -27,7 +30,7 @@ featuresGenerator :: Generator FeatureConfig (DLevel, [Cell]) [(Point, Feature)]
 featuresGenerator = getGData >>= \(lvl, cs) ->
     forMConcat cs $ \c -> do
         conf <- ask
-        r    <- randomChance (cellFeatureChance conf)
+        r    <- randomChance (cellFeatureChance (depth lvl))
         if r then do
             f <- maybeToList <$> pickFeature
             return $ zip (repeat (cmid c)) f
@@ -54,7 +57,7 @@ pickFeature = do
 featureRarity :: Difficulty -> Feature -> Rational
 featureRarity d (Chest _) = 1 % 2
 featureRarity d (Fountain _) = 1 % 3
-featureRarity d (Altar) = 1 % 5
+featureRarity d (Altar) = 0 % 5 -- TODO fix altars
 
 forMConcat :: Monad m => [a] -> (a -> m [b]) -> m [b]
 forMConcat l = fmap concat . forM l
