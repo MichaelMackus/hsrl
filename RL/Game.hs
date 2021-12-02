@@ -87,12 +87,14 @@ instance Client Mob where
     broadcast m (GameUpdate (Drank    m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
     broadcast m (GameUpdate (Healed m' amt)           ) | m == m' = m { hp = min (mhp m) (hp m + amt) }
     broadcast m (GameUpdate (GainedLife m' amt)       ) | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
+    broadcast m (GameUpdate (GainedLevel m' lvl)      ) | m == m' = m { mlvl = lvl }
     broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
     broadcast m (GameUpdate (GainedMobFlag m' f)      ) | m == m' = m { flags = L.nub (f:flags m) }
     broadcast m (GameUpdate (RemovedMobFlag m' f)     ) | m == m' = m { flags = L.delete f (flags m) }
     broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (FiredProjectile m' _ i _)) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (BandageApplied  m')      ) | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
+    broadcast m (GameUpdate (Died m'))                  | isPlayer m && not (isPlayer m') = m { xp = xp m + xpAward m' }
 
     broadcast m otherwise = m
 
@@ -180,6 +182,11 @@ updateMovePoints :: Env -> Env
 updateMovePoints env = let lvl = level env
                        in  env { level = lvl { player = incMovePoints lvl (player lvl), mobs = map (incMovePoints lvl) (mobs lvl) } }
 
+-- cost of mob movement per game turn
+-- TODO don't hardcode
+-- movementCost :: DLevel -> Int
+-- movementCost = speed . player
+
 -- increment mob movement points
 incMovePoints :: DLevel -> Mob -> Mob
 incMovePoints lvl m = 
@@ -196,4 +203,4 @@ retreatedFrom env m = let lvl                         = level env
                           f otherwise                 = False
                           g (GameUpdate (Moved m' p)) = findMob (mobId m') enemies
                           g otherwise                 = Nothing
-                      in  catMaybes . map g . filterEventsThisTurn f $ events env
+                      in  if occurredThisTurn tookStairs (events env) then [] else catMaybes . map g . filterEventsThisTurn f $ events env

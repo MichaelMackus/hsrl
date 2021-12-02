@@ -31,7 +31,9 @@ data Mob = Mob {
     equipment      :: MobEquipment,
     identified     :: [ItemType],
     speed          :: Int,
-    movementPoints :: Int   -- when movementPoints >= speed, the mob can move
+    movementPoints :: Int,  -- when movementPoints >= speed, the mob can move
+    xp             :: Int,  -- TODO move to player type
+    mlvl           :: Int   -- TODO move to player type
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
 
@@ -50,18 +52,28 @@ instance Show Mob where
 
 type Player = Mob
 
+xpAward :: Mob -> Int
+xpAward m = round (hd m * 100)
+    -- fracitonal hit die
+    where hd m     = fromIntegral (mhp m) / avgperhd
+          avgperhd = 4.0 :: Float
+
+needsLevelUp :: Mob -> Bool
+needsLevelUp  m = xp m >= nxp
+    where nxp   = f (mlvl m)
+          f 1   = 2000
+          f lvl = let prevlvl = f (lvl - 1) in min (prevlvl * 2) (prevlvl + 120000)
+
 canAttack :: Mob -> Bool
 canAttack = canMove
+
+movementCost = 40
 
 canMove :: Mob -> Bool
 canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0 && movementPoints m >= movementCost
 
 moveMob :: Point -> Mob -> Mob
 moveMob p m = m { at = p, movementPoints = max 0 (movementPoints m - movementCost) }
-
--- cost of mob movement per game turn
-movementCost :: Int
-movementCost = 40
 
 isSleeping :: Mob -> Bool
 isSleeping m = Sleeping `elem` flags m
@@ -123,7 +135,9 @@ mob = Mob {
     identified = [],
     equipment = MobEquipment Nothing Nothing Nothing Nothing,
     speed = 40,
-    movementPoints = 0
+    movementPoints = 0,
+    xp = 0,
+    mlvl = 1
     -- TODO DR & weaknesses
 }
 

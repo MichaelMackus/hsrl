@@ -17,6 +17,14 @@ import Data.Tuple (swap)
 import qualified Data.List as L
 import qualified Data.Set as Set
 
+-- TODO enable player retreat from monster - monsters (of equal/greater speed
+-- to player) should have roughly a 50/50 chance of pursuing a fleeing PC based
+-- on reaction roll... we can code this by allowing the PC a 50/50 chance to
+-- escape the melee
+--
+-- See this thread for more info:
+-- https://www.dragonsfoot.org/forums/viewtopic.php?f=15&t=85025&sid=77d787b84d53bc9082ff6994d39166bd&start=30
+
 -- TODO there should be an expiration for seen/heard (maybe based on
 -- TODO monster intelligence) - then, we only choose optimal path with
 -- TODO length less than expiration (so rats/etc. can't surround players
@@ -53,15 +61,21 @@ automate = getMob >>= \m -> do
     when seen  $ updateDestination (at (player lvl))
     curPath <- curMobPath
 
-    attackRetreating m
-
-    if (seen || heard) && isJust path then
-       moveCloser (player lvl) (fromJust path)
-    else if not (null curPath) then
-       moveCloser (player lvl) curPath
-    else if not (isSleeping m) then
-       wander
-    else return ()
+    atk <- attackRetreating m
+    if atk then do
+        r <- roll $ 1 `d` 2
+        if r == 1 then
+            moveCloser (player lvl) (fromJust path)
+        else
+            seenMessage $ PlayerRetreated m
+    else
+        if (seen || heard) && isJust path then
+           moveCloser (player lvl) (fromJust path)
+        else if not (null curPath) then
+           moveCloser (player lvl) curPath
+        else if not (isSleeping m) then
+           wander
+        else return ()
 
 --- wander randomly
 wander :: AIAction ()

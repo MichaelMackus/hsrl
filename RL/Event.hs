@@ -9,7 +9,7 @@ import qualified Data.List as L
 data Event = EventMessage Message | GameUpdate GameEvent deriving (Eq, Show)
 
 -- Informational messages displayed to user
-data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | AttackOfOpportunity Mob Mob deriving (Eq, Show)
+data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | AttackOfOpportunity Mob Mob | PlayerRetreated Mob deriving (Eq, Show)
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu | DropMenu deriving (Eq, Show)
 
 -- Represents events that change the game state
@@ -22,6 +22,7 @@ data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob 
     | Waken Mob | Slept Mob | MobSpawned Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
     | ItemSpawned Point Item | ItemPickedUp Mob Item | ItemDropped Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
+    | GainedLevel Mob Int
     | EndOfTurn | NewGame | QuitGame | Escaped | Saved deriving (Eq, Show)
 
 getEventsAfterTurns :: Int -> [Event] -> [Event]
@@ -55,6 +56,10 @@ isMoved :: Event -> Bool
 isMoved (GameUpdate (Moved _ _)) = True
 isMoved otherwise                = False
 
+tookStairs :: Event -> Bool
+tookStairs (GameUpdate (StairsTaken _ _)) = True
+tookStairs otherwise                      = False
+
 -- check if mob recently moved to this tile
 recentlyMoved :: Mob -> [Event] -> Bool
 recentlyMoved m es = let f (GameUpdate (Moved m' _)) = m == m'
@@ -72,3 +77,9 @@ recentGame :: [Event] -> Bool
 recentGame es = let f (GameUpdate NewGame) = True
                     f otherwise            = False
                 in  occurredThisTurn f es
+
+-- check if mob died this turn
+mobDied :: [Event] -> Mob -> Bool
+mobDied es m = let f (GameUpdate (Died m')) = m == m'
+                   f otherwise            = False
+               in  occurredThisTurn f es

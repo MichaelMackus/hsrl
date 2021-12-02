@@ -158,7 +158,8 @@ getStatusSprites lvl =
                   else if hpPercent >= 0.4 then yellow
                   else red
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
-         mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
+         mkMessage (60, 16) ("XP: " ++ show (xp (player lvl))),
+         mkMessage (60, 17) ("Depth: " ++ show (depth lvl)) ]
 
 getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env
@@ -310,6 +311,7 @@ toMessage e (EventMessage (MenuChange DropMenu)) = Just $ "Pick an item to drop 
 toMessage e (EventMessage (Readied i)) = Just $ "You have readied the " ++ show i
 toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
 toMessage e (EventMessage (AttackOfOpportunity m t))    | isPlayer t = Just $ "The " ++ show m ++ " notices an opening and attacks!"
+-- toMessage e (EventMessage (PlayerRetreated m))                       = Just $ "You have successfully broke off the melee with the " ++ show m
 toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (ItemDropped  m item))          | isPlayer m = Just $ "You have dropped the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Equipped m item))              | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
@@ -317,6 +319,7 @@ toMessage e (GameUpdate (EquipmentRemoved m item))      | isPlayer m = Just $ "Y
 toMessage e (GameUpdate (Drank           m p))          | isPlayer m = Just $ "You drank the " ++ show p ++ "."
 toMessage e (GameUpdate (Healed          m n))          | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
 toMessage e (GameUpdate (GainedLife      m n))          | isPlayer m = Just $ "Praise the sun! You feel youthful."
+toMessage e (GameUpdate (GainedLevel     m lvl))        | isPlayer m = Just $ "Congratulations! You are now level " ++ show lvl
 toMessage e (GameUpdate (GainedStrength  m n))          | isPlayer m = Just $ "You feel empowered!"
 toMessage e (GameUpdate (DrankAcid       m  ))          | isPlayer m = Just $ "It BURNS!"
 toMessage e (GameUpdate (GainedMobFlag m Invisible))    | isPlayer m = Just $ "You can no longer see yourself!"

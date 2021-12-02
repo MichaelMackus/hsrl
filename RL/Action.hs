@@ -6,7 +6,7 @@ import RL.Random
 
 import Control.Monad.Reader
 import Control.Monad.Writer
-import Data.Maybe (fromMaybe, fromJust, maybeToList, catMaybes, isJust)
+import Data.Maybe (fromMaybe, fromJust, maybeToList, catMaybes, isJust, listToMaybe)
 import qualified Data.List as L
 
 class Monad m => GameAction m where
@@ -43,12 +43,15 @@ seenMessage m  = getEnv >>= \env ->
     in  when (fresh && newMsg) $ insertMessage m
 
 -- activated AoO for mobs that are retreating
-attackRetreating :: (GameAction m, MonadRandom m) => Mob -> m ()
+attackRetreating :: (GameAction m, MonadRandom m) => Mob -> m Bool
 attackRetreating m = do
     env <- getEnv
-    forM_ (retreatedFrom env m) $ \target -> do
-        insertMessage $ AttackOfOpportunity m target
-        attack m (wielding (equipment m)) target
+    let target = listToMaybe (retreatedFrom env m)
+    -- TODO 50/50 chance to miss if < speed than target, representing initiative
+    when (isJust target) $ do
+        insertMessage $ AttackOfOpportunity m (fromJust target)
+        attack m (wielding (equipment m)) (fromJust target)
+    return $ isJust target
 
 attack :: (GameAction m, MonadRandom m) => Mob -> Maybe Item -> Mob -> m ()
 attack attacker weap target = do
@@ -64,9 +67,8 @@ attack attacker weap target = do
             -- the ornate sword automatically kills enemies on crit
             critDmg = if (itemDescription <$> (wielding (equipment attacker))) == Just "Ornate Sword" then hp target else maxD dmgDie
         dmg <- (+ strength attacker) <$> if crit then return critDmg else roll dmgDie
-        gameEvent $ Damaged attacker target dmg
         when crit $ gameEvent (Crit attacker target)
-        when (isDead (target { hp = hp target - dmg })) $ gameEvent (Died target)
+        damage dmg attacker target
     else
         gameEvent (Missed attacker target)
 
@@ -118,13 +120,11 @@ drinkPotion m i = do
          Just Healing -> do
              healed <- roll (1 `d` 8)
              gameEvent (Healed m healed)
-         Just Life -> do
-             healed <- roll (1 `d` 8)
-             gameEvent (GainedLife m healed)
+         Just Life -> gameEvent (GainedLife m 1)
          Just Acid -> do
              dmg <- roll (1 `d` 6)
-             gameEvents [DrankAcid m, Damaged m m dmg]
-             when (isDead (m { hp = hp m - dmg })) $ gameEvent (Died m)
+             gameEvent (DrankAcid m)
+             damage dmg m m
          Just Strength     -> gameEvent (GainedStrength m 1)
          Just Invisibility -> gameEvent $ GainedMobFlag m Invisible
          Just Confusion    -> gameEvent $ GainedMobFlag m ConfusedF
@@ -141,13 +141,13 @@ readScroll lvl m i = do
              let p    = player lvl
                  ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
              gameEvent (CastFire m dmg)
-             mapM_ (\m -> gameEvent (Damaged p m dmg)) ms
+             mapM_ (damage dmg p) ms
          Just Lightning -> do
              dmg <- roll (6 `d` 6)
              let p    = player lvl
                  ms   = L.filter (\m -> withinFov lvl p (at m)) (mobs lvl)
              gameEvent (CastLightning m dmg)
-             mapM_ (\m -> gameEvent (Damaged p m dmg)) ms
+             mapM_ (damage dmg p) ms
          Just Teleport     -> do
             p <- randomPassable lvl
             gameEvents $ maybeToList (Teleported m <$> p)
@@ -156,3 +156,7 @@ readScroll lvl m i = do
          otherwise         -> return ()
 
 
+damage :: GameAction m => Int -> Mob -> Mob -> m ()
+damage dmg attacker target = do
+    gameEvent (Damaged attacker target dmg)
+    when (isDead (target { hp = hp target - dmg })) $ gameEvent (Died target)

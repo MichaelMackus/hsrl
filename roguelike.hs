@@ -135,7 +135,7 @@ mkDefaultConf = do
         dheight = 15,
         maxTries = 10,
         prevLevel = Nothing,
-        maxDepth  = 10,
+        maxDepth  = 20,
         mobConfig = MobConfig {
             maxMobs = 10,
             minMobs = 4,
@@ -149,6 +149,7 @@ mkDefaultConf = do
             itemGenChance = (1 % 5),
             itemAppearances = itemApps
         },
+        -- TODO add safe walking mode (like cataclysm). Turn on by default, can add config file for defaults.
         -- TODO start player with ~3 throwing daggers, then we can nerf dagger range?
         -- TODO add chance of daggers to break
         -- TODO don't end turn after cancelling menu
@@ -163,14 +164,13 @@ mkDefaultConf = do
         -- TODO monster drops/items
         -- TODO ranged monsters
         playerConfig = PlayerConfig {
-            playerHp = 12,
+            playerHp = 8,
             playerFov = 5,
             -- playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught)) -- TODO make fountains give magic draught
             playerItems = dagger:(replicate 20 arrow)
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,
-            cellFeatureChance = 1 % 7,
             fItemAppearances = itemApps
         }
     }

@@ -104,18 +104,18 @@ handleInput k km = do
             KeyDown           -> bump South
             (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
-            (KeyChar 'r')     -> changeMenu Inventory
+            (KeyChar 'r')     -> tryInventory
             (KeyChar '>')     -> goStairs Down
             (KeyChar '<')     -> goStairs Up
-            (KeyChar 'i')     -> changeMenu Inventory
+            (KeyChar 'i')     -> tryInventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
             (KeyChar 'd')     -> changeMenu DropMenu
             (KeyChar ',')     -> gameEvents (maybeToList (pickup (level env)))
-            (KeyChar 'w')     -> changeMenu Inventory
-            (KeyChar 'W')     -> changeMenu Inventory
-            (KeyChar 'e')     -> changeMenu Inventory
-            (KeyChar 'q')     -> changeMenu Inventory
+            (KeyChar 'w')     -> tryInventory
+            (KeyChar 'W')     -> tryInventory
+            (KeyChar 'e')     -> tryInventory
+            (KeyChar 'q')     -> tryInventory
             (KeyChar 's')     -> gameEvent Saved
             (KeyMouseLeft to) -> whenM (hasSeen to) $ startRunning to
             otherwise         -> return ()
@@ -228,6 +228,11 @@ tryFire lvl m =
             else return ()
         else changeMenu ProjectileMenu
 
+tryInventory :: PlayerAction ()
+tryInventory = getEnv >>= \env ->
+    if inMelee (level env) (player (level env)) then insertMessage InMelee
+    else changeMenu Inventory
+
 pickup :: DLevel -> Maybe GameEvent
 pickup lvl = 
     let is = findItemsAt (at (player lvl)) lvl
@@ -329,6 +334,12 @@ updateSeen = do
     when (isUpStair t)   $ seenMessage (StairsSeen Up)
     let is = findItemsAt (at (player lvl)) lvl
     when (length is > 0) $ seenMessage (ItemsSeen is)
+    -- check for levelup
+    p <- getPlayer
+    when (needsLevelUp p) $ do
+        gameEvent $ GainedLevel p (mlvl p + 1) -- TODO
+        -- bonusHP <- roll $ 1 `d` 8
+        gameEvent $ GainedLife p 4
 
 updateSeenDepth :: Depth -> [Point] -> PlayerAction ()
 updateSeenDepth d ts = modify $ \s -> s { seen = (d, ts):filter f (seen s) }
