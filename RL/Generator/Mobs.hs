@@ -159,6 +159,17 @@ dngMobs = [ mob {
                speed = 30
             },
             mob {
+               mobName = "Bugbear",
+               symbol = 'B',
+               hp = 14,
+               mhp = 14,
+               baseDmg = 2 `d` 4,
+               strength = 1,
+               thac0   = 16,
+               baseAC  = 5,
+               speed = 30
+            },
+            mob {
                mobName = "Black Dragon",
                symbol = 'D',
                hp = 31,
@@ -166,22 +177,31 @@ dngMobs = [ mob {
                baseDmg = 2 `d` 10,
                thac0   = 13,
                baseAC  = 2,
-               speed = 30  -- TODO flying
+               speed = 80
             }
           ]
 
 mobRarity :: Difficulty -> Mob -> Rational
 mobRarity d m
-    | d <= 3 = case mobName m of
-                    "Kobold"   -> (1 % 7)
-                    "Grid Bug" -> (1 % 3)
-                    "Rat"      -> (1 % 5)
-                    otherwise  -> (0 % 10)
-    | d <= 5 = case mobName m of
+    -- | d <= 3 = case mobName m of
+    --                 "Kobold"   -> (1 % 7)
+    --                 "Grid Bug" -> (1 % 3)
+    --                 "Rat"      -> (1 % 5)
+    --                 otherwise  -> (0 % 10)
+    | d <  5 = case mobName m of
                     "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 7)
                     "Grid Bug" -> (1 % 3)
                     "Rat"      -> (1 % 5)
+                    otherwise  -> (0 % 10)
+    | d <  10 = case mobName m of
+                    "Kobold"   -> (1 % 5)
+                    "Goblin"   -> (1 % 5)
+                    "Orc"      -> (1 % 7)
+                    "Skeleton" -> (1 % 7)
+                    "Zombie"   -> (1 % 10)
+                    "Bugbear"  -> (1 % 12)
+                    "Ogre"     -> (1 % 15)
                     otherwise  -> (0 % 10)
     | d <  15 = case mobName m of
                     "Kobold"   -> (1 % 5)
@@ -189,6 +209,7 @@ mobRarity d m
                     "Orc"      -> (1 % 10)
                     "Skeleton" -> (1 % 10)
                     "Zombie"   -> (1 % 10)
+                    "Bugbear"  -> (1 % 15)
                     "Ogre"     -> (1 % 15)
                     otherwise  -> (0 % 10)
     | d >= 15 = case mobName m of
@@ -196,5 +217,6 @@ mobRarity d m
                     "Skeleton"     -> (1 % 5)
                     "Zombie"       -> (1 % 7)
                     "Ogre"         -> (1 % 10)
+                    "Bugbear"      -> (1 % 10)
                     "Black Dragon" -> (1 % 20)
-                    otherwise      -> mobRarity 9 m
+                    otherwise      -> (0 % 10)
