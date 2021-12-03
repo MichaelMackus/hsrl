@@ -29,7 +29,7 @@ getEventsAfterTurns :: Int -> [Event] -> [Event]
 getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
 
 getEventsBeforeTurns :: Int -> [Event] -> [Event]
-getEventsBeforeTurns n = dropWhiles ((< n) . length . filter isEndOfTurn)
+getEventsBeforeTurns n = drop 1 . dropWhiles ((< n) . length . filter isEndOfTurn)
 
 getEventsThisTurn :: [Event] -> [Event]
 getEventsThisTurn = L.takeWhile (not . isEndOfTurn)
@@ -38,7 +38,10 @@ filterEventsThisTurn :: (Event -> Bool) -> [Event] -> [Event]
 filterEventsThisTurn f = L.filter f . getEventsThisTurn
 
 occurredThisTurn :: (Event -> Bool) -> [Event] -> Bool
-occurredThisTurn f es = not . null $ filterEventsThisTurn f es
+occurredThisTurn f = not . null . filterEventsThisTurn f
+
+occurredLastTurn :: (Event -> Bool) -> [Event] -> Bool
+occurredLastTurn f = not . null . filterEventsThisTurn f . getEventsBeforeTurns 1
 
 turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)

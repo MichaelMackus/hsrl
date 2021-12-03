@@ -19,6 +19,9 @@ class Monad m => GameAction m where
 getPlayer :: GameAction m => m Player
 getPlayer = player . level <$> getEnv
 
+getEvents :: GameAction m => m [Event]
+getEvents = events <$> getEnv
+
 insertMessage :: GameAction m => Message   -> m ()
 insertMessage m = insertEvent (EventMessage m)
 
