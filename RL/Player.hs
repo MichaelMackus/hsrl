@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, automatePlayer, isTicking, readyForInput, handleInput, seenAtDepth) where
+module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, startTurn, isTicking, readyForInput, handleInput, seenAtDepth) where
 
 -- TODO when automating, there's a delay waiting for movement points
 -- TODO should have an impementation of retreat (monsters may attack the fleeing player at a bonus... note in OSE this depends on initiative roll, so 50/50 chance monster doesn't get AoO)
@@ -37,9 +37,11 @@ data InputState = InputState { menu :: Maybe Menu,
                                destination :: Maybe Point,
                                readied :: Maybe Item,
                                target :: Maybe Point,
-                               seen :: [(Depth, [Point])] }
+                               seen :: [(Depth, [Point])],
+                               inCombat :: Bool,
+                               combatStartHp :: Int }
 
-defaultInputState = InputState Nothing Nothing Nothing Nothing []
+defaultInputState = InputState Nothing Nothing Nothing Nothing [] False 0
 
 runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> (a, ([Event], InputState))
 runPlayerAction k env s g = let k'             = runStateT (playerAction k) s
@@ -52,13 +54,16 @@ execPlayerAction k env s g = snd $ runPlayerAction k env s g
 evalPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> a
 evalPlayerAction k env s g = fst $ runPlayerAction k env s g
 
--- attempt to automate player turn if running
-automatePlayer :: PlayerAction ()
-automatePlayer = do
+startTurn :: PlayerAction ()
+startTurn = do
     s   <- get
     env <- ask
+    -- attempt to automate player turn if running
     if isJust (destination s) && canAutomate env then continueRunning
     else clearDestination
+    -- if we're out of combat, allow player to lick their wounds
+    r <- recentlyOutOfCombat
+    when r $ healCombatDamage
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: InputState -> Bool
@@ -154,6 +159,7 @@ handleMenu k km TargetMenu = do
     rdy <- getReadied
     let fireF to = do
             fire lvl p (fromJust rdy) (fromJust (findMobAt to lvl))
+            beginCombat
             clearTarget
             closeMenu
     if isJust (target s) && isJust rdy then do
@@ -196,7 +202,7 @@ bumpAt to = do
     let lvl      = level env
         p        = player lvl
     case (findMobAt to lvl, findTileAt to lvl, findFeatureAt to lvl) of
-        (Just m, _, _) -> attack p (wielding (equipment p)) m
+        (Just m, _, _) -> attack p (wielding (equipment p)) m >> beginCombat
         (_, _, Just f) -> interactFeature to f
         (_, Just t, _) -> let stairE   = maybe [] (maybeToList . stairF) $ findTileAt to lvl
                               stairF   = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
@@ -263,12 +269,12 @@ takeStairs v = do
 setDestination :: Point -> PlayerAction ()
 setDestination to = do
     s <- get
-    put $ s { destination = Just to }
+    modify $ \s -> s { destination = Just to }
 
 clearDestination :: PlayerAction ()
 clearDestination = do
     s <- get
-    put $ s { destination = Nothing }
+    modify $ \s -> s { destination = Nothing }
 
 startRunning :: Point -> PlayerAction ()
 startRunning to = do
@@ -372,3 +378,30 @@ getTargets = do
     env <- getEnv 
     p   <- getPlayer
     return (L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
+
+beginCombat :: PlayerAction ()
+beginCombat = do
+    p <- getPlayer
+    s <- get
+    let startHp = if not (inCombat s) then hp p else combatStartHp s
+    modify $ \s -> s { inCombat = True, combatStartHp = startHp }
+
+recentlyOutOfCombat :: PlayerAction Bool
+recentlyOutOfCombat = do
+        evs <- getEvents
+        lvl <- level <$> getEnv
+        let seenMobs = L.filter (canSeeMob lvl (player lvl)) (mobs lvl)
+        return (occurredLastTurn f evs && null seenMobs)
+    where f (GameUpdate (Died m)) | not (isPlayer m) = True
+          f otherwise                                = False
+
+healCombatDamage :: PlayerAction ()
+healCombatDamage = do
+    modify $ \s -> s { inCombat = False }
+    p <- getPlayer
+    s <- get
+    when (hp p < combatStartHp s) $ do
+        let maxDmg = combatStartHp s - hp p
+        r <- roll $ 1 `d` 6
+        let dmg = min r maxDmg
+        gameEvent (Healed p dmg)

@@ -29,7 +29,7 @@ data GameState = GameState { envState :: Env, inputState :: InputState, aiState 
 -- return value is True if player quit
 gameLoop :: UI -> Game Bool
 gameLoop disp = do
-        doPlayerAction automatePlayer
+        doPlayerAction startTurn
         renderMap
 
         -- handle user input
