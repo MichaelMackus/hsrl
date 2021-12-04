@@ -64,6 +64,7 @@ startTurn = do
     -- if we're out of combat, allow player to lick their wounds
     r <- recentlyOutOfCombat
     when r $ healCombatDamage
+    detectCombat
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: InputState -> Bool
@@ -115,6 +116,7 @@ handleInput k km = do
             (KeyChar 'i')     -> tryInventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
+            (KeyChar 'G')     -> gameEvents (pickupAll (level env))
             (KeyChar 'd')     -> changeMenu DropMenu
             (KeyChar ',')     -> gameEvents (maybeToList (pickup (level env)))
             (KeyChar 'w')     -> tryInventory
@@ -243,6 +245,11 @@ pickup :: DLevel -> Maybe GameEvent
 pickup lvl = 
     let is = findItemsAt (at (player lvl)) lvl
     in  ItemPickedUp (player lvl) <$> listToMaybe is
+
+pickupAll :: DLevel -> [GameEvent]
+pickupAll lvl = 
+    let is = findItemsAt (at (player lvl)) lvl
+    in  map (ItemPickedUp (player lvl)) is
 
 -- take stairs or goto up/down stair
 goStairs :: VerticalDirection -> PlayerAction ()
@@ -378,6 +385,14 @@ getTargets = do
     env <- getEnv 
     p   <- getPlayer
     return (L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
+
+-- TODO not handling when monster attacks player *before* entering combat
+-- TODO need a "handleEvent" function for player/AI
+detectCombat :: PlayerAction ()
+detectCombat = do
+    lvl <- level <$> getEnv
+    p   <- getPlayer
+    when (inMelee lvl p) $ beginCombat
 
 beginCombat :: PlayerAction ()
 beginCombat = do

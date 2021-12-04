@@ -60,10 +60,10 @@ levelGenerator = do
 
         -- ensure we can reach the end
         if isJust lastP && isJust (findPath (dfinder lvl'' (fromJust lastP)) distance (fromJust lastP) (at player)) then do
-            items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
+            -- items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
             mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl'')
             markGDone
-            return (lvl'' { mobs = mobs, items = items })
+            return (lvl'' { mobs = mobs })
         else
             -- force up/down stair in case we reach iteration limit
             return lvl''

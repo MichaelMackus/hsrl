@@ -148,6 +148,16 @@ dngMobs = [ mob {
                flags = [Undead],
                speed = 20
             },
+            -- mob {
+            --    mobName = "Troglodyte",
+            --    symbol = 't',
+            --    hp = 9,
+            --    mhp = 9,
+            --    baseDmg = 2 `d` 4 `plus` 1, -- TODO multiple attacks
+            --    thac0   = 18,
+            --    baseAC  = 5,
+            --    speed = 40
+            -- },
             mob {
                mobName = "Ogre",
                symbol = 'O',
@@ -164,7 +174,6 @@ dngMobs = [ mob {
                hp = 14,
                mhp = 14,
                baseDmg = 2 `d` 4,
-               strength = 1,
                thac0   = 16,
                baseAC  = 5,
                speed = 30
@@ -199,9 +208,9 @@ mobRarity d m
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 7)
                     "Skeleton" -> (1 % 7)
-                    "Zombie"   -> (1 % 10)
-                    "Bugbear"  -> (1 % 12)
-                    "Ogre"     -> (1 % 15)
+                    "Zombie"   -> (1 % 12)
+                    "Bugbear"  -> (1 % 15)
+                    "Ogre"     -> (1 % 20)
                     otherwise  -> (0 % 10)
     | d <  15 = case mobName m of
                     "Kobold"   -> (1 % 5)

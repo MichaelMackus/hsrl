@@ -33,7 +33,8 @@ data Mob = Mob {
     speed          :: Int,
     movementPoints :: Int,  -- when movementPoints >= speed, the mob can move
     xp             :: Int,  -- TODO move to player type
-    mlvl           :: Int   -- TODO move to player type
+    mlvl           :: Int,  -- TODO move to player type
+    savingThrow    :: Int
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
 
@@ -109,7 +110,8 @@ mkPlayer hp at fov = mob {
     at = at,
     fov = fov,
     movementPoints = 40,
-    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing
+    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing,
+    savingThrow = 14
 }
 
 isPlayer :: Mob -> Bool
@@ -137,8 +139,8 @@ mob = Mob {
     speed = 40,
     movementPoints = 0,
     xp = 0,
-    mlvl = 1
-    -- TODO DR & weaknesses
+    mlvl = 1,
+    savingThrow = 19
 }
 
 -- helper functions for mob management

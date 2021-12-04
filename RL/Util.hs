@@ -1,6 +1,6 @@
 module RL.Util where
 
-import Control.Monad (when)
+import Control.Monad (when, replicateM)
 import Data.Maybe (isJust)
 import Data.Foldable (foldl')
 import qualified Data.List as L
@@ -92,3 +92,6 @@ wrapString str len = reverse $ foldl' f [] (words str)
 takeLast :: Int -> [a] -> [a]
 takeLast n xs = let len = length xs
                 in  drop (max 0 $ len - n) xs
+
+replicateMs :: Monad m => Int -> m [a] -> m [a]
+replicateMs i k = replicateM i k >>= return . concat

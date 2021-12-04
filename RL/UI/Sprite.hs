@@ -38,7 +38,7 @@ data SpriteEnv = SpriteEnv { spriteGame :: Env,
 spriteLevel = level . spriteGame
 
 gameSprites :: SpriteEnv -> [Sprite]
-gameSprites env = getMapSprites env ++ getMsgSprites (spriteGame env) ++ getStatusSprites (spriteLevel env) ++ inputSprites env
+gameSprites env = getMapSprites env ++ getMsgSprites (spriteGame env) ++ getStatusSprites env ++ inputSprites env
 
 inputSprites :: SpriteEnv -> [Sprite]
 inputSprites env =
@@ -51,7 +51,7 @@ inputSprites env =
     where targetMenu  p = [CharSprite p '*' (SpriteAttr red black)]
           inventoryMenu =
             let lvl                 = spriteLevel env
-                inv                 = groupItems (inventory (player lvl))
+                inv                 = groupItems . L.filter (not . isGold) $ inventory (player lvl)
                 eq                  = groupItems (equipmentToList (equipment (player lvl)))
                 showInvItem (ch, i) = ch:(showItem i)
                 p                   = player lvl
@@ -148,9 +148,10 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
 getMapSprites :: SpriteEnv -> [Sprite]
 getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (spriteLevel env)
 
-getStatusSprites :: DLevel -> [Sprite]
-getStatusSprites lvl =
-    let p = player lvl
+getStatusSprites :: SpriteEnv -> [Sprite]
+getStatusSprites env =
+    let lvl = spriteLevel env
+        p  = player lvl
         hpSprite = (MessageSprite (64, 15) (show (hp p)) (SpriteAttr hpColor black))
         hpPercent = fromIntegral (hp p) / fromIntegral (mhp p)
         hpColor = if hpPercent >= 1.0 then white
@@ -159,7 +160,8 @@ getStatusSprites lvl =
                   else red
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
          mkMessage (60, 16) ("XP: " ++ show (xp (player lvl))),
-         mkMessage (60, 17) ("Depth: " ++ show (depth lvl)) ]
+         mkMessage (60, 17) ("GP: " ++ show (goldAmount (inventory (player lvl)))),
+         mkMessage (60, 18) ("Depth: " ++ show (depth lvl)) ]
 
 getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env

@@ -87,8 +87,8 @@ instance Client Mob where
     broadcast m (GameUpdate (Drank    m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
     broadcast m (GameUpdate (Healed m' amt)           ) | m == m' = m { hp = min (mhp m) (hp m + amt) }
     broadcast m (GameUpdate (GainedLife m' amt)       ) | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
-    broadcast m (GameUpdate (GainedLevel m' lvl)      ) | m == m' = m { mlvl = lvl }
-    broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
+    broadcast m (GameUpdate (GainedLevel m' lvl)      ) | m == m' = m { mlvl = lvl, savingThrow = savingThrow m' - 1, thac0 = thac0 m' - 1 }
+    broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { strength = strength m + str }
     broadcast m (GameUpdate (GainedMobFlag m' f)      ) | m == m' = m { flags = L.nub (f:flags m) }
     broadcast m (GameUpdate (RemovedMobFlag m' f)     ) | m == m' = m { flags = L.delete f (flags m) }
     broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
@@ -99,10 +99,13 @@ instance Client Mob where
     broadcast m otherwise = m
 
 pickup :: Item -> Mob -> Mob
-pickup i m = if i `elem` inventory m then
-                 let f (n, i') = if i == i' then (n+1, i') else (n, i')
-                 in  m { inventory = ungroupItems . map f $ groupItems (inventory m) }
-             else m { inventory = inventory m ++ [i] }
+pickup i m =
+    let inv = if i `elem` inventory m then
+                  let f (n, i') = if i == i' then (n+1, i') else (n, i')
+                  in  ungroupItems . map f $ groupItems (inventory m)
+              else inventory m ++ [i]
+        nxp = if isGold i then xp m + goldAmount [i] else xp m
+    in  m { inventory = inv, xp = nxp }
 
 removePickedItem :: Mob -> Item -> DLevel -> DLevel
 removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)

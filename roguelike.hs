@@ -144,9 +144,6 @@ mkDefaultConf = do
             difficultyRange = (2, 0)
         },
         itemConfig = ItemConfig {
-            maxItems = 10,
-            minItems = 3,
-            itemGenChance = (1 % 5),
             itemAppearances = itemApps
         },
         -- TODO add safe walking mode (like cataclysm). Turn on by default, can add config file for defaults.

@@ -19,8 +19,9 @@ data FeatureConfig = FeatureConfig {
 }
 
 cellFeatureChance :: Int -> Rational
-cellFeatureChance d | d <= 3 = 1 % 3
-cellFeatureChance otherwise  = 1 % 6
+-- cellFeatureChance d | d <= 3 = 1 % 4
+-- cellFeatureChance otherwise  = 1 % 6
+cellFeatureChance = const $ 1 % 4
 
 instance GenConfig FeatureConfig where
     generating conf = (< maxFeatures conf) <$> getCounter
@@ -42,22 +43,19 @@ pickFeature :: Generator FeatureConfig (DLevel, [Cell]) (Maybe Feature)
 pickFeature = do
     lvl <- fst <$> getGData
     chestContents <- fillChest =<< asks fItemAppearances
-    pickRarity (featureRarity (depth lvl)) [Chest chestContents, Fountain 2, Altar]
+    pickRarity (featureRarity (depth lvl)) [Chest chestContents, Fountain 1]
     where
         fillChest app = do
             lvl <- fst <$> getGData
             app <- asks fItemAppearances
             g   <- getSplit
-            let chestConf = ItemConfig { minItems = 3,
-                                         maxItems = 10,
-                                         itemGenChance = 1 % 6,
-                                         itemAppearances = app }
+            let chestConf = ItemConfig { itemAppearances = app }
             return $ evalGenerator (generateChestItems (depth lvl)) chestConf (mkGenState [] g)
 
 featureRarity :: Difficulty -> Feature -> Rational
 featureRarity d (Chest _) = 1 % 2
-featureRarity d (Fountain _) = 1 % 3
-featureRarity d (Altar) = 0 % 5 -- TODO fix altars
+featureRarity d (Fountain _) = 1 % 4
+featureRarity d (Altar) = 1 % 0 -- TODO fix altars
 
 forMConcat :: Monad m => [a] -> (a -> m [b]) -> m [b]
 forMConcat l = fmap concat . forM l

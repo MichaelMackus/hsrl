@@ -12,11 +12,10 @@ import Data.Ratio
 import GHC.Arr
 import qualified Data.List as L
 
-
 newtype Roller m a = Roller { runRoller :: StdGen -> m (a, StdGen) } deriving Functor
 
 roll :: MonadRandom m => Dice -> m Int
-roll (D n ns) = getRandomR (minInt, maxInt)
+roll (D n ns m) = getRandomR (minInt, maxInt) >>= return . (+ m)
     where minInt = n
           maxInt = ns * n
 
