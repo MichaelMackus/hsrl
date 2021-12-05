@@ -59,10 +59,12 @@ gameLoop disp = do
             where
                 doAI' :: AIState -> Game ()
                 doAI' aist = do
-                    s <- get
                     g <- liftIO newStdGen
+                    s <- get
                     let (evs, aist') = runAI k (envState s) aist g
-                    put $ s { aiState = map (\(i, s) -> if i == mid then (i, aist') else (i, s)) (aiState s), envState = broadcastEvents (envState s) evs }
+                    modify $ \s ->
+                        s { aiState = (mid, aist'):(L.deleteBy (\(i,_) (i',_) -> i == i') (mid,undefined) (aiState s)),
+                            envState = broadcastEvents (envState s) evs }
         doPlayerAction :: PlayerAction a -> Game ()
         doPlayerAction k = doA k >> doA updateSeen
             where doA :: PlayerAction a -> Game ()

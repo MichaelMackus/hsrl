@@ -40,9 +40,9 @@ instance GameAction AIAction where
     getEnv = ask
     insertEvents = tell
 
-data AIState = AIState { destination :: Maybe Point, curMobId :: Id }
+data AIState = AIState { destination :: Maybe Point, movementPoints :: Int, curMobId :: Id }
 
-defaultAIState = AIState Nothing
+defaultAIState = AIState Nothing 0
 
 runAI :: AIAction a -> Env -> AIState -> StdGen -> ([Event], AIState)
 runAI k env s g = let k' = execStateT (aiAction k) s
@@ -82,7 +82,7 @@ wander :: AIAction ()
 wander = getMob >>= \m -> do
     lvl <- asks level
     p   <- pick (aiNeighbors lvl (at m) (at m))
-    when (isJust p) $ gameEvent (Moved m (fromJust p))
+    when (isJust p) $ tryMove (fromJust p)
 
 moveCloser :: Mob -> [Point] -> AIAction ()
 moveCloser p path = getMob >>= \m -> do
@@ -96,11 +96,27 @@ moveCloser p path = getMob >>= \m -> do
             attack m (wielding (equipment m)) p
             clearDestination
         else if isNothing (findMobAt next lvl) then
-            gameEvent $ Moved m next
+            tryMove next
         else
             clearDestination
     else
         clearDestination
+
+-- TODO allow multiple movements if able
+tryMove :: Point -> AIAction ()
+tryMove p = do
+    pl <- getPlayer
+    m  <- getMob
+    mp <- (+ mobSpeed m) <$> gets movementPoints
+    if mp >= mobSpeed pl then do
+        gameEvent $ Moved m p
+        modify $ \s -> s { movementPoints = max 0 (mp - mobSpeed pl) }
+    else
+        incMovePoints mp
+
+-- increment mob movement points
+incMovePoints :: Int -> AIAction ()
+incMovePoints mp = modify $ \s -> s { movementPoints = mp }
 
 updateDestination :: Point -> AIAction ()
 updateDestination p = modify $ \s -> s { destination = Just p }
@@ -154,4 +170,3 @@ aiNeighbors d end p = L.filter f (dneighbors d p)
     where f p = let m' = findMobAt p d
                     isntM m' = isNothing m' || isPlayer (fromJust m')
                 in  isntM m' && (isRunnable d p || p == end)
-

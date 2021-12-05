@@ -132,6 +132,12 @@ isArmor :: Item -> Bool
 isArmor (Item _ (Armor _)) = True
 isArmor otherwise          = False
 
+isHeavyArmor :: Item -> Bool
+isHeavyArmor (Item "Plate Mail" _) = True
+isHeavyArmor (Item "Full Plate" _) = True
+isHeavyArmor (Item "Chain Mail" _) = True
+isHeavyArmor otherwise             = False
+
 isEquippable :: Item -> Bool
 isEquippable i = isWeapon i || isArmor i
 

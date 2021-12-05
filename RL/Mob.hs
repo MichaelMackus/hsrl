@@ -5,7 +5,7 @@ import RL.Types
 import RL.Util (enumerate1)
 
 import Data.List (find, sort, filter)
-import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
+import Data.Maybe (catMaybes, maybeToList, isJust, fromJust, listToMaybe)
 
 -- player/mobs
 type HP     = Int
@@ -31,7 +31,6 @@ data Mob = Mob {
     equipment      :: MobEquipment,
     identified     :: [ItemType],
     speed          :: Int,
-    movementPoints :: Int,  -- when movementPoints >= speed, the mob can move
     xp             :: Int,  -- TODO move to player type
     mlvl           :: Int,  -- TODO move to player type
     savingThrow    :: Int
@@ -53,8 +52,16 @@ instance Show Mob where
 
 type Player = Mob
 
+mobSpeed :: Mob -> Int
+mobSpeed m =
+    let armor = maybe False isArmor      (wearing $ equipment m)
+        heavy = maybe False isHeavyArmor (wearing $ equipment m)
+    in  if heavy      then floor $ fromIntegral(speed m) * 0.5
+        else if armor then floor $ fromIntegral(speed m) * 0.75
+        else speed m
+
 xpAward :: Mob -> Int
-xpAward m = round (hd m * 100)
+xpAward m = round (hd m * 100) -- TODO need xp table
     -- fracitonal hit die
     where hd m     = fromIntegral (mhp m) / avgperhd
           avgperhd = 4.0 :: Float
@@ -68,13 +75,11 @@ needsLevelUp  m = xp m >= nxp
 canAttack :: Mob -> Bool
 canAttack = canMove
 
-movementCost = 40
-
 canMove :: Mob -> Bool
-canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0 && movementPoints m >= movementCost
+canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0
 
 moveMob :: Point -> Mob -> Mob
-moveMob p m = m { at = p, movementPoints = max 0 (movementPoints m - movementCost) }
+moveMob p m = m { at = p }
 
 isSleeping :: Mob -> Bool
 isSleeping m = Sleeping `elem` flags m
@@ -109,7 +114,6 @@ mkPlayer hp at fov = mob {
     mhp = hp,
     at = at,
     fov = fov,
-    movementPoints = 40,
     equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing,
     savingThrow = 14
 }
@@ -137,7 +141,6 @@ mob = Mob {
     identified = [],
     equipment = MobEquipment Nothing Nothing Nothing Nothing,
     speed = 40,
-    movementPoints = 0,
     xp = 0,
     mlvl = 1,
     savingThrow = 19
