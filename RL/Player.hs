@@ -61,10 +61,6 @@ startTurn = do
     -- attempt to automate player turn if running
     if isJust (destination s) && canAutomate env then continueRunning
     else clearDestination
-    -- if we're out of combat, allow player to lick their wounds
-    r <- recentlyOutOfCombat
-    when r $ healCombatDamage
-    detectCombat
 
 -- detects if we're ticking (i.e. AI and other things should be active)
 isTicking :: InputState -> Bool
