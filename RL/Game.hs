@@ -100,7 +100,7 @@ instance Client Mob where
 
 pickup :: Item -> Mob -> Mob
 pickup i m =
-    let inv = if i `elem` inventory m then
+    let inv = if not (isGold i) && i `elem` inventory m then
                   let f (n, i') = if i == i' then (n+1, i') else (n, i')
                   in  ungroupItems . map f $ groupItems (inventory m)
               else inventory m ++ [i]
