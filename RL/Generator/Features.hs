@@ -21,7 +21,7 @@ data FeatureConfig = FeatureConfig {
 cellFeatureChance :: Int -> Rational
 -- cellFeatureChance d | d <= 3 = 1 % 4
 -- cellFeatureChance otherwise  = 1 % 6
-cellFeatureChance = const $ 1 % 4
+cellFeatureChance = const $ 1 % 3
 
 instance GenConfig FeatureConfig where
     generating conf = (< maxFeatures conf) <$> getCounter
@@ -54,7 +54,7 @@ pickFeature = do
 
 featureRarity :: Difficulty -> Feature -> Rational
 featureRarity d (Chest _) = 1 % 2
-featureRarity d (Fountain _) = 1 % 4
+featureRarity d (Fountain _) = 1 % 5
 featureRarity d (Altar) = 1 % 0 -- TODO fix altars
 
 forMConcat :: Monad m => [a] -> (a -> m [b]) -> m [b]

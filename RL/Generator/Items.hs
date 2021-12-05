@@ -33,12 +33,12 @@ generateChestItems d = do
     conf <- ask
     is   <- getGData
     markGDone
-    generateItems (goldValue d)
+    generateItems =<< goldValue d
 
-goldValue :: Difficulty -> Int
-goldValue d | d < 5     = 500
-goldValue d | d < 10    = 2500
-goldValue d | otherwise = 5000
+goldValue :: MonadRandom m => Difficulty -> m Int
+goldValue d | d < 5     = return . fromMaybe 100 =<< pick [250,  500,  1000]
+goldValue d | d < 10    = return . fromMaybe 100 =<< pick [1000, 2000, 3000]
+goldValue d | otherwise = return . fromMaybe 100 =<< pick [2000, 3000, 5000]
 
 -- generate an item using specified rarity functions
 generateItems :: Int -> Generator ItemConfig a [Item]
