@@ -13,6 +13,7 @@ import qualified Data.List as L
 
 data PlayerConfig = PlayerConfig {
     playerHp :: Int,
+    playerLevel :: Int,
     playerFov :: Radius,
     playerItems :: [Item]
 }
@@ -34,15 +35,36 @@ instance GenConfig MobConfig where
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
-    (PlayerConfig hp fov inv) <- ask
+    (PlayerConfig hp plvl fov inv) <- ask
     cs <- getGData
-    if not (null cs) then
+    if not (null cs) then do
         -- TODO place player randomly around dungeon
         let p  = cmid (cs !! 0)
-            pl = (mkPlayer hp p fov) { inventory = inv, identified = map itemType inv }
-        in  markGDone >> return (Just pl)
+            pl = (mkPlayer p fov) { inventory = inv, identified = map itemType inv }
+        markGDone
+        Just <$> updatePlayerLevel pl
     else
         return Nothing
+
+-- level up player to configured exp level
+updatePlayerLevel :: Player -> Generator PlayerConfig [Cell] Player
+updatePlayerLevel p = do
+    (PlayerConfig hp plvl fov inv) <- ask
+    let neededLevels = max 0 (plvl - 1)
+        hp' = floor (fromIntegral hp / 2.0  *  fromIntegral neededLevels) + hp
+    return $ p { mlvl = plvl, hp = hp', mhp = hp', xp = expForLevel plvl }
+
+-- configure default player
+mkPlayer :: Point -> Radius -> Player
+mkPlayer at fov = mob {
+    mobId  = 0,
+    mobName = "Player", -- TODO configurable name
+    symbol = '@',
+    at = at,
+    fov = fov,
+    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing,
+    savingThrow = 14
+}
 
 mobGenerator :: Generator MobConfig DLevel [Mob]
 mobGenerator = do
@@ -197,22 +219,38 @@ mobRarity d m
     --                 "Grid Bug" -> (1 % 3)
     --                 "Rat"      -> (1 % 5)
     --                 otherwise  -> (0 % 10)
-    | d <  5 = case mobName m of
+    | d == 1 = case mobName m of
+                    "Grid Bug" -> (1 % 3)
                     "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 7)
-                    "Grid Bug" -> (1 % 3)
                     "Rat"      -> (1 % 5)
                     otherwise  -> (0 % 10)
-    | d <  10 = case mobName m of
+    | d == 2 = case mobName m of
+                    "Kobold"   -> (1 % 5)
+                    "Rat"      -> (1 % 5)
+                    "Goblin"   -> (1 % 7)
+                    "Skeleton" -> (1 % 7)
+                    "Orc"      -> (1 % 10)
+                    otherwise  -> (0 % 10)
+    | d <  5 = case mobName m of
+                    "Kobold"   -> (1 % 5)
+                    "Goblin"   -> (1 % 5)
+                    "Skeleton" -> (1 % 7)
+                    "Orc"      -> (1 % 10)
+                    "Zombie"   -> (1 % 15)
+                    "Bugbear"  -> (1 % 30)
+                    "Ogre"     -> (1 % 30)
+                    otherwise  -> (0 % 10)
+    | d < 10 = case mobName m of
                     "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 7)
-                    "Skeleton" -> (1 % 7)
-                    "Zombie"   -> (1 % 12)
-                    "Bugbear"  -> (1 % 15)
+                    "Skeleton" -> (1 % 5)
+                    "Zombie"   -> (1 % 10)
+                    "Bugbear"  -> (1 % 20)
                     "Ogre"     -> (1 % 20)
                     otherwise  -> (0 % 10)
-    | d <  15 = case mobName m of
+    | d < 15 = case mobName m of
                     "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 10)

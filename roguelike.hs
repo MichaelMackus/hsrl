@@ -164,9 +164,10 @@ mkDefaultConf = do
         -- TODO ranged monsters
         playerConfig = PlayerConfig {
             playerHp = 8,
+            playerLevel = 3,
             playerFov = 5,
             -- playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught)) -- TODO make fountains give magic draught
-            playerItems = dagger:(replicate 20 arrow)
+            playerItems = dagger:(replicate 40 arrow)
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,

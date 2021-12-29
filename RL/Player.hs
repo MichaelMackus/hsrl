@@ -106,19 +106,20 @@ handleInput k km = do
             KeyDown           -> bump South
             (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
-            (KeyChar 'r')     -> tryInventory
+            (KeyChar 'r')     -> changeMenu Inventory
+            (KeyChar 'R')     -> tryRest
             (KeyChar '>')     -> goStairs Down
             (KeyChar '<')     -> goStairs Up
-            (KeyChar 'i')     -> tryInventory
+            (KeyChar 'i')     -> changeMenu Inventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
             (KeyChar 'G')     -> gameEvents (pickupAll (level env))
             (KeyChar 'd')     -> changeMenu DropMenu
             (KeyChar ',')     -> gameEvents (maybeToList (pickup (level env)))
-            (KeyChar 'w')     -> tryInventory
-            (KeyChar 'W')     -> tryInventory
-            (KeyChar 'e')     -> tryInventory
-            (KeyChar 'q')     -> tryInventory
+            (KeyChar 'w')     -> changeMenu Inventory
+            (KeyChar 'W')     -> changeMenu Inventory
+            (KeyChar 'e')     -> changeMenu Inventory
+            (KeyChar 'q')     -> changeMenu Inventory
             (KeyChar 's')     -> gameEvent Saved
             (KeyMouseLeft to) -> whenM (hasSeen to) $ startRunning to
             otherwise         -> return ()
@@ -220,17 +221,15 @@ interactFeature p f = do
 
 -- attempt to fire if readied weapon
 tryFire :: DLevel -> Mob -> PlayerAction ()
-tryFire lvl m =
-    if inMelee lvl m then insertMessage InMelee
-    else do
-        rdy     <- getReadied
-        targets <- getTargets
-        if isJust rdy then
-            if length targets > 0 then do
-                changeMenu TargetMenu
-                changeTarget (head targets)
-            else return ()
-        else changeMenu ProjectileMenu
+tryFire lvl m = do
+    rdy     <- getReadied
+    targets <- getTargets
+    if isJust rdy then
+        if length targets > 0 then do
+            changeMenu TargetMenu
+            changeTarget (head targets)
+        else return ()
+    else changeMenu ProjectileMenu
 
 tryInventory :: PlayerAction ()
 tryInventory = getEnv >>= \env ->
@@ -380,7 +379,7 @@ getTargets :: PlayerAction [Point]
 getTargets = do
     env <- getEnv 
     p   <- getPlayer
-    return (L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
+    return (L.filter (not . touching (at p)) . L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
 
 -- TODO not handling when monster attacks player *before* entering combat
 -- TODO need a "handleEvent" function for player/AI
@@ -416,3 +415,15 @@ healCombatDamage = do
         r <- roll $ 1 `d` 6
         let dmg = min r maxDmg
         gameEvent (Healed p dmg)
+
+tryRest :: PlayerAction ()
+tryRest = do
+    p  <- getPlayer
+    ms <- aliveMobs . mobs . level <$> getEnv
+    if null ms then do
+        -- TODO level up player when resting
+        insertMessage PlayerRested
+        let dmg = mhp p - hp p
+        when (dmg > 0) $ gameEvent (Healed p dmg)
+    else
+        insertMessage PlayerInDanger

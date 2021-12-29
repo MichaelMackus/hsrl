@@ -67,10 +67,12 @@ xpAward m = round (hd m * 100) -- TODO need xp table
           avgperhd = 4.0 :: Float
 
 needsLevelUp :: Mob -> Bool
-needsLevelUp  m = xp m >= nxp
-    where nxp   = f (mlvl m)
-          f 1   = 2000
-          f lvl = let prevlvl = f (lvl - 1) in min (prevlvl * 2) (prevlvl + 120000)
+needsLevelUp m = xp m >= expForLevel (mlvl m + 1)
+
+expForLevel :: Int -> Int
+expForLevel 1   = 0
+expForLevel 2   = 2000
+expForLevel lvl = let prevlvl = expForLevel (lvl - 1) in min (prevlvl * 2) (prevlvl + 120000)
 
 canAttack :: Mob -> Bool
 canAttack = canMove
@@ -103,20 +105,6 @@ isUndead m = Undead `elem` flags m
 -- from the default AC of the Mob (default to 10 in AD&D)
 mobAC :: Mob -> AC
 mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties $ catMaybes [wearing (equipment m), shield (equipment m)]
-
--- configure default player
-mkPlayer :: HP -> Point -> Radius -> Player
-mkPlayer hp at fov = mob {
-    mobId  = 0,
-    mobName = "Player", -- TODO configurable name
-    symbol = '@',
-    hp = hp,
-    mhp = hp,
-    at = at,
-    fov = fov,
-    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing,
-    savingThrow = 14
-}
 
 isPlayer :: Mob -> Bool
 isPlayer m = mobId m == 0
