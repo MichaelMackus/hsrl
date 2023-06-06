@@ -53,7 +53,7 @@ takeWhiles f = go []
     where
         go accum [] = accum
         go accum (x:xs) =
-           if f accum then
+           if f (accum ++ [x]) then
                go (accum ++ [x]) xs
            else
                accum
