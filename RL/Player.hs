@@ -204,6 +204,9 @@ interactFeature p f = do
         Altar      ->
             if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
             else insertMessage Hostiles
+        Campfire   ->
+            if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
+            else insertMessage Hostiles
         f  -> return ()
 
 -- attempt to fire if readied weapon

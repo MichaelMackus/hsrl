@@ -105,6 +105,7 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
         featureColor (Fountain 0) = grey
         featureColor (Fountain _) = blue
         featureColor Altar        = grey
+        featureColor Campfire     = red
 
         tileSprite :: DLevel -> (Int, Int) -> Maybe Sprite
         tileSprite lvl p = case findTileAt p lvl of
@@ -329,4 +330,5 @@ toMessage e (GameUpdate (FeatureInteracted p (Fountain 0))) = Just $ "The founta
 toMessage e (GameUpdate (FeatureInteracted p (Fountain n))) = Just $ "You drink from the fountain."
 toMessage e (GameUpdate (FeatureInteracted p (Chest is))) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."
 toMessage e (GameUpdate (FeatureInteracted p Altar)) = Just $ "You pray to the gods."
+toMessage e (GameUpdate (FeatureInteracted p Campfire)) = Just $ "You rest at the campfire."
 toMessage e otherwise = Nothing

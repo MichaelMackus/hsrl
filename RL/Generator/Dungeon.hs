@@ -50,16 +50,20 @@ levelGenerator = do
         -- generate up/down stairs
         lastP <- pick (L.filter (\p -> isNothing (L.lookup p (features lvl')) && p /= at player) (map cmid cs))
         let lvl''   = iterMap f lvl'
-            f p t   = if p == at player && not (isStair t) then (StairUp prev)
+            f p t   = if p == at player && not (isStair t) && depth lvl'' > 1 then (StairUp prev)
                       else if Just p == lastP && d + 1 <= maxDepth conf then (StairDown nextLvl)
                            else t
             nextLvl = fst (runGenerator levelGenerator (conf { prevLevel = Just lvl'' }) (initState g))
 
+        -- generate floor 1 campfire
+        let lvl''' = if depth lvl'' == 1 then lvl'' { features = ((at player, Campfire):features lvl'') }
+                     else lvl''
+
         -- ensure we can reach the end
-        if isJust lastP && isJust (findPath (dfinder lvl'' (fromJust lastP)) distance (fromJust lastP) (at player)) then do
-            items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl'')
-            mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl'')
-            return (lvl'' { mobs = mobs, items = items })
+        if isJust lastP && isJust (findPath (dfinder lvl''' (fromJust lastP)) distance (fromJust lastP) (at player)) then do
+            items <- runGenerator' itemsGenerator (itemConfig conf) (mkGenState lvl''')
+            mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl''')
+            return (lvl''' { mobs = mobs, items = items })
         else
             levelGenerator
     where

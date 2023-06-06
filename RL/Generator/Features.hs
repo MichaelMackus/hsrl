@@ -53,8 +53,9 @@ pickFeature = do
 
 featureRarity :: Difficulty -> Feature -> Rational
 featureRarity d (Chest _) = 1 % 2
-featureRarity d (Fountain _) = 1 % 3
-featureRarity d (Altar) = 1 % 5
+featureRarity d (Fountain _) = 1 % 6
+featureRarity d (Altar) = 1 % 6
+featureRarity d (Campfire) = 1 % 4
 
 forMConcat :: Monad m => [a] -> (a -> m [b]) -> m [b]
 forMConcat l = fmap concat . forM l

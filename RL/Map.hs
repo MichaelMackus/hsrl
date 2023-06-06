@@ -41,7 +41,7 @@ data DLevel  = DLevel {
     mobs :: [Mob]
 }
 
-data Feature = Fountain Int | Chest [Item] | Altar deriving (Eq, Show)
+data Feature = Fountain Int | Chest [Item] | Altar | Campfire deriving (Eq, Show)
 
 allMobs :: DLevel -> [Mob]
 allMobs lvl = (player lvl:mobs lvl)
@@ -68,6 +68,7 @@ fromTile Rock = '#'
 
 fromFeature :: Feature -> Char
 fromFeature Altar = '_'
+fromFeature Campfire = '*'
 fromFeature (Fountain _) = '{'
 fromFeature (Chest _) = '='
 
