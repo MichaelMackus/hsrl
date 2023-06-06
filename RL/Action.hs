@@ -35,11 +35,12 @@ seenMessage m  = getEnv >>= \env ->
         newMsg = not (occurredThisTurn (== EventMessage m) (events env))
     in  when (fresh && newMsg) $ insertMessage m
 
--- TODO miss chance if invis
 attack :: (GameAction m, MonadRandom m) => Mob -> Maybe Item -> Mob -> m ()
 attack attacker weap target = do
-    let weapProp  = weaponProperties =<< weap
-        weapBonus = fromMaybe 0 (bonus <$> weapProp)
+    let weapProp         = weaponProperties =<< weap
+        invisiblePenalty = if Invisible `elem` flags target then 4 else 0
+        invisibleBonus   = if Invisible `elem` flags attacker || Sleeping `elem` flags target then 4 else 0
+        weapBonus        = fromMaybe 0 (bonus <$> weapProp) - invisiblePenalty + invisibleBonus
     -- attack roll
     atk <- roll (1 `d` 20)
     if atk + weapBonus >= thac0 attacker - mobAC target || atk == 20 then do
