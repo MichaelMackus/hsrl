@@ -297,6 +297,7 @@ toMessage e (EventMessage (MenuChange ProjectileMenu)) = Just $ "Pick a projecti
 toMessage e (EventMessage (MenuChange TargetMenu)) = Just $ "Pick a target to fire at. Press r to ready something else, space to cancel."
 toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
 toMessage e (EventMessage (Readied i)) = Just $ "You have readied the " ++ show i
+toMessage e (EventMessage Hostiles) = Just $ "There are too many hostiles nearby to rest."
 toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Equipped m item))              | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (EquipmentRemoved m item))      | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."

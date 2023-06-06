@@ -193,6 +193,7 @@ bumpAt to = do
 
 interactFeature :: Point -> Feature -> PlayerAction ()
 interactFeature p f = do
+    env <- ask
     pl  <- asks (player . level)
     gameEvent $ FeatureInteracted p f
     case f of
@@ -200,6 +201,9 @@ interactFeature p f = do
            healed <- roll (2 `d` 8)
            gameEvent $ Healed pl healed
         (Chest is) -> gameEvents $ map (ItemSpawned p) is
+        Altar      ->
+            if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
+            else insertMessage Hostiles
         f  -> return ()
 
 -- attempt to fire if readied weapon

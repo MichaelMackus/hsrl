@@ -9,7 +9,7 @@ import qualified Data.List as L
 data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
 
 -- Informational messages displayed to user
-data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item deriving Eq
+data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | Hostiles deriving Eq
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
 
 -- Represents events that change the game state
