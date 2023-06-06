@@ -2,9 +2,20 @@ module RL.Pathfinder where
 
 import Control.Monad.State
 import Data.Set (Set)
+import Data.Map (Map)
 import Data.PQueue.Min (MinQueue)
 import qualified Data.Set as Set
 import qualified Data.PQueue.Min as PQ
+
+-- dijkstra map of nodes -> scores
+data Graph a = Map a Int
+
+-- findDijkstra :: (Ord a, Ord c, Num c, Show a, Show c)
+--              => (a -> Set a)   -- Tile -> Neighbors
+--              -> Graph a        -- generated Dijkstra graph
+--              -> a              -- end
+--              -> a              -- start
+--              -> Maybe [a]
 
 -- Modified from https://hackage.haskell.org/package/astar-0.3.0.0/docs/Data-Graph-AStar.html
 --
