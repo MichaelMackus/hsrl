@@ -27,8 +27,8 @@ data GameState = GameState { envState :: Env, inputState :: InputState, aiState 
 -- main game loop
 --
 -- return value is True if player quit
-gameLoop :: UI -> Game Bool
-gameLoop disp = do
+gameLoop :: DungeonConfig -> UI -> Game Bool
+gameLoop conf disp = do
         doPlayerAction automatePlayer
         renderMap
 
@@ -42,13 +42,13 @@ gameLoop disp = do
         ticking <- isTicking <$> gets inputState
         when ticking $ do
             ms <- gets (mobs . level . envState)
-            mapM_ (doAI automate . mobId) ms
-            -- spawnMobs -- TODO
+            -- mapM_ (doAI automate . mobId) ms
+            ms' <- spawnMobs conf
             endTurn
 
         playing <- isPlaying <$> gets envState
         if playing then
-            gameLoop disp
+            gameLoop conf disp
         else
             isQuit <$> gets envState
     where
@@ -77,6 +77,18 @@ gameLoop disp = do
             s <- get
             liftIO (uiRender disp (gameSprites (spriteEnv s)))
 
+spawnMobs :: DungeonConfig -> Game ()
+spawnMobs conf = do
+    -- TODO rested since player last visited?
+    env <- gets envState
+    lvl <- gets (level . envState)
+    return ()
+    when (restedThisTurn env || (stairsTakenThisTurn env && daysSinceLastVisit env >= 1)) $ do
+        when (length (mobs lvl) < maxMobs (mobConfig conf)) $ do
+            g   <- newStdGen
+            let ms = fst (runGenerator mobGenerator (mobConfig conf) (mkGenState lvl g))
+            modify $ \s -> s { envState = (envState s) { level = (level (envState s)) { mobs = ms } } }
+
 main = do
     -- allow user to customize display if supported, or tileset
     flags <- map (dropWhile (== '-')) . filter ("-" `isInfixOf`)         <$> getArgs
@@ -93,19 +105,19 @@ main = do
 
     -- initialize game & launch game loop
     let newGame = do
-        conf       <- mkDefaultConf
-        e          <- nextLevel conf
-        (quit, s') <- runStateT (gameLoop ui) (defaultGameState e)
-        uiRender ui (gameSprites (spriteEnv s')) -- render last frame
+            conf       <- mkDefaultConf
+            e          <- nextLevel conf
+            (quit, s') <- runStateT (gameLoop conf ui) (defaultGameState e)
+            uiRender ui (gameSprites (spriteEnv s')) -- render last frame
 
-        let waitForQuit = do
-            -- wait for one last button press
-            (k, m) <- uiInput ui
-            if k == KeyChar ' ' || k == KeyQuit || k == KeyChar 'q' || k == KeyChar 'Q' || k == KeyChar 'r' || k == KeyEscape then return k
-            else waitForQuit
-        k <- if quit then return KeyQuit else waitForQuit
-        if k == KeyChar 'r' then newGame
-        else uiEnd ui
+            let waitForQuit = do
+                    -- wait for one last button press
+                    (k, m) <- uiInput ui
+                    if k == KeyChar ' ' || k == KeyQuit || k == KeyChar 'q' || k == KeyChar 'Q' || k == KeyChar 'r' || k == KeyEscape then return k
+                    else waitForQuit
+            k <- if quit then return KeyQuit else waitForQuit
+            if k == KeyChar 'r' then newGame
+            else uiEnd ui
     newGame
 
     -- putStrLn "Your inventory:"

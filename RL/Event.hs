@@ -22,7 +22,7 @@ data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob 
     | StairsTaken VerticalDirection DLevel
     | Waken Mob | Slept Mob | MobSpawned Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
-    | Rested Player Day
+    | Rested Player Depth Day
     | ItemSpawned Point Item | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
     | EndOfTurn | NewGame | QuitGame | Escaped | Saved deriving (Eq, Show)
 
@@ -31,15 +31,24 @@ data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob 
 eventsSince :: Int -> [Event] -> [Event]
 eventsSince n = takeWhiles ((<= n) . length . filter isEndOfTurn)
 
--- get events that happened X turns ago
+-- get events that happened since X turns ago
 -- e.g. eventsTurnsAgo 0 will return all events
 eventsTurnsAgo :: Int -> [Event] -> [Event]
 eventsTurnsAgo n = dropWhiles ((<= n) . length . filter isEndOfTurn)
 
+-- get events that happened before event
+eventsBeforeF :: (Event -> Bool) -> [Event] -> [Event]
+eventsBeforeF f es = let es'      = takeWhiles g es
+                         g []     = False
+                         g (x:xs) = f x
+                     in  if not (null es') then tail es' else []
+
 -- get events that happened after event
-eventsAfter :: (Event -> Bool) -> [Event] -> [Event]
-eventsAfter f es = let es' = takeWhiles (\l -> if not (null l) then not (f (head l)) else False) es
-                   in  if not (null es') then tail es' else []
+eventsAfterF :: (Event -> Bool) -> [Event] -> [Event]
+eventsAfterF f es = let es'      = dropWhiles g es
+                        g []     = False
+                        g (x:xs) = f x
+                    in  if not (null es') then tail es' else []
 
 eventsThisTurn :: [Event] -> [Event]
 eventsThisTurn = L.takeWhile (not . isEndOfTurn)
@@ -47,6 +56,10 @@ eventsThisTurn = L.takeWhile (not . isEndOfTurn)
 occurredThisTurn :: (Event -> Bool) -> [Event] -> Bool
 occurredThisTurn f es = let es' = L.takeWhile (not . f) es
                         in  isJust (L.find f es) && isNothing (L.find isEndOfTurn es')
+
+-- has event f occurred since g happened?
+occurredSince :: (Event -> Bool) -> (Event -> Bool) -> [Event] -> Bool
+occurredSince f g es = length (eventsBeforeF f es) < length (eventsBeforeF g es)
 
 turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)

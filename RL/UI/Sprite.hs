@@ -330,5 +330,5 @@ toMessage e (GameUpdate (FeatureInteracted p (Fountain 0))) = Just $ "The founta
 toMessage e (GameUpdate (FeatureInteracted p (Fountain n))) = Just $ "You drink from the fountain."
 toMessage e (GameUpdate (FeatureInteracted p (Chest is))) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."
 toMessage e (GameUpdate (FeatureInteracted p Altar)) = Just $ "You pray to the gods."
-toMessage e (GameUpdate (Rested p d)) = Just $ "You rest at the campfire on day: " ++ show d
+toMessage e (GameUpdate (Rested p d' d)) = Just $ "You fall asleep, warmed by the campfire."
 toMessage e otherwise = Nothing

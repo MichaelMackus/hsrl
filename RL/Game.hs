@@ -1,4 +1,4 @@
-module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Dungeon, module RL.Event) where
+module RL.Game (Env(..), Client(..), lastVisitedDay, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Dungeon, module RL.Event) where
 
 import RL.Event
 import RL.Dungeon
@@ -6,7 +6,7 @@ import RL.Random
 import RL.Util (addOrReplace)
 
 import Data.Map (Map)
-import Data.Maybe (fromMaybe, fromJust, isJust, maybeToList, catMaybes)
+import Data.Maybe (listToMaybe, mapMaybe, fromMaybe, fromJust, isJust, maybeToList, catMaybes)
 import qualified Data.List as L
 import qualified Data.Map as M
 
@@ -38,6 +38,45 @@ canRest :: Env -> Bool
 canRest env = let f m = distance (at m) (at p) <= hearing m
                   p   = player (level env)
               in  null (L.filter f (mobs (level env)))
+
+-- get current game day
+currentDay :: [Event] -> Day
+currentDay es = lastRested es + 1
+
+lastRested :: [Event] -> Day
+lastRested = maybe 0 id . listToMaybe . mapMaybe f
+    where f (GameUpdate (Rested _ _ d)) = Just d
+          f otherwise                   = Nothing
+
+stairsTakenThisTurn :: Env -> Bool
+stairsTakenThisTurn = occurredThisTurn f . events
+    where f (GameUpdate (StairsTaken _ _)) = True
+          f otherwise                      = False
+
+restedThisTurn :: Env -> Bool
+restedThisTurn = occurredThisTurn f . events
+    where f (GameUpdate (Rested _ _ d)) = True
+          f otherwise                   = False
+
+-- get day we last visited this level
+lastVisitedDay :: Env -> [Event] -> Day
+lastVisitedDay env es = if occurredSince f g es then currentDay $ eventsAfterF f es -- have we rested on this level since we changed stairs to it? Then, 
+                        else currentDay $ eventsAfterF g es
+    where f (GameUpdate (Rested _ d _))      | d         == depth (level env)
+                                      = True
+          f otherwise                 = False
+          g (GameUpdate (StairsTaken _ lvl)) | depth lvl == depth (level env)
+                                      = True
+          g otherwise                 = False
+
+-- get days since last visiting this level
+daysSinceLastVisit :: Env -> Int
+daysSinceLastVisit env = let es' = eventsTurnsAgo 1 (events env) -- don't count current visit
+                         in  if not (happened f es') then 0
+                             else currentDay (events env) - lastVisitedDay env es'
+    where f (GameUpdate (StairsTaken _ lvl)) | depth lvl == depth (level env)
+                                      = True
+          f otherwise                 = False
 
 -- represents a client that does something to the state
 class Client c where

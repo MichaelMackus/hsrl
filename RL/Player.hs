@@ -206,7 +206,7 @@ interactFeature p f = do
         --     if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
         --     else insertMessage Hostiles
         Campfire   ->
-            if canRest env then gameEvents [Rested pl (currentDay (events env)), Healed pl (mhp pl - hp pl)]
+            if canRest env then gameEvents [Rested pl (depth (level env)) (currentDay (events env)), Healed pl (mhp pl - hp pl)]
             else insertMessage Hostiles
         f  -> return ()
 

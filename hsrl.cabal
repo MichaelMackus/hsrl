@@ -42,7 +42,7 @@ executable hsrl
     RL.Generator.Paths
     RL.Item
     RL.Player
-    RL.Map
+    RL.Dungeon
     RL.Mob
     RL.Pathfinder
     RL.Random
