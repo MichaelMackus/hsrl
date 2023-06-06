@@ -42,7 +42,7 @@ gameLoop conf disp = do
         ticking <- isTicking <$> gets inputState
         when ticking $ do
             ms <- gets (mobs . level . envState)
-            -- mapM_ (doAI automate . mobId) ms
+            mapM_ (doAI automate . mobId) ms
             ms' <- spawnMobs conf
             endTurn
 
