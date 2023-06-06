@@ -38,15 +38,11 @@ eventsTurnsAgo n = dropWhiles ((<= n) . length . filter isEndOfTurn)
 
 -- get events that happened before event
 eventsBeforeF :: (Event -> Bool) -> [Event] -> [Event]
-eventsBeforeF f es = let g [] = False
-                         g xs = not (f (head . reverse $ xs))
-                     in  takeWhiles g es
+eventsBeforeF f = L.takeWhile (not . f)
 
 -- get events that happened after event
 eventsAfterF :: (Event -> Bool) -> [Event] -> [Event]
-eventsAfterF f es = let g []     = False
-                        g (x:xs) = not (f x)
-                    in  dropWhiles g es
+eventsAfterF f = L.dropWhile (not . f)
 
 eventsThisTurn :: [Event] -> [Event]
 eventsThisTurn = L.takeWhile (not . isEndOfTurn)
