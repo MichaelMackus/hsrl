@@ -6,10 +6,10 @@ import RL.Util (takeWhiles, dropWhiles)
 import Data.Maybe (isNothing, isJust)
 import qualified Data.List as L
 
-data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
+data Event = EventMessage Message | GameUpdate GameEvent deriving (Eq, Show)
 
 -- Informational messages displayed to user
-data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | Hostiles deriving Eq
+data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | Hostiles deriving (Eq, Show)
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
 type Day = Int
 
@@ -26,14 +26,23 @@ data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob 
     | ItemSpawned Point Item | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
     | EndOfTurn | NewGame | QuitGame | Escaped | Saved deriving (Eq, Show)
 
-getEventsAfterTurns :: Int -> [Event] -> [Event]
-getEventsAfterTurns n = takeWhiles ((< n) . length . filter isEndOfTurn)
+-- get events that happened *since* X turns ago
+-- e.g. eventsSince 0 will return events until EndOfTurn is found, including the EndOfTurn
+eventsSince :: Int -> [Event] -> [Event]
+eventsSince n = takeWhiles ((<= n) . length . filter isEndOfTurn)
 
-getEventsBeforeTurns :: Int -> [Event] -> [Event]
-getEventsBeforeTurns n = dropWhiles ((< n) . length . filter isEndOfTurn)
+-- get events that happened X turns ago
+-- e.g. eventsTurnsAgo 0 will return all events
+eventsTurnsAgo :: Int -> [Event] -> [Event]
+eventsTurnsAgo n = dropWhiles ((<= n) . length . filter isEndOfTurn)
 
-getEventsThisTurn :: [Event] -> [Event]
-getEventsThisTurn = L.takeWhile (not . isEndOfTurn)
+-- get events that happened after event
+eventsAfter :: (Event -> Bool) -> [Event] -> [Event]
+eventsAfter f es = let es' = takeWhiles (\l -> if not (null l) then not (f (head l)) else False) es
+                   in  if not (null es') then tail es' else []
+
+eventsThisTurn :: [Event] -> [Event]
+eventsThisTurn = L.takeWhile (not . isEndOfTurn)
 
 occurredThisTurn :: (Event -> Bool) -> [Event] -> Bool
 occurredThisTurn f es = let es' = L.takeWhile (not . f) es
@@ -41,6 +50,10 @@ occurredThisTurn f es = let es' = L.takeWhile (not . f) es
 
 turnsSince :: (Event -> Bool) -> [Event] -> Int
 turnsSince f = length . L.filter isEndOfTurn . takeWhile (not . f)
+
+-- did event even happen?
+happened :: (Event -> Bool) -> [Event] -> Bool
+happened f = isJust . L.find f
 
 isEndOfTurn :: Event -> Bool
 isEndOfTurn (GameUpdate EndOfTurn) = True

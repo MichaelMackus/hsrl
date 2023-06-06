@@ -159,8 +159,8 @@ getStatusSprites lvl =
 
 getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env
-                        recentMsgs = catMaybes (map (toMessage env) (getEventsAfterTurns 2 evs))
-                        staleMsgs  = catMaybes (map (toMessage env) (getEventsAfterTurns 11 (getEventsBeforeTurns 2 evs)))
+                        recentMsgs = catMaybes (map (toMessage env) (eventsSince 1 evs))
+                        staleMsgs  = catMaybes (map (toMessage env) (eventsSince 10 (eventsTurnsAgo 1 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
                     in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
 
@@ -330,5 +330,5 @@ toMessage e (GameUpdate (FeatureInteracted p (Fountain 0))) = Just $ "The founta
 toMessage e (GameUpdate (FeatureInteracted p (Fountain n))) = Just $ "You drink from the fountain."
 toMessage e (GameUpdate (FeatureInteracted p (Chest is))) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."
 toMessage e (GameUpdate (FeatureInteracted p Altar)) = Just $ "You pray to the gods."
-toMessage e (GameUpdate (FeatureInteracted p Campfire)) = Just $ "You rest at the campfire."
+toMessage e (GameUpdate (Rested p d)) = Just $ "You rest at the campfire on day: " ++ show d
 toMessage e otherwise = Nothing

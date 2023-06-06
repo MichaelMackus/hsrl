@@ -201,11 +201,12 @@ interactFeature p f = do
            healed <- roll (2 `d` 8)
            gameEvent $ Healed pl healed
         (Chest is) -> gameEvents $ map (ItemSpawned p) is
-        Altar      ->
-            if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
-            else insertMessage Hostiles
+        -- TODO level up at altars?
+        -- Altar      ->
+        --     if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
+        --     else insertMessage Hostiles
         Campfire   ->
-            if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
+            if canRest env then gameEvents [Rested pl (currentDay (events env)), Healed pl (mhp pl - hp pl)]
             else insertMessage Hostiles
         f  -> return ()
 
