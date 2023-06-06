@@ -60,9 +60,9 @@ restedThisTurn = occurredThisTurn f . events
 
 -- get day we last visited this level
 lastVisitedDay :: Env -> [Event] -> Day
-lastVisitedDay env es = if occurredSince f g es then currentDay $ eventsAfterF f es -- have we rested on this level since we changed stairs to it? FIXME
+lastVisitedDay env es = if occurredSince f g es then currentDay $ eventsAfterF f es -- have we rested on this level since we changed stairs to it?
                         else currentDay $ eventsAfterF g es
-    where f (GameUpdate (Rested _ d _))      | d         == depth (level env)
+    where f (GameUpdate (Rested _ d day))    | d         == depth (level env) && day == lastRested es
                                       = True
           f otherwise                 = False
           g (GameUpdate (StairsTaken _ lvl)) | depth lvl == depth (level env)
