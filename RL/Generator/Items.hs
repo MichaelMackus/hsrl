@@ -6,7 +6,7 @@ module RL.Generator.Items (ItemConfig(..), itemsGenerator, generateChestItems, r
 
 import RL.Generator
 import RL.Item
-import RL.Map
+import RL.Dungeon
 import RL.Random
 
 import Control.Monad.Reader (ask)

@@ -1,7 +1,7 @@
 module RL.Generator.Cells (Cell(..), CellConfig(CellConfig), cells, getTileAt, cpoint, cwidth, cheight, ctiles, cmid) where
 
 import RL.Generator
-import RL.Map
+import RL.Dungeon
 import RL.Random
 
 import Control.Monad.Reader (ask)

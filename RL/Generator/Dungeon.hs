@@ -1,6 +1,6 @@
 module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), ItemConfig(..), levelGenerator, randomItemAppearances, module RL.Generator) where
 
-import RL.Map
+import RL.Dungeon
 import RL.Generator
 import RL.Generator.Cells (cells, cmid, cpoint, CellConfig(CellConfig))
 import RL.Generator.Paths (paths, getTileAt)

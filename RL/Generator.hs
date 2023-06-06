@@ -3,7 +3,7 @@
 module RL.Generator (Generator, GenConfig(..), GenState(..), runGenerator, evalGenerator, mkGenState, initState, getCounter, resetCounter, getGData, appendGData, setGData, isGDone, markGDone, module Control.Monad.Reader) where
 
 import RL.Random
-import RL.Map (DLevel(..))
+import RL.Dungeon (DLevel(..))
 
 import Control.Monad.Cont
 import Control.Monad.Reader

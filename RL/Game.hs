@@ -1,7 +1,7 @@
-module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Map, module RL.Event) where
+module RL.Game (Env(..), Client(..), broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Dungeon, module RL.Event) where
 
 import RL.Event
-import RL.Map
+import RL.Dungeon
 import RL.Random
 import RL.Util (addOrReplace)
 

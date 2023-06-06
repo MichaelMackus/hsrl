@@ -3,7 +3,7 @@
 module RL.Random (roll, pick, shuffle, pickRarity, randomChance, randomPoint, randomTile, randomPassable, randomDir, Roller(..), module Control.Monad.Random, module Data.Ratio) where
 
 import RL.Types
-import RL.Map
+import RL.Dungeon
 
 import Control.Monad.Random
 import Control.Monad.ST

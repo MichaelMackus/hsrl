@@ -1,6 +1,6 @@
 module RL.Event where
 
-import RL.Map
+import RL.Dungeon
 import RL.Util (takeWhiles, dropWhiles)
 
 import Data.Maybe (isNothing, isJust)
@@ -11,6 +11,7 @@ data Event = EventMessage Message | GameUpdate GameEvent deriving Eq
 -- Informational messages displayed to user
 data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item | Hostiles deriving Eq
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu deriving (Eq, Show)
+type Day = Int
 
 -- Represents events that change the game state
 data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
@@ -21,6 +22,7 @@ data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob 
     | StairsTaken VerticalDirection DLevel
     | Waken Mob | Slept Mob | MobSpawned Mob
     | FeatureInteracted Point Feature | BandageApplied Mob
+    | Rested Player Day
     | ItemSpawned Point Item | ItemPickedUp Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
     | EndOfTurn | NewGame | QuitGame | Escaped | Saved deriving (Eq, Show)
 

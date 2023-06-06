@@ -1,4 +1,4 @@
-module RL.Map (module RL.Map, module RL.Mob, module RL.Types) where
+module RL.Dungeon (module RL.Dungeon, module RL.Mob, module RL.Types) where
 
 import RL.Item
 import RL.Mob
@@ -13,6 +13,8 @@ import qualified Data.Map as M
 import qualified Data.Set as Set
 
 -- represents a tree of dungeon levels (TODO currently only 1 dimension)
+-- TODO need to separate this out to concrete object that can store
+-- TODO dungeon data independent of the dungeon level
 data Dungeon = DungeonLevel DLevel Dungeon | DTip DLevel
 
 -- insert level at DLevel's depth

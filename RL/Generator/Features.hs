@@ -5,7 +5,7 @@ import RL.Generator.Cells (Cell(..), cmid)
 import RL.Generator.Paths (Path(..))
 import RL.Generator.Items (generateChestItems, ItemConfig(..))
 import RL.Item
-import RL.Map (DLevel(..), Point(..), Feature(..), Difficulty)
+import RL.Dungeon (DLevel(..), Point(..), Feature(..), Difficulty)
 import RL.Random
 
 import Control.Monad
