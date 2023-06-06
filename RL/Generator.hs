@@ -7,6 +7,7 @@ import RL.Dungeon (DLevel(..))
 
 import Control.Monad.Cont
 import Control.Monad.Reader
+import Control.Monad.State
 
 -- Generator monad which generates a list of objects of type s based on GenConfig.
 -- ContGenerator represents a Generator wrapped in a Cont monad - see "generate".
@@ -14,7 +15,7 @@ newtype Generator c s a = Generator {
     unwrapGenerator :: (c -> GenState s -> (a, GenState s))
 }
 
-class GenConfig c where
+class GenConfig c s where
     -- whether to continue generating or not
     generating :: c -> Generator c s Bool
 
@@ -26,10 +27,10 @@ data GenState s = GenState {
     i     :: Int
 }
 
-runGenerator :: GenConfig c => Generator c s a -> c -> GenState s -> (a, GenState s)
+runGenerator :: GenConfig c s => Generator c s a -> c -> GenState s -> (a, GenState s)
 runGenerator gen conf s = unwrapGenerator (generate gen) conf s
 
-evalGenerator :: GenConfig c => Generator c s a -> c -> GenState s -> a
+evalGenerator :: GenConfig c s => Generator c s a -> c -> GenState s -> a
 evalGenerator gen conf = fst . runGenerator gen conf
 
 -- Wrap a generator in a ContGenerator.
@@ -43,24 +44,21 @@ evalGenerator gen conf = fst . runGenerator gen conf
 -- 2) isGDone returns True
 --
 -- Then, it returns the latest result.
-generate :: GenConfig c => Generator c s a -> Generator c s a
+generate :: GenConfig c s => Generator c s a -> Generator c s a
 generate gen = runContT (ContT continue) return
     where
         continue next = do
             -- get generated data (counter reset here if data modified)
             r       <- gen
-            i       <- getCounter
             done    <- isGDone
-            gen     <- generating =<< ask
-
-            -- increment gen counter for next iteration
             incCounter
+            more    <- generating =<< ask
 
-            -- have we hit the max limit, or are done generating?
-            if not gen || done then
-                next r
-            else
+            -- continue if there's more to generate & not flagged as done
+            if more && not done then
                 continue next
+            else
+                next r
 
 -- constructor for initial gen state
 mkGenState :: s -> StdGen -> GenState s
@@ -120,6 +118,11 @@ instance MonadReader c (Generator c s) where
     local f m = Generator $ \c s ->
         let c' = f c
         in unwrapGenerator m c' s
+
+instance MonadState s (Generator c s) where
+    get = getGData
+    put = setGData
+
 
 -- helper for MonadReader
 readGen :: ReaderT c (Generator c s) a -> Generator c s a

@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module RL.Generator.Dungeon (DungeonConfig(..), PlayerConfig(..), ItemConfig(..), levelGenerator, randomItemAppearances, module RL.Generator) where
 
 import RL.Dungeon
@@ -28,7 +30,7 @@ data DungeonConfig = DungeonConfig {
     featureConfig :: FeatureConfig
 }
 
-instance GenConfig DungeonConfig where
+instance GenConfig DungeonConfig s where
     generating conf = (< maxTries conf) <$> getCounter
 
 levelGenerator :: Generator DungeonConfig s DLevel
@@ -67,7 +69,7 @@ levelGenerator = do
         else
             levelGenerator
     where
-        runGenerator' :: GenConfig c => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
+        runGenerator' :: GenConfig c s => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
         runGenerator' gen conf f = do
             g  <- getSplit
             let r = runGenerator gen conf (f g)

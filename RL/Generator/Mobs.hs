@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module RL.Generator.Mobs (playerGenerator, mobGenerator, PlayerConfig(..), MobConfig(..)) where
 
 import RL.Game hiding (updateFlags)
@@ -5,6 +7,7 @@ import RL.Generator
 import RL.Generator.Cells (Cell, cmid)
 import RL.Random
 
+import Control.Monad.State
 import Data.Maybe (catMaybes, isNothing)
 import Data.Ratio
 import qualified Data.List as L
@@ -15,7 +18,7 @@ data PlayerConfig = PlayerConfig {
     playerItems :: [Item]
 }
 
-instance GenConfig PlayerConfig where
+instance GenConfig PlayerConfig s where
     generating conf = return True
 
 -- TODO need item config for generating treasure
@@ -27,8 +30,10 @@ data MobConfig = MobConfig {
     difficultyRange :: (Int, Int) -- min - fst, max + snd
 }
 
-instance GenConfig MobConfig where
-    generating conf = (< maxMobs conf) <$> getCounter
+instance GenConfig MobConfig DLevel where
+    generating conf = do
+        ms <- gets mobs
+        return (length ms < maxMobs conf)
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do

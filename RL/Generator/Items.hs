@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, FlexibleInstances #-}
 
 module RL.Generator.Items (ItemConfig(..), itemsGenerator, generateChestItems, randomItemAppearances) where
 
@@ -10,6 +10,7 @@ import RL.Dungeon
 import RL.Random
 
 import Control.Monad.Reader (ask)
+import Control.Monad.State (gets)
 import Data.Map (Map)
 import Data.Ratio
 import Data.Maybe (isJust, catMaybes, fromJust, maybeToList, isNothing)
@@ -23,8 +24,14 @@ data ItemConfig = ItemConfig {
     itemAppearances :: Map ItemType String
 }
 
-instance GenConfig ItemConfig where
+instance GenConfig ItemConfig s where
     generating conf = (< maxItems conf) <$> getCounter
+
+-- FIXME use max tries variable?
+-- instance GenConfig ItemConfig [Item] where
+--     generating conf = (< maxItems conf) <$> gets length
+-- instance GenConfig ItemConfig DLevel where
+--     generating conf = (< maxItems conf) <$> gets (length . items)
 
 itemsGenerator :: Generator ItemConfig DLevel [(Point, Item)]
 itemsGenerator = do

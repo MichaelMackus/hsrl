@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module RL.Generator.Features (FeatureConfig(..), featuresGenerator) where
 
 import RL.Generator
@@ -10,6 +12,7 @@ import RL.Random
 
 import Control.Monad
 import Control.Monad.Reader
+import Control.Monad.State
 import Data.Map (Map)
 import Data.Maybe (maybeToList)
 
@@ -19,7 +22,9 @@ data FeatureConfig = FeatureConfig {
     fItemAppearances :: Map ItemType String
 }
 
-instance GenConfig FeatureConfig where
+instance GenConfig FeatureConfig (DLevel, [Cell]) where
+    -- FIXME use max tries variable?
+    -- generating conf = (< maxFeatures conf) <$> gets (\(lvl, cs) -> length (features lvl))
     generating conf = (< maxFeatures conf) <$> getCounter
 
 -- TODO don't generate on player

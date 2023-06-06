@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module RL.Generator.Cells (Cell(..), CellConfig(CellConfig), cells, getTileAt, cpoint, cwidth, cheight, ctiles, cmid) where
 
 import RL.Generator
@@ -13,7 +15,7 @@ data CellConfig = CellConfig {
     maxTries :: Int
 }
 
-instance GenConfig CellConfig where
+instance GenConfig CellConfig s where
     generating conf = (< maxTries conf) <$> getCounter
 
 data Cell = C Point [[Tile]]
