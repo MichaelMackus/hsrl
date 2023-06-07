@@ -67,11 +67,7 @@ attack attacker weap target = do
     if atk + weapBonus >= thac0 attacker - mobAC target || atk == 20 then do
         -- hit!
         let dmgDie  = maybe (baseDmg attacker) dmgd weapProp
-            crit    = atk == (maybe 20 critRange weapProp)
-            -- the ornate sword automatically kills enemies on crit
-            critDmg = if (itemDescription <$> (wielding (equipment attacker))) == Just "Ornate Sword" then hp target else maxD dmgDie
-        dmg <- (+ strength attacker) <$> if crit then return critDmg else roll dmgDie
-        when crit $ gameEvent (Crit attacker target)
+        dmg <- (+ strength attacker) <$> roll dmgDie
         damage dmg attacker target
     else
         gameEvent (Missed attacker target)
