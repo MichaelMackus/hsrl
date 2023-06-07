@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module RL.UI.Sprite (
     gameSprites,
     SpriteEnv(..),
@@ -10,7 +12,7 @@ module RL.UI.Sprite (
 import RL.Game
 import RL.Player
 import RL.UI.Common
-import RL.Util (enumerate, equating, groupBy')
+import RL.Util
 
 import Data.Maybe (catMaybes, fromJust, isJust, listToMaybe)
 import qualified Data.List as L
@@ -36,24 +38,26 @@ data SpriteEnv = SpriteEnv { spriteGame :: Env,
 spriteLevel = level . spriteGame
 
 gameSprites :: SpriteEnv -> [Sprite]
-gameSprites env = getMapSprites env ++ getMsgSprites (spriteGame env) ++ getStatusSprites (spriteLevel env) ++ inputSprites env
+gameSprites env = getMapSprites env ++ getMsgSprites (spriteGame env) ++ getStatusSprites env ++ inputSprites env
 
 inputSprites :: SpriteEnv -> [Sprite]
 inputSprites env =
     case menu (spriteIS env) of
         Just TargetMenu     -> maybe [] targetMenu (target (spriteIS env))
         Just Inventory      -> inventoryMenu
+        Just DropMenu       -> inventoryMenu
         Just ProjectileMenu -> inventoryMenu
         otherwise           -> []
     where targetMenu  p = [CharSprite p '*' (SpriteAttr red black)]
           inventoryMenu =
             let lvl                 = spriteLevel env
-                inv                 = groupItems (inventory (player lvl))
+                inv                 = groupItems . L.filter (not . isGold) $ inventory (player lvl)
                 eq                  = groupItems (equipmentToList (equipment (player lvl)))
                 showInvItem (ch, i) = ch:(showItem i)
                 p                   = player lvl
-                showItem (1,i)      = " - " ++ showIdentified (identified p) i
-                showItem (n,i)      = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" -- TODO pluralize
+                readyStr i          = if readied (spriteIS env) == Just i then " (readied)" else ""
+                showItem (1,i)      = " - " ++ showIdentified (identified p) i ++ readyStr i
+                showItem (n,i)      = " - " ++ show n ++ " " ++ showIdentified (identified p) i ++ "s" ++ readyStr i -- TODO pluralize
             in  mkMessages (0,  0) ([ "Inventory:", " " ] ++ map showInvItem (zip inventoryLetters inv)) ++
                 mkMessages (40, 0) ([ "Equipped:", " " ] ++ map showItem eq)
             
@@ -145,9 +149,10 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
 getMapSprites :: SpriteEnv -> [Sprite]
 getMapSprites env = map (spriteAt env . fst) . M.toList $ tiles (spriteLevel env)
 
-getStatusSprites :: DLevel -> [Sprite]
-getStatusSprites lvl =
-    let p = player lvl
+getStatusSprites :: SpriteEnv -> [Sprite]
+getStatusSprites env =
+    let lvl = spriteLevel env
+        p  = player lvl
         hpSprite = (MessageSprite (64, 15) (show (hp p)) (SpriteAttr hpColor black))
         hpPercent = fromIntegral (hp p) / fromIntegral (mhp p)
         hpColor = if hpPercent >= 1.0 then white
@@ -155,19 +160,28 @@ getStatusSprites lvl =
                   else if hpPercent >= 0.4 then yellow
                   else red
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
-         mkMessage (60, 16) ("Depth: " ++ show (depth lvl)) ]
+         mkMessage (60, 16) ("XP: " ++ show (xp (player lvl))),
+         mkMessage (60, 17) ("GP: " ++ show (goldAmount (inventory (player lvl)))),
+         mkMessage (60, 18) ("Depth: " ++ show (depth lvl)) ]
 
 getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env
                         recentMsgs = catMaybes (map (toMessage env) (eventsSince 1 evs))
                         staleMsgs  = catMaybes (map (toMessage env) (eventsSince 10 (eventsTurnsAgo 1 evs)))
                         msgs       = zip recentMsgs (repeat white) ++ zip staleMsgs (repeat grey)
-                    in  mkColoredMessages (0, 15) . reverse . take 9 $ msgs
+                    in  mkColoredMessages (0, 15) . takeLast 9 . wrapMessages . reverse . take 9 $ msgs
 
 mkMessages :: Point -> [String] -> [Sprite]
 mkMessages (offx, offy) = map toSprite . enumerate
     where
         toSprite (i, s) = MessageSprite (offx, i + offy) s (SpriteAttr white black)
+
+maxMessageWidth = 59
+
+wrapMessages :: [(String, Color)] -> [(String, Color)]
+wrapMessages = foldr f []
+    where f (str, clr) xs = if length str > maxMessageWidth then (map (, clr) $ wrapString str maxMessageWidth) ++ xs
+                            else (str, clr):xs
 
 mkColoredMessages :: Point -> [(String, Color)] -> [Sprite]
 mkColoredMessages (offx, offy) = map toSprite . enumerate
@@ -269,8 +283,8 @@ isWall otherwise = False
 
 
 toMessage :: Env -> Event -> Maybe String
-toMessage e (GameUpdate NewGame)   = Just $ "You delve underground, searching for your ancestors' sword."
-toMessage e (GameUpdate (Escaped)) = Just $ "There is no escape. You must avenge your ancestors!"
+toMessage e (GameUpdate NewGame)   = Just $ "You have spent your life in squalor and filth among the rogues. You have heard many rumors of great treasures beneath this dungeon. This is your chance to earn fame and fortune."
+toMessage e (GameUpdate (Escaped)) = Just $ "There is no escape. You must redeem your ancestors!"
 toMessage e (GameUpdate (Crit attacker target))
     | isPlayer attacker = Just $ "CRITICAL HIT!"
 toMessage e (GameUpdate (Damaged attacker target dmg))
@@ -296,15 +310,21 @@ toMessage e (EventMessage (ItemsSeen items)) = let suffix = if length items > 1 
 toMessage e (EventMessage (MenuChange Inventory)) = Just $ "Pick an item to use or equip. Press space to cancel."
 toMessage e (EventMessage (MenuChange ProjectileMenu)) = Just $ "Pick a projectile to throw. Press space to cancel."
 toMessage e (EventMessage (MenuChange TargetMenu)) = Just $ "Pick a target to fire at. Press r to ready something else, space to cancel."
-toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
+toMessage e (EventMessage (MenuChange DropMenu)) = Just $ "Pick an item to drop onto the ground."
 toMessage e (EventMessage (Readied i)) = Just $ "You have readied the " ++ show i
-toMessage e (EventMessage Hostiles) = Just $ "There are too many hostiles nearby to rest."
-toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up a " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on firing within the melee."
+toMessage e (EventMessage PlayerRested)   = Just $ "You find a safe place to rest and heal your wounds."
+toMessage e (EventMessage PlayerInDanger) = Just $ "You are unable to find a safe place to rest here!"
+toMessage e (EventMessage (AttackOfOpportunity m t))    | isPlayer t = Just $ "The " ++ show m ++ " notices an opening and attacks!"
+-- toMessage e (EventMessage (PlayerRetreated m))                       = Just $ "You have successfully broke off the melee with the " ++ show m
+toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up the " ++ showIdentified (identified (player (level e))) item ++ "."
+toMessage e (GameUpdate (ItemDropped  m item))          | isPlayer m = Just $ "You have dropped the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Equipped m item))              | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (EquipmentRemoved m item))      | isPlayer m = Just $ "You have removed the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Drank           m p))          | isPlayer m = Just $ "You drank the " ++ show p ++ "."
 toMessage e (GameUpdate (Healed          m n))          | isPlayer m = Just $ "You were healed of " ++ show n ++ " points of damage."
 toMessage e (GameUpdate (GainedLife      m n))          | isPlayer m = Just $ "Praise the sun! You feel youthful."
+toMessage e (GameUpdate (GainedLevel     m lvl))        | isPlayer m = Just $ "Congratulations! You are now level " ++ show lvl
 toMessage e (GameUpdate (GainedStrength  m n))          | isPlayer m = Just $ "You feel empowered!"
 toMessage e (GameUpdate (DrankAcid       m  ))          | isPlayer m = Just $ "It BURNS!"
 toMessage e (GameUpdate (GainedMobFlag m Invisible))    | isPlayer m = Just $ "You can no longer see yourself!"

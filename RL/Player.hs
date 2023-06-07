@@ -1,6 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, automatePlayer, isTicking, readyForInput, handleInput, seenAtDepth) where
+module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, startTurn, isTicking, readyForInput, handleInput, seenAtDepth) where
+
+-- TODO when automating, there's a delay waiting for movement points
+-- TODO should have an impementation of retreat (monsters may attack the fleeing player at a bonus... note in OSE this depends on initiative roll, so 50/50 chance monster doesn't get AoO)
+-- TODO monster morale should have an effect as well, this way player gets AoO too
 
 import RL.Action
 import RL.UI.Common (Key(..), KeyMod)
@@ -33,9 +37,11 @@ data InputState = InputState { menu :: Maybe Menu,
                                destination :: Maybe Point,
                                readied :: Maybe Item,
                                target :: Maybe Point,
-                               seen :: [(Depth, [Point])] }
+                               seen :: [(Depth, [Point])],
+                               inCombat :: Bool,
+                               combatStartHp :: Int }
 
-defaultInputState = InputState Nothing Nothing Nothing Nothing []
+defaultInputState = InputState Nothing Nothing Nothing Nothing [] False 0
 
 runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> (a, ([Event], InputState))
 runPlayerAction k env s g = let k'             = runStateT (playerAction k) s
@@ -48,11 +54,11 @@ execPlayerAction k env s g = snd $ runPlayerAction k env s g
 evalPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> a
 evalPlayerAction k env s g = fst $ runPlayerAction k env s g
 
--- attempt to automate player turn if running
-automatePlayer :: PlayerAction ()
-automatePlayer = do
+startTurn :: PlayerAction ()
+startTurn = do
     s   <- get
     env <- ask
+    -- attempt to automate player turn if running
     if isJust (destination s) && canAutomate env then continueRunning
     else clearDestination
 
@@ -101,11 +107,14 @@ handleInput k km = do
             (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
             (KeyChar 'r')     -> changeMenu Inventory
-            (KeyChar '>')     -> takeStairs Down
-            (KeyChar '<')     -> takeStairs Up
+            (KeyChar 'R')     -> tryRest
+            (KeyChar '>')     -> goStairs Down
+            (KeyChar '<')     -> goStairs Up
             (KeyChar 'i')     -> changeMenu Inventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
+            (KeyChar 'G')     -> gameEvents (pickupAll (level env))
+            (KeyChar 'd')     -> changeMenu DropMenu
             (KeyChar ',')     -> gameEvents (maybeToList (pickup (level env)))
             (KeyChar 'w')     -> changeMenu Inventory
             (KeyChar 'W')     -> changeMenu Inventory
@@ -123,6 +132,13 @@ handleMenu k km Inventory = do
     let ch = charFromKey k
         i  = (`fromInventoryLetter` (inventory p)) =<< ch
     when (isJust i) $ applyItem lvl p (fromJust i)
+    closeMenu
+handleMenu k km DropMenu = do
+    p   <- getPlayer
+    lvl <- level <$> getEnv
+    let ch = charFromKey k
+        i  = (`fromInventoryLetter` (inventory p)) =<< ch
+    when (isJust i) $ gameEvent (ItemDropped p (fromJust i))
     closeMenu
 handleMenu k km ProjectileMenu = do
     p <- getPlayer
@@ -142,6 +158,7 @@ handleMenu k km TargetMenu = do
     rdy <- getReadied
     let fireF to = do
             fire lvl p (fromJust rdy) (fromJust (findMobAt to lvl))
+            beginCombat
             clearTarget
             closeMenu
     if isJust (target s) && isJust rdy then do
@@ -184,7 +201,7 @@ bumpAt to = do
     let lvl      = level env
         p        = player lvl
     case (findMobAt to lvl, findTileAt to lvl, findFeatureAt to lvl) of
-        (Just m, _, _) -> attack p (wielding (equipment p)) m
+        (Just m, _, _) -> attack p (wielding (equipment p)) m >> beginCombat
         (_, _, Just f) -> interactFeature to f
         (_, Just t, _) -> let stairE   = maybe [] (maybeToList . stairF) $ findTileAt to lvl
                               stairF   = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
@@ -207,37 +224,54 @@ interactFeature p f = do
         --     else insertMessage Hostiles
         Campfire   ->
             if canRest env then gameEvents [Rested pl (depth (level env)) (currentDay (events env)), Healed pl (mhp pl - hp pl)]
-            else insertMessage Hostiles
+            else insertMessage PlayerInDanger
         f  -> return ()
 
 -- attempt to fire if readied weapon
 tryFire :: DLevel -> Mob -> PlayerAction ()
-tryFire lvl m =
-    if inMelee lvl m then insertMessage InMelee
-    else do
-        rdy     <- getReadied
-        targets <- getTargets
-        if isJust rdy then
-            if length targets > 0 then do
-                changeMenu TargetMenu
-                changeTarget (head targets)
-            else return ()
-        else changeMenu ProjectileMenu
+tryFire lvl m = do
+    rdy     <- getReadied
+    targets <- getTargets
+    if isJust rdy then
+        if length targets > 0 then do
+            changeMenu TargetMenu
+            changeTarget (head targets)
+        else return ()
+    else changeMenu ProjectileMenu
+
+tryInventory :: PlayerAction ()
+tryInventory = getEnv >>= \env ->
+    if inMelee (level env) (player (level env)) then insertMessage InMelee
+    else changeMenu Inventory
 
 pickup :: DLevel -> Maybe GameEvent
 pickup lvl = 
     let is = findItemsAt (at (player lvl)) lvl
     in  ItemPickedUp (player lvl) <$> listToMaybe is
 
+pickupAll :: DLevel -> [GameEvent]
+pickupAll lvl = 
+    let is = findItemsAt (at (player lvl)) lvl
+    in  map (ItemPickedUp (player lvl)) is
+
+-- take stairs or goto up/down stair
+goStairs :: VerticalDirection -> PlayerAction ()
+goStairs v = do
+    lvl <- asks level
+    t   <- getPlayerTile
+    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust (getStairLvl t) then takeStairs v
+    else do
+        ts <- getSeen
+        let to = fst <$> findTile (\(_, t) -> v == Up && isUpStair t || v == Down && isDownStair t) lvl
+        when (isJust to && fromJust to `elem` ts) $ startRunning (fromJust to)
+
 takeStairs :: VerticalDirection -> PlayerAction ()
 takeStairs v = do
-    lvl <- asks level
-    let p    = player lvl
-        t    = fromMaybe (error "Unable to find stairs tile") $ findTileAt (at p) lvl
-        lvl' = getStairLvl t
-    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust lvl' then
-        when (isJust lvl') $ gameEvent $ StairsTaken v (fromJust lvl')
-    else if isNothing lvl' then
+    t <- getPlayerTile
+    let lvl = getStairLvl t
+    if ((v == Up && isUpStair t) || (v == Down && isDownStair t)) && isJust lvl then
+        when (isJust lvl) $ gameEvent $ StairsTaken v (fromJust lvl)
+    else if isNothing lvl then
         gameEvent Escaped
     else
         return ()
@@ -245,12 +279,12 @@ takeStairs v = do
 setDestination :: Point -> PlayerAction ()
 setDestination to = do
     s <- get
-    put $ s { destination = Just to }
+    modify $ \s -> s { destination = Just to }
 
 clearDestination :: PlayerAction ()
 clearDestination = do
     s <- get
-    put $ s { destination = Nothing }
+    modify $ \s -> s { destination = Nothing }
 
 startRunning :: Point -> PlayerAction ()
 startRunning to = do
@@ -347,4 +381,51 @@ getTargets :: PlayerAction [Point]
 getTargets = do
     env <- getEnv 
     p   <- getPlayer
-    return (L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
+    return (L.filter (not . touching (at p)) . L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
+
+-- TODO not handling when monster attacks player *before* entering combat
+-- TODO need a "handleEvent" function for player/AI
+detectCombat :: PlayerAction ()
+detectCombat = do
+    lvl <- level <$> getEnv
+    p   <- getPlayer
+    when (inMelee lvl p) $ beginCombat
+
+beginCombat :: PlayerAction ()
+beginCombat = do
+    p <- getPlayer
+    s <- get
+    let startHp = if not (inCombat s) then hp p else combatStartHp s
+    modify $ \s -> s { inCombat = True, combatStartHp = startHp }
+
+recentlyOutOfCombat :: PlayerAction Bool
+recentlyOutOfCombat = do
+        evs <- getEvents
+        lvl <- level <$> getEnv
+        let seenMobs = L.filter (canSeeMob lvl (player lvl)) (mobs lvl)
+        return (occurredLastTurn f evs && null seenMobs)
+    where f (GameUpdate (Died m)) | not (isPlayer m) = True
+          f otherwise                                = False
+
+healCombatDamage :: PlayerAction ()
+healCombatDamage = do
+    modify $ \s -> s { inCombat = False }
+    p <- getPlayer
+    s <- get
+    when (hp p < combatStartHp s) $ do
+        let maxDmg = combatStartHp s - hp p
+        r <- roll $ 1 `d` 6
+        let dmg = min r maxDmg
+        gameEvent (Healed p dmg)
+
+tryRest :: PlayerAction ()
+tryRest = do
+    p  <- getPlayer
+    ms <- aliveMobs . mobs . level <$> getEnv
+    if null ms then do
+        -- TODO level up player when resting
+        insertMessage PlayerRested
+        let dmg = mhp p - hp p
+        when (dmg > 0) $ gameEvent (Healed p dmg)
+    else
+        insertMessage PlayerInDanger

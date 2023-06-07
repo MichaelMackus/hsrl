@@ -2,18 +2,21 @@ module RL.Types where
 
 import Data.List (sort,unfoldr)
 
-type Depth = Int
-data Dice  = D Int Sides deriving (Eq, Ord)
-type Sides = Int
+type Depth    = Int
+data Dice     = D Int Sides Modifier deriving (Eq, Ord)
+type Sides    = Int
+type Modifier = Int
 
 type AC = Int
 
--- construct dice from number of dice & sides, used like: 2 `d` 4 or 1 `d` 20
+-- construct dice from number of dice & sides, used like: 2 `d` 4 or 1 `d` 20 `plus` 5
 d :: Int -> Sides -> Dice
-d n ns = D n ns
+d n ns = D n ns 0
+plus :: Dice -> Int -> Dice
+plus (D n ns m) m' = D n ns (m + m')
 
 maxD :: Dice -> Int
-maxD (D n ns) = ns * n
+maxD (D n ns _) = ns * n
 
 type Point  = (Int, Int)
 type Path   = [Point]

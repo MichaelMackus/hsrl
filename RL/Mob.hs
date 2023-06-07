@@ -5,7 +5,7 @@ import RL.Types
 import RL.Util (enumerate1)
 
 import Data.List (find, sort, filter)
-import Data.Maybe (catMaybes, maybeToList, isJust, fromJust)
+import Data.Maybe (catMaybes, maybeToList, isJust, fromJust, listToMaybe)
 
 -- player/mobs
 type HP     = Int
@@ -29,7 +29,11 @@ data Mob = Mob {
     flags          :: [MobFlag],
     inventory      :: [Item],
     equipment      :: MobEquipment,
-    identified     :: [ItemType]
+    identified     :: [ItemType],
+    speed          :: Int,
+    xp             :: Int,  -- TODO move to player type
+    mlvl           :: Int,  -- TODO move to player type
+    savingThrow    :: Int
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
 
@@ -48,11 +52,36 @@ instance Show Mob where
 
 type Player = Mob
 
+mobSpeed :: Mob -> Int
+mobSpeed m =
+    let armor = maybe False isArmor      (wearing $ equipment m)
+        heavy = maybe False isHeavyArmor (wearing $ equipment m)
+    in  if heavy      then floor $ fromIntegral(speed m) * 0.5
+        else if armor then floor $ fromIntegral(speed m) * 0.75
+        else speed m
+
+xpAward :: Mob -> Int
+xpAward m = round (hd m * 100) -- TODO need xp table
+    -- fracitonal hit die
+    where hd m     = fromIntegral (mhp m) / avgperhd
+          avgperhd = 4.0 :: Float
+
+needsLevelUp :: Mob -> Bool
+needsLevelUp m = xp m >= expForLevel (mlvl m + 1)
+
+expForLevel :: Int -> Int
+expForLevel 1   = 0
+expForLevel 2   = 2000
+expForLevel lvl = let prevlvl = expForLevel (lvl - 1) in min (prevlvl * 2) (prevlvl + 120000)
+
 canAttack :: Mob -> Bool
 canAttack = canMove
 
 canMove :: Mob -> Bool
 canMove m = not (isDead m) && length (filter (== Sleeping) (flags m)) == 0
+
+moveMob :: Point -> Mob -> Mob
+moveMob p m = m { at = p }
 
 isSleeping :: Mob -> Bool
 isSleeping m = Sleeping `elem` flags m
@@ -77,19 +106,6 @@ isUndead m = Undead `elem` flags m
 mobAC :: Mob -> AC
 mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties $ catMaybes [wearing (equipment m), shield (equipment m)]
 
--- configure default player
-mkPlayer :: HP -> Point -> Radius -> Player
-mkPlayer hp at fov = mob {
-    mobId  = 0,
-    mobName = "Player", -- TODO configurable name
-    symbol = '@',
-    hp = hp,
-    mhp = hp,
-    at = at,
-    fov = fov,
-    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) Nothing Nothing
-}
-
 isPlayer :: Mob -> Bool
 isPlayer m = mobId m == 0
 
@@ -111,8 +127,11 @@ mob = Mob {
     flags = [],
     inventory = [],
     identified = [],
-    equipment = MobEquipment Nothing Nothing Nothing Nothing
-    -- TODO DR & weaknesses
+    equipment = MobEquipment Nothing Nothing Nothing Nothing,
+    speed = 40,
+    xp = 0,
+    mlvl = 1,
+    savingThrow = 19
 }
 
 -- helper functions for mob management
@@ -136,13 +155,6 @@ insertMob ms m = m { mobId = maxId + 1 } : ms
 
 findMob :: Int -> [Mob] -> Maybe Mob
 findMob n = find ((n==) . mobId)
-
--- -- moves mob, resetting the destination if we have reached it
--- moveMob :: Point -> Mob -> Mob
--- moveMob p m = let dest = if destination m == Just p then Nothing else destination m
---               in  m { at = p, destination = dest }
-moveMob :: Point -> Mob -> Mob
-moveMob p m = m { at = p }
 
 isShielded :: Mob -> Bool
 isShielded m = isJust (shield (equipment m))

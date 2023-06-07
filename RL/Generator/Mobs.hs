@@ -2,6 +2,8 @@
 
 module RL.Generator.Mobs (playerGenerator, mobGenerator, PlayerConfig(..), MobConfig(..)) where
 
+-- TODO make deeper dungeon much more difficult
+
 import RL.Game hiding (updateFlags)
 import RL.Generator
 import RL.Generator.Cells (Cell, cmid)
@@ -14,6 +16,7 @@ import qualified Data.List as L
 
 data PlayerConfig = PlayerConfig {
     playerHp :: Int,
+    playerLevel :: Int,
     playerFov :: Radius,
     playerItems :: [Item]
 }
@@ -37,15 +40,36 @@ instance GenConfig MobConfig DLevel where
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
-    (PlayerConfig hp fov inv) <- ask
+    (PlayerConfig hp plvl fov inv) <- ask
     cs <- getGData
-    if not (null cs) then
+    if not (null cs) then do
         -- TODO place player randomly around dungeon
         let p  = cmid (cs !! 0)
-            pl = (mkPlayer hp p fov) { inventory = inv, identified = map itemType inv }
-        in  markGDone >> return (Just pl)
+            pl = (mkPlayer p fov) { inventory = inv, identified = map itemType inv }
+        markGDone
+        Just <$> updatePlayerLevel pl
     else
         return Nothing
+
+-- level up player to configured exp level
+updatePlayerLevel :: Player -> Generator PlayerConfig [Cell] Player
+updatePlayerLevel p = do
+    (PlayerConfig hp plvl fov inv) <- ask
+    let neededLevels = max 0 (plvl - 1)
+        hp' = floor (fromIntegral hp / 2.0  *  fromIntegral neededLevels) + hp
+    return $ p { mlvl = plvl, hp = hp', mhp = hp', xp = expForLevel plvl }
+
+-- configure default player
+mkPlayer :: Point -> Radius -> Player
+mkPlayer at fov = mob {
+    mobId  = 0,
+    mobName = "Player", -- TODO configurable name
+    symbol = '@',
+    at = at,
+    fov = fov,
+    equipment = MobEquipment (findItemByName "Mace" weapons) (findItemByName "Leather Armor" armors) (findItemByName "Bow" weapons) Nothing,
+    savingThrow = 14
+}
 
 mobGenerator :: Generator MobConfig DLevel [Mob]
 mobGenerator = do
@@ -69,7 +93,7 @@ generateMob diff = do
         p <- randomTile tileF lvl
         -- TODO give mob (identified) items
         m <- pickRarity (mobRarity diff) dngMobs
-        traverse updateFlags (moveMob <$> p <*> m)
+        traverse updateFlags ((\p m -> m { at = p }) <$> p <*> m)
     else
         return Nothing
 
@@ -89,7 +113,8 @@ dngMobs = [ mob {
                 hp = 2,
                 mhp = 2,
                 baseDmg = 1 `d` 4,
-                baseAC  = 6
+                baseAC  = 6,
+                speed = 20
             },
             mob {
                 mobName = "Goblin",
@@ -97,7 +122,8 @@ dngMobs = [ mob {
                 hp = 3,
                 mhp = 3,
                 baseDmg = 1 `d` 6,
-                baseAC  = 6
+                baseAC  = 6,
+                speed = 20
             },
             mob {
                 mobName = "Grid Bug",
@@ -106,7 +132,8 @@ dngMobs = [ mob {
                 mhp = 2,
                 baseDmg = 1 `d` 2,
                 thac0   = 22,
-                baseAC  = 9
+                baseAC  = 9,
+                speed = 20
             },
             mob {
                 mobName = "Rat",
@@ -115,16 +142,17 @@ dngMobs = [ mob {
                 mhp = 2,
                 baseDmg = 1 `d` 2,
                 thac0   = 22,
-                baseAC  = 9
+                baseAC  = 9,
+                speed = 20
             },
             mob {
-               -- TODO fast
                mobName = "Orc",
                symbol = 'o',
                hp = 4,
                mhp = 4,
                baseDmg = 1 `d` 6,
-               baseAC  = 6
+               baseAC  = 6,
+               speed = 40
             },
             mob {
                mobName = "Skeleton",
@@ -133,7 +161,8 @@ dngMobs = [ mob {
                mhp = 4,
                baseDmg = 1 `d` 6,
                baseAC  = 7,
-               flags = [Undead]
+               flags = [Undead],
+               speed = 20
             },
             mob {
                mobName = "Zombie",
@@ -143,8 +172,19 @@ dngMobs = [ mob {
                baseDmg = 1 `d` 8,
                thac0   = 18,
                baseAC  = 8,
-               flags = [Undead]
+               flags = [Undead],
+               speed = 20
             },
+            -- mob {
+            --    mobName = "Troglodyte",
+            --    symbol = 't',
+            --    hp = 9,
+            --    mhp = 9,
+            --    baseDmg = 2 `d` 4 `plus` 1, -- TODO multiple attacks
+            --    thac0   = 18,
+            --    baseAC  = 5,
+            --    speed = 40
+            -- },
             mob {
                mobName = "Ogre",
                symbol = 'O',
@@ -152,7 +192,18 @@ dngMobs = [ mob {
                mhp = 19,
                baseDmg = 1 `d` 10,
                thac0   = 15,
-               baseAC  = 5
+               baseAC  = 5,
+               speed = 30
+            },
+            mob {
+               mobName = "Bugbear",
+               symbol = 'B',
+               hp = 14,
+               mhp = 14,
+               baseDmg = 2 `d` 4,
+               thac0   = 16,
+               baseAC  = 5,
+               speed = 30
             },
             mob {
                mobName = "Black Dragon",
@@ -161,30 +212,63 @@ dngMobs = [ mob {
                mhp = 31,
                baseDmg = 2 `d` 10,
                thac0   = 13,
-               baseAC  = 2
+               baseAC  = 2,
+               speed = 80
             }
           ]
 
 mobRarity :: Difficulty -> Mob -> Rational
 mobRarity d m
-    | d <= 3 = case mobName m of
-                    "Kobold"   -> (1 % 10)
+    -- | d <= 3 = case mobName m of
+    --                 "Kobold"   -> (1 % 7)
+    --                 "Grid Bug" -> (1 % 3)
+    --                 "Rat"      -> (1 % 5)
+    --                 otherwise  -> (0 % 10)
+    | d == 1 = case mobName m of
                     "Grid Bug" -> (1 % 3)
+                    "Kobold"   -> (1 % 5)
+                    "Goblin"   -> (1 % 7)
                     "Rat"      -> (1 % 5)
                     otherwise  -> (0 % 10)
-    | d <= 5 = case mobName m of
+    | d == 2 = case mobName m of
                     "Kobold"   -> (1 % 5)
-                    "Goblin"   -> (1 % 10)
-                    otherwise  -> mobRarity 1 m
+                    "Rat"      -> (1 % 5)
+                    "Goblin"   -> (1 % 7)
+                    "Skeleton" -> (1 % 7)
+                    "Orc"      -> (1 % 10)
+                    otherwise  -> (0 % 10)
+    | d <  5 = case mobName m of
+                    "Kobold"   -> (1 % 5)
+                    "Goblin"   -> (1 % 5)
+                    "Skeleton" -> (1 % 7)
+                    "Orc"      -> (1 % 10)
+                    "Zombie"   -> (1 % 15)
+                    "Bugbear"  -> (1 % 30)
+                    "Ogre"     -> (1 % 30)
+                    otherwise  -> (0 % 10)
     | d < 10 = case mobName m of
+                    "Kobold"   -> (1 % 5)
+                    "Goblin"   -> (1 % 5)
+                    "Orc"      -> (1 % 7)
+                    "Skeleton" -> (1 % 5)
+                    "Zombie"   -> (1 % 10)
+                    "Bugbear"  -> (1 % 20)
+                    "Ogre"     -> (1 % 20)
+                    otherwise  -> (0 % 10)
+    | d < 15 = case mobName m of
+                    "Kobold"   -> (1 % 5)
                     "Goblin"   -> (1 % 5)
                     "Orc"      -> (1 % 10)
-                    "Skeleton" -> (1 % 15)
-                    otherwise  -> mobRarity 5 m
-    | d >= 10 = case mobName m of
+                    "Skeleton" -> (1 % 10)
+                    "Zombie"   -> (1 % 10)
+                    "Bugbear"  -> (1 % 15)
+                    "Ogre"     -> (1 % 15)
+                    otherwise  -> (0 % 10)
+    | d >= 15 = case mobName m of
                     "Orc"          -> (1 % 5)
-                    "Skeleton"     -> (1 % 7)
-                    "Zombie"       -> (1 % 10)
-                    "Ogre"         -> (1 % 15)
+                    "Skeleton"     -> (1 % 5)
+                    "Zombie"       -> (1 % 7)
+                    "Ogre"         -> (1 % 10)
+                    "Bugbear"      -> (1 % 10)
                     "Black Dragon" -> (1 % 20)
-                    otherwise      -> mobRarity 9 m
+                    otherwise      -> (0 % 10)

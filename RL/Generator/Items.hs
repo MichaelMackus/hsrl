@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections, FlexibleInstances #-}
 
-module RL.Generator.Items (ItemConfig(..), itemsGenerator, generateChestItems, randomItemAppearances) where
+module RL.Generator.Items (ItemConfig(..), generateChestItems, randomItemAppearances) where
 
 -- generate random items in dungeon
 
@@ -8,69 +8,94 @@ import RL.Generator
 import RL.Item
 import RL.Dungeon
 import RL.Random
+import RL.Util
 
 import Control.Monad.Reader (ask)
 import Control.Monad.State (gets)
 import Data.Map (Map)
 import Data.Ratio
-import Data.Maybe (isJust, catMaybes, fromJust, maybeToList, isNothing)
+import Data.Maybe (isJust, catMaybes, fromJust, maybeToList, isNothing, fromMaybe)
 import qualified Data.List as L
 import qualified Data.Map as M
 
 data ItemConfig = ItemConfig {
-    maxItems :: Int,
-    minItems :: Int,
-    itemGenChance :: Rational,
     itemAppearances :: Map ItemType String
 }
 
 instance GenConfig ItemConfig s where
-    generating conf = (< maxItems conf) <$> getCounter
+    -- generating conf = (< maxItems conf) <$> getCounter
+    generating conf = (< maxRecursion) <$> getCounter
 
--- FIXME use max tries variable?
--- instance GenConfig ItemConfig [Item] where
---     generating conf = (< maxItems conf) <$> gets length
--- instance GenConfig ItemConfig DLevel where
---     generating conf = (< maxItems conf) <$> gets (length . items)
-
-itemsGenerator :: Generator ItemConfig DLevel [(Point, Item)]
-itemsGenerator = do
-    conf <- ask
-    lvl  <- getGData
-    items' <- maybe (items lvl) (:items lvl) <$> generateFloorItem
-    setGData (lvl { items = items' })
-    return items'
+maxRecursion = 10
 
 -- generate items in a chest
--- TODO minItems
+-- TODO not generating gold in chest when generating magic item
 generateChestItems :: Difficulty -> Generator ItemConfig [Item] [Item]
 generateChestItems d = do
     conf <- ask
     is   <- getGData
-    i    <- generateItem (typeRarity d) (itemRarity d)
-    let is' = maybeToList i ++ is
-    setGData is'
-    return is'
+    markGDone
+    generateItems =<< goldValue d
 
--- generate an item on the floor
-generateFloorItem :: Generator ItemConfig DLevel (Maybe (Point, Item))
-generateFloorItem = do
-    lvl <- getGData
-    let tileF p t = not (isStair t) && isPassable t && isNothing (L.lookup p (features lvl))
-    i   <- generateItem (typeRarity (depth lvl)) (itemRarity (depth lvl)) -- TODO minItems
-    p   <- randomTile tileF lvl
-    return ((,) <$> p <*> i)
+goldValue :: MonadRandom m => Difficulty -> m Int
+goldValue d | d < 5     = return . fromMaybe 100 =<< pick [250,  500,  1000]
+goldValue d | d < 10    = return . fromMaybe 100 =<< pick [1000, 2000, 3000]
+goldValue d | otherwise = return . fromMaybe 100 =<< pick [2000, 3000, 5000]
 
 -- generate an item using specified rarity functions
-generateItem :: (ItemType -> Rational) -> (Item -> Rational) -> Generator ItemConfig a (Maybe Item)
-generateItem f g = do
-    conf <- ask
-    r    <- randomChance (itemGenChance conf)
-    if r then do
-        fmap (updateAppearance (itemAppearances conf)) <$> randomItem f g
-    else
-        return Nothing
+generateItems :: Int -> Generator ItemConfig a [Item]
+generateItems value = do
+    conf   <- ask
+    majorN <- numMagicItems (majorMagicChances  value)
+    medN   <- numMagicItems (mediumMagicChances (value - majorN * 5000))
+    minorN <- numMagicItems (minorMagicChances  (value - majorN * 5000 - medN * 1000))
+    majorI <- replicateMs majorN majorMagicItem
+    medI   <- replicateMs medN   mediumMagicItem
+    minorI <- replicateMs minorN minorMagicItem
 
+    let gpVal = value - (majorN * 5000) - (medN * 1000) - (minorN * 100)
+        is    = map (updateAppearance (itemAppearances conf)) (majorI ++ medI ++ minorI)
+
+    if gpVal > 0 then return $ (gold gpVal):is
+    else              return is
+
+majorMagicChances :: Int -> Int
+majorMagicChances value | value < 5000 = 0
+majorMagicChances value | otherwise    = 1 + majorMagicChances (value - 5000)
+mediumMagicChances :: Int -> Int
+mediumMagicChances value | value < 1000 = 0
+mediumMagicChances value | otherwise    = 1 + mediumMagicChances (value - 1000)
+minorMagicChances :: Int -> Int
+minorMagicChances value | value < 100 = 0
+minorMagicChances value | otherwise   = 1 + minorMagicChances (value - 100)
+
+majorMagicItem :: MonadRandom m => m [Item]
+majorMagicItem = roll (1 `d` 6) >>= \r -> case r of
+    r | r == 1 -> replicateM 6 generatePotion
+      | r <= 3 -> (:[]) <$> generateScroll    (1 `d` 6  `plus` 12)
+      | r <= 5 -> generateEquipment (1 `d` 6  `plus` 12)
+      | r == 6 -> generateMisc      (1 `d` 20 `plus` 40)
+
+mediumMagicItem :: MonadRandom m => m [Item]
+mediumMagicItem = roll (1 `d` 6) >>= \r -> case r of
+    r | r == 1 -> replicateM 3 generatePotion
+      | r <= 3 -> (:[]) <$> generateScroll (1 `d` 6  `plus` 6)
+      | r <= 5 -> generateEquipment (1 `d` 6  `plus` 6)
+      | r == 6 -> generateMisc      (1 `d` 20 `plus` 20)
+
+minorMagicItem :: MonadRandom m => m [Item]
+minorMagicItem = roll (1 `d` 6) >>= \r -> case r of
+    r | r == 1 -> (:[]) <$> generatePotion
+      | r <= 3 -> (:[]) <$> generateScroll (1 `d` 6)
+      | r <= 5 -> generateEquipment (1 `d` 6)
+      | r == 6 -> generateMisc      (1 `d` 20)
+
+numMagicItems :: MonadRandom m => Int -> m Int
+numMagicItems 0   = return 0
+numMagicItems num = do
+    r <- roll $ 1 `d` 10
+    if r == 1 then (+1) <$> numMagicItems (num - 1)
+    else           numMagicItems (num - 1)
 
 randomItemAppearances :: MonadRandom m => m (Map ItemType String)
 randomItemAppearances = do
@@ -79,72 +104,61 @@ randomItemAppearances = do
     scrApps <- M.fromList . f scrolls <$> shuffle scrolls
     return (M.union potApps scrApps)
 
-randomItem :: MonadRandom m => (ItemType -> Rational) -> (Item -> Rational) -> m (Maybe Item)
-randomItem f g = do
-    t <- pickRarity f itemTypes
-    case t of
-        Just (Weapon _) -> pickRarity g weapons
-        Just (Armor  _) -> pickRarity g armors
-        Just (Potion _) -> pickRarity g potions
-        Just (Scroll _) -> pickRarity g scrolls
-        otherwise       -> return Nothing
-
 updateAppearance :: Map ItemType String -> Item -> Item
 updateAppearance apps i =
     let app = M.lookup (itemType i) apps
         f s = i { itemDescription = s }
     in  maybe i f app
 
--- rarity for item types at depth
-typeRarity :: Difficulty -> ItemType -> Rational
-typeRarity d t
-    | d == 1 = case t of 
-                   (Weapon _) -> 1 % 5
-                   (Armor _)  -> 1 % 7
-                   (Potion _) -> 1 % 10
-                   (Scroll _) -> 1 % 20
-                   (Bandage)  -> 0 % 10
-                   (Draught)  -> 0 % 10
-    | d <= 3 = case t of 
-                   (Weapon _) -> 1 % 5
-                   (Armor _)  -> 1 % 7
-                   (Potion _) -> 1 % 5
-                   (Scroll _) -> 1 % 10
-                   (Bandage)  -> 0 % 10
-                   (Draught)  -> 0 % 10
-    | otherwise = case t of 
-                   (Weapon _) -> 1 % 5
-                   (Armor _)  -> 1 % 7
-                   (Potion _) -> 1 % 3
-                   (Scroll _) -> 1 % 4
-                   (Bandage)  -> 0 % 10
-                   (Draught)  -> 0 % 10
+generatePotion :: MonadRandom m => m Item
+generatePotion = do
+    r <- roll (1 `d` 100)
+    let t = case r of
+                r | r <= 20   -> Strength
+                  | r <= 30   -> Invisibility
+                  | r <= 40   -> Acid
+                  | r <= 50   -> Confusion
+                  | r <= 70   -> Life
+                  | otherwise -> Healing
+    return $ potion "Clear" t
+
+generateScroll :: MonadRandom m => Dice -> m Item
+generateScroll _ = do
+    r <- roll (1 `d` 100)
+    let t = case r of
+                r | r <= 10   -> Fire
+                  | r <= 20   -> Lightning
+                  | r <= 50   -> Teleport
+                  | r <= 70   -> Telepathy
+                  | otherwise -> Mapping
+    return $ scroll "Random" t
+
+generateEquipment :: MonadRandom m => Dice -> m [Item]
+generateEquipment _ = do
+    i <- fromMaybe dagger <$> pickRarity equipRarity (weapons ++ armors)
+    if i == arrow then return (replicate 20 i)
+    else               return [i]
+
+-- TODO misc. magic item
+generateMisc :: MonadRandom m => Dice -> m [Item]
+generateMisc _ = do
+    i <- fromMaybe dagger <$> pickRarity equipRarity (weapons ++ armors)
+    if i == arrow then return (replicate 20 i)
+    else               return [i]
 
 -- item rarity at depth
-itemRarity :: Difficulty -> Item -> Rational
-itemRarity d (Item "Mace"             _) = (1 % 10)
-itemRarity d (Item "Dagger"           _) = (4 % 10)
-itemRarity d (Item "Quarterstaff"     _) = (2 % 10)
-itemRarity d (Item "Sword"            _) = (1 % 10)
-itemRarity d (Item "Two-Handed Sword" _) = (1 % 20)
-itemRarity d (Item "Bow"              _) = (1 % 10)
-itemRarity d (Item "Arrow"            _) = (2 % 10)
-itemRarity d (Item "Leather Armor"    _) = (4 % 10)
-itemRarity d (Item "Chain Mail"       _) = (2 % 10)
-itemRarity d (Item "Plate Mail"       _) = (1 % 10)
-itemRarity d (Item "Full Plate"       _) = (1 % 50)
-itemRarity d (Item "Small Shield"     _) = (2 % 10)
-itemRarity d (Item "Tower Shield"     _) = (1 % 20)
-itemRarity d (Item _         (Potion t)) = potionRarities t
-itemRarity d (Item _         (Scroll t)) = scrollRarities t
-itemRarity d otherwise = (0 % 10)
-
-potionRarities :: PotionType -> Rational
-potionRarities Healing   = (1 % 8)
-potionRarities Acid      = (1 % 12)
-potionRarities Darkness  = (1 % 12)
-potionRarities Confusion = (1 % 12)
-potionRarities _         = (1 % 10)
-
-scrollRarities :: ScrollType -> Rational
-scrollRarities _ = (1 % 10)
+equipRarity :: Item -> Rational
+equipRarity (Item "Mace"             _) = (1 % 10)
+equipRarity (Item "Dagger"           _) = (4 % 10)
+equipRarity (Item "Quarterstaff"     _) = (2 % 10)
+equipRarity (Item "Sword"            _) = (1 % 10)
+equipRarity (Item "Two-Handed Sword" _) = (1 % 20)
+equipRarity (Item "Bow"              _) = (1 % 10)
+equipRarity (Item "Arrow"            _) = (2 % 10)
+equipRarity (Item "Leather Armor"    _) = (4 % 10)
+equipRarity (Item "Chain Mail"       _) = (2 % 10)
+equipRarity (Item "Plate Mail"       _) = (1 % 10)
+equipRarity (Item "Full Plate"       _) = (1 % 50)
+equipRarity (Item "Small Shield"     _) = (2 % 10)
+equipRarity (Item "Tower Shield"     _) = (1 % 20)
+equipRarity otherwise = (0 % 10)

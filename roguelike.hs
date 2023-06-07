@@ -10,7 +10,7 @@ import RL.Random
 
 import Control.Monad.State
 import Data.List (isInfixOf)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Ratio
 import System.Environment
 import System.Exit (exitSuccess)
@@ -29,7 +29,7 @@ data GameState = GameState { envState :: Env, inputState :: InputState, aiState 
 -- return value is True if player quit
 gameLoop :: DungeonConfig -> UI -> Game Bool
 gameLoop conf disp = do
-        doPlayerAction automatePlayer
+        doPlayerAction startTurn
         renderMap
 
         -- handle user input
@@ -59,10 +59,12 @@ gameLoop conf disp = do
             where
                 doAI' :: AIState -> Game ()
                 doAI' aist = do
-                    s <- get
                     g <- liftIO newStdGen
+                    s <- get
                     let (evs, aist') = runAI k (envState s) aist g
-                    put $ s { aiState = map (\(i, s) -> if i == mid then (i, aist') else (i, s)) (aiState s), envState = broadcastEvents (envState s) evs }
+                    modify $ \s ->
+                        s { aiState = (mid, aist'):(L.deleteBy (\(i,_) (i',_) -> i == i') (mid,undefined) (aiState s)),
+                            envState = broadcastEvents (envState s) evs }
         doPlayerAction :: PlayerAction a -> Game ()
         doPlayerAction k = doA k >> doA updateSeen
             where doA :: PlayerAction a -> Game ()
@@ -130,7 +132,8 @@ main = do
     -- putStrLn ""
 
 defaultGameState :: Env -> GameState
-defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) defaultInputState []
+defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) is []
+    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Dagger") . itemDescription) (inventory (player (level e)))) }
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
@@ -146,7 +149,7 @@ mkDefaultConf = do
         dheight = 15,
         maxTries = 10,
         prevLevel = Nothing,
-        maxDepth  = 10,
+        maxDepth  = 20,
         mobConfig = MobConfig {
             maxMobs = 10,
             minMobs = 4,
@@ -155,29 +158,31 @@ mkDefaultConf = do
             difficultyRange = (2, 0)
         },
         itemConfig = ItemConfig {
-            maxItems = 10,
-            minItems = 3,
-            itemGenChance = (1 % 5),
             itemAppearances = itemApps
         },
+        -- TODO add safe walking mode (like cataclysm). Turn on by default, can add config file for defaults.
         -- TODO start player with ~3 throwing daggers, then we can nerf dagger range?
+        -- TODO add chance of daggers to break
+        -- TODO don't end turn after cancelling menu
         -- TODO add dip command, which wastes/dilutes potion if not acid/poison?
         -- TODO allow throwing of potions at monsters to observe effects safely
         -- TODO add quiver/fire command
         -- TODO torches?
         -- TODO bundle of arrows/other items
         -- TODO gold & level up via gold
+        -- TODO monster AI on other levels (can simplify to only those near **stairs**)
         -- TODO monster stashes/hordes
         -- TODO monster drops/items
         -- TODO ranged monsters
         playerConfig = PlayerConfig {
-            playerHp = 12,
+            playerHp = 8,
+            playerLevel = 3,
             playerFov = 5,
-            playerItems = dagger:(scroll "asdf" Mapping):(scroll "zsdf" Telepathy):(potion "asdf" Invisibility):(potion "zsdf" Confusion):(replicate 3 (Item "Magic Draught" Draught))
+            -- playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught)) -- TODO make fountains give magic draught
+            playerItems = dagger:(replicate 40 arrow)
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,
-            cellFeatureChance = 1 % 7,
             fItemAppearances = itemApps
         }
     }

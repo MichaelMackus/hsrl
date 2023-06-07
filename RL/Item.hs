@@ -14,13 +14,14 @@ data Item = Item {
 type ItemName = String
 type RandomName = String
 type ItemRarity = Rational
-data ItemType = Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Bandage | Draught deriving (Eq, Ord)
+data ItemType = Gold Int | Weapon WeaponProperties | Armor ArmorProperties | Potion PotionType | Scroll ScrollType | Bandage | Draught deriving (Eq, Ord)
 data PotionType = Healing | Life | Acid | Strength | Invisibility | Confusion | Darkness deriving (Show, Eq, Ord)
 data ScrollType = Fire | Lightning | Teleport | Mapping | Telepathy deriving (Show, Eq, Ord)
 
 instance Show Item where
-    show (Item n (Potion _ )) = n ++ " Potion"
-    show (Item n (Scroll _ )) = "Scroll labeled \"" ++ n ++ "\""
+    show (Item n (Potion _)) = n ++ " Potion"
+    show (Item n (Scroll _)) = "Scroll labeled \"" ++ n ++ "\""
+    show (Item n (Gold   x)) = show x ++ " Gold"
     show (Item n _) = n
 instance Show ItemType where
     show (Weapon _) = "weapon"
@@ -34,6 +35,18 @@ instance Show ItemType where
 showIdentified :: [ItemType] -> Item -> String
 showIdentified identified i = if itemType i `elem` identified then itemTrueName i else show i
 
+gold :: Int -> Item
+gold = Item "Gold" . Gold
+
+isGold :: Item -> Bool
+isGold (Item _ (Gold _)) = True
+isGold otherwise         = False
+
+goldAmount :: [Item] -> Int
+goldAmount = foldr f 0
+    where f (Item _ (Gold a)) b = a + b
+          f otherwise         b = b
+
 -- get true item name (after identified)
 itemTrueName :: Item -> String
 itemTrueName i = show (i { itemDescription = (typeTrueName (itemType i)) })
@@ -43,6 +56,7 @@ itemTrueName i = show (i { itemDescription = (typeTrueName (itemType i)) })
           typeTrueName (Scroll t) = show t
           typeTrueName (Draught ) = itemDescription i
           typeTrueName (Bandage ) = itemDescription i
+          typeTrueName (Gold   _) = itemDescription i
 
 data WeaponProperties = WeaponProperties {
     dmgd :: Dice,
@@ -66,8 +80,9 @@ data ArmorProperties = ArmorProperties {
 data ArmorSlot = Body | Hand deriving (Eq, Ord)
 
 groupItems :: [Item] -> [(Int, Item)]
-groupItems = map f . groupBy' (==)
-    where f l = (length l, head l)
+groupItems = map f . groupBy' g
+    where f l    = (length l, head l)
+          g i i' = i == i' && isStackable i
 
 ungroupItems :: [(Int, Item)] -> [Item]
 ungroupItems = concat . map f
@@ -77,7 +92,7 @@ inventoryLetters :: [Char]
 inventoryLetters = map toEnum ([fromEnum 'a'..fromEnum 'z'] ++ [fromEnum 'A'..fromEnum 'Z'])
 
 fromInventoryLetter :: Char -> [Item] -> Maybe Item
-fromInventoryLetter ch is = snd . snd <$> L.find f (zip inventoryLetters (groupItems is))
+fromInventoryLetter ch is = snd . snd <$> (L.find f . zip inventoryLetters . groupItems . L.filter (not . isGold) $ is)
     where f (ch', (_, i)) = ch == ch'
 
 armorProperties :: Item -> Maybe ArmorProperties
@@ -90,6 +105,9 @@ armorSlot i = slot <$> armorProperties i
 findItemByName :: String -> [Item] -> Maybe Item
 findItemByName n = L.find f
     where f i = itemDescription i == n
+
+isStackable :: Item -> Bool
+isStackable i = isProjectile i || isReadable i || isDrinkable i
 
 isProjectile :: Item -> Bool
 isProjectile = maybe False (isJust . projectileType) . weaponProperties
@@ -114,6 +132,12 @@ isArmor :: Item -> Bool
 isArmor (Item _ (Armor _)) = True
 isArmor otherwise          = False
 
+isHeavyArmor :: Item -> Bool
+isHeavyArmor (Item "Plate Mail" _) = True
+isHeavyArmor (Item "Full Plate" _) = True
+isHeavyArmor (Item "Chain Mail" _) = True
+isHeavyArmor otherwise             = False
+
 isEquippable :: Item -> Bool
 isEquippable i = isWeapon i || isArmor i
 
@@ -135,8 +159,6 @@ potionType :: Item -> Maybe PotionType
 potionType (Item _ (Potion t)) = Just t
 potionType otherwise = Nothing
 
-itemTypes = [ Weapon undefined, Armor undefined, Potion undefined, Scroll undefined, Bandage, Draught ]
-
 isShield :: Item -> Bool
 isShield i = maybe False ((== Hand) . slot) (armorProperties i)
 
@@ -147,6 +169,7 @@ itemSymbol   (Item _ (Potion _)) = '!'
 itemSymbol   (Item _ (Scroll _)) = '?'
 itemSymbol   (Item _ (Bandage))  = '~'
 itemSymbol   (Item _ (Draught))  = '!'
+itemSymbol   (Item _ (Gold  _))  = '$'
 
 dagger = weapon "Dagger" (WeaponProperties (1 `d` 4) 0 False 19 (Just Thrown) Nothing)
 bow    = weapon "Bow" (WeaponProperties (1 `d` 6) 0 True 20 Nothing (Just Arrow))

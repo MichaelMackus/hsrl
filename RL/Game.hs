@@ -1,4 +1,4 @@
-module RL.Game (Env(..), Client(..), lastVisitedDay, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, module RL.Dungeon, module RL.Event) where
+module RL.Game (Env(..), Client(..), lastVisitedDay, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, retreatedFrom, module RL.Dungeon, module RL.Event) where
 
 import RL.Event
 import RL.Dungeon
@@ -91,6 +91,7 @@ instance Client Env where
     broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = broadcast' (changeLevel env v lvl) e
     broadcast env e@(GameUpdate (MobSpawned m)          )  = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
     broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(GameUpdate (ItemDropped  m i)      )  = broadcast' (env { level = (level env) { items = (at m, i):items (level env) } }) e
     broadcast env e@(GameUpdate (ItemSpawned p i)       )  = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
     broadcast env e@(GameUpdate (ThrownProjectile m i p))  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
                                                              in  broadcast' (env { level = (level env) { items = is } }) e
@@ -116,6 +117,7 @@ instance Client Mob where
                                                                     in  m { flags = fs }
     broadcast m (GameUpdate (Slept m')                ) | m == m' = m { flags = L.nub (Sleeping:flags m) }
     broadcast m (GameUpdate (ItemPickedUp m' i)       ) | m == m' = pickup i m
+    broadcast m (GameUpdate (ItemDropped  m' i)       ) | m == m' = poofItem m i
     broadcast m (GameUpdate (Equipped m' i)           ) | m == m' = equip m i
     broadcast m (GameUpdate (EquipmentRemoved m' i)   ) | m == m' = removeEquip m i
     broadcast m (GameUpdate (Read     m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
@@ -123,20 +125,25 @@ instance Client Mob where
     broadcast m (GameUpdate (Drank    m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
     broadcast m (GameUpdate (Healed m' amt)           ) | m == m' = m { hp = min (mhp m) (hp m + amt) }
     broadcast m (GameUpdate (GainedLife m' amt)       ) | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
-    broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { thac0 = thac0 m - str, strength = strength m + str }
+    broadcast m (GameUpdate (GainedLevel m' lvl)      ) | m == m' = m { mlvl = lvl, savingThrow = savingThrow m' - 1, thac0 = thac0 m' - 1 }
+    broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { strength = strength m + str }
     broadcast m (GameUpdate (GainedMobFlag m' f)      ) | m == m' = m { flags = L.nub (f:flags m) }
     broadcast m (GameUpdate (RemovedMobFlag m' f)     ) | m == m' = m { flags = L.delete f (flags m) }
     broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (FiredProjectile m' _ i _)) | m == m' = m { inventory = L.delete i (inventory m) }
     broadcast m (GameUpdate (BandageApplied  m')      ) | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
+    broadcast m (GameUpdate (Died m'))                  | isPlayer m && not (isPlayer m') = m { xp = xp m + xpAward m' }
 
     broadcast m otherwise = m
 
 pickup :: Item -> Mob -> Mob
-pickup i m = if i `elem` inventory m then
-                 let f (n, i') = if i == i' then (n+1, i') else (n, i')
-                 in  m { inventory = ungroupItems . map f $ groupItems (inventory m) }
-             else m { inventory = inventory m ++ [i] }
+pickup i m =
+    let inv = if not (isGold i) && i `elem` inventory m then
+                  let f (n, i') = if i == i' then (n+1, i') else (n, i')
+                  in  ungroupItems . map f $ groupItems (inventory m)
+              else inventory m ++ [i]
+        nxp = if isGold i then xp m + goldAmount [i] else xp m
+    in  m { inventory = inv, xp = nxp }
 
 removePickedItem :: Mob -> Item -> DLevel -> DLevel
 removePickedItem m i lvl = let is  = L.delete i (findItemsAt (at m) lvl)
@@ -210,3 +217,14 @@ updateFlags env = let isStale m Invisible   = turnsSinceMobF m Invisible   (even
                       evF        m          = map (removeFlag m) (L.filter (isStale m) (flags m))
                       evs                   = concat $ evF (player (level env)):(map evF (mobs (level env)))
                   in  broadcastEvents env evs
+
+
+-- get list of enmies that retreated from the melee
+retreatedFrom :: Env -> Mob -> [Mob]
+retreatedFrom env m = let lvl                         = level env
+                          enemies                     = if isPlayer m then mobs lvl else [player lvl]
+                          f (GameUpdate (Moved m' p)) = m' `elem` enemies && isVisible m' && touching (at m) (at m') && not (touching (at m) p)
+                          f otherwise                 = False
+                          g (GameUpdate (Moved m' p)) = findMob (mobId m') enemies
+                          g otherwise                 = Nothing
+                      in  if occurredThisTurn tookStairs (events env) then [] else catMaybes . map g . filterEventsThisTurn f $ events env

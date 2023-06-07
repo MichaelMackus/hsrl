@@ -1,6 +1,6 @@
 module RL.Util where
 
-import Control.Monad (when)
+import Control.Monad (when, replicateM)
 import Data.Maybe (isJust)
 import Data.Foldable (foldl')
 import qualified Data.List as L
@@ -82,3 +82,16 @@ groupBy' f l = reverse (go [] f l) where
   go acc comp (h:t) =
     let (hs, nohs) = L.partition (comp h) t
     in go ((h:hs):acc) comp nohs
+
+wrapString :: String -> Int -> [String]
+wrapString str len = reverse $ foldl' f [] (words str)
+    where f (line:xs) w = let line' = line ++ " " ++ w
+                          in  if length line' <= len then line':xs else w:line:xs
+          f [] w        = w:[]
+
+takeLast :: Int -> [a] -> [a]
+takeLast n xs = let len = length xs
+                in  drop (max 0 $ len - n) xs
+
+replicateMs :: Monad m => Int -> m [a] -> m [a]
+replicateMs i k = replicateM i k >>= return . concat
