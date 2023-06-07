@@ -11,7 +11,8 @@ data Event = EventMessage Message | GameUpdate GameEvent deriving (Eq, Show)
 -- Informational messages displayed to user
 data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item 
     | PlayerRested | PlayerInDanger
-    | AttackOfOpportunity Mob Mob | PlayerRetreated Mob deriving (Eq, Show)
+    | AttackOfOpportunity Mob Mob | PlayerRetreated Mob 
+    | NoTargetsInRange deriving (Eq, Show)
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu | DropMenu deriving (Eq, Show)
 type Day = Int
 

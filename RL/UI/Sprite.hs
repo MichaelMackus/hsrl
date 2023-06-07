@@ -33,7 +33,8 @@ lyellow = (255, 255, 204)
 
 data SpriteEnv = SpriteEnv { spriteGame :: Env,
                              spriteIS   :: InputState,
-                             spriteSeen :: [Point] }
+                             spriteSeen :: [Point],
+                             spriteHeard :: [Point] }
 
 spriteLevel = level . spriteGame
 
@@ -63,7 +64,8 @@ inputSprites env =
             
 spriteAt :: SpriteEnv -> Point -> Sprite
 spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
-                 else seenTileSprite lvl p
+                 else if p `elem` spriteSeen env then seenTileSprite lvl p
+                      else heardTileSprite lvl p
     where
         lvl = spriteLevel env
         canPlayerSee p = canSee lvl (player lvl) p || canSense lvl (player lvl) p
@@ -140,8 +142,10 @@ spriteAt env p = if canPlayerSee p then tileOrMobSprite lvl p
                                     sprite  = listToMaybe (catMaybes sprites)
                                 in  if isJust sprite then fromJust sprite
                                     else CharSprite p ' ' (SpriteAttr black black)
-        seenTileSprite lvl p = if p `elem` spriteSeen env then stale (fromJust (listToMaybe (catMaybes [featureSprite lvl p, itemSprite lvl p, tileSprite lvl p])))
-                               else CharSprite p ' ' (SpriteAttr black black)
+        seenTileSprite lvl p  = if p `elem` spriteSeen env then stale (fromJust (listToMaybe (catMaybes [featureSprite lvl p, itemSprite lvl p, tileSprite lvl p])))
+                                else CharSprite p ' ' (SpriteAttr black black)
+        heardTileSprite lvl p = if p `elem` spriteHeard env then stale (CharSprite p '?' undefined)
+                                else CharSprite p ' ' (SpriteAttr black black)
         stale (CharSprite    p c _) = CharSprite    p c (SpriteAttr dgrey black)
         stale (MessageSprite p c _) = MessageSprite p c (SpriteAttr dgrey black)
         stale (WallSprite    p c _) = WallSprite    p c (SpriteAttr dgrey black)
@@ -159,8 +163,8 @@ getStatusSprites env =
                   else if hpPercent >= 0.7 then green
                   else if hpPercent >= 0.4 then yellow
                   else red
-    in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (66, 15) ("/" ++ show (mhp p)),
-         mkMessage (60, 16) ("XP: " ++ show (xp (player lvl))),
+    in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (64 + length (show (hp p)), 15) (" / " ++ show (mhp p)),
+         mkMessage (60, 16) ("XP: " ++ show (xp (player lvl)) ++ " / " ++ show (expForLevel (mlvl (player lvl) + 1))),
          mkMessage (60, 17) ("GP: " ++ show (goldAmount (inventory (player lvl)))),
          mkMessage (60, 18) ("Depth: " ++ show (depth lvl)) ]
 
@@ -345,6 +349,7 @@ toMessage e (GameUpdate (CastLightning   m n))          | isPlayer m = Just $ "K
 toMessage e (GameUpdate (Teleported      m p))          | isPlayer m = Just $ "You feel disoriented."
 toMessage e (GameUpdate (ThrownProjectile m i _))       | isPlayer m = Just $ "You throw the " ++ show i ++ "."
 toMessage e (GameUpdate (FiredProjectile  m l p _))     | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
+toMessage e (EventMessage (NoTargetsInRange))                        = Just $ "No targets in range."
 toMessage e (GameUpdate (BandageApplied   m))           | isPlayer m = Just $ "You apply the bandage."
 toMessage e (GameUpdate (FeatureInteracted p (Fountain 0))) = Just $ "The fountain has run dry!"
 toMessage e (GameUpdate (FeatureInteracted p (Fountain n))) = Just $ "You drink from the fountain."

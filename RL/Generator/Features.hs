@@ -48,7 +48,8 @@ pickFeature :: Generator FeatureConfig (DLevel, [Cell]) (Maybe Feature)
 pickFeature = do
     lvl <- fst <$> getGData
     chestContents <- fillChest =<< asks fItemAppearances
-    pickRarity (featureRarity (depth lvl)) [Chest chestContents, Fountain 1]
+    fountainAmt <- roll (1 `d` 3)
+    pickRarity (featureRarity (depth lvl)) [Chest chestContents, Fountain fountainAmt, Campfire]
     where
         fillChest app = do
             lvl <- fst <$> getGData
@@ -61,7 +62,7 @@ featureRarity :: Difficulty -> Feature -> Rational
 featureRarity d (Chest _) = 1 % 2
 featureRarity d (Fountain _) = 1 % 6
 featureRarity d (Altar) = 1 % 0 -- TODO fix altars
-featureRarity d (Campfire) = 1 % 4
+featureRarity d (Campfire) = 1 % 6
 
 forMConcat :: Monad m => [a] -> (a -> m [b]) -> m [b]
 forMConcat l = fmap concat . forM l

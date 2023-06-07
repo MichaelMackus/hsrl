@@ -16,6 +16,8 @@ import System.Environment
 import System.Exit (exitSuccess)
 import qualified Data.List as L
 
+import Debug.Trace
+
 helpMessages = [ "Usage: hsrl [--vty|--tty] [TILESET_PATH]"
                 ,""
                 ,"TILESET_PATH\tPath to custom tileset. By default uses res/image/Anno_16x16.png"
@@ -66,7 +68,7 @@ gameLoop conf disp = do
                         s { aiState = (mid, aist'):(L.deleteBy (\(i,_) (i',_) -> i == i') (mid,undefined) (aiState s)),
                             envState = broadcastEvents (envState s) evs }
         doPlayerAction :: PlayerAction a -> Game ()
-        doPlayerAction k = doA k >> doA updateSeen
+        doPlayerAction k = doA k >> doA updateSeen >> doA updateHeard
             where doA :: PlayerAction a -> Game ()
                   doA k = do
                     s <- get
@@ -81,7 +83,6 @@ gameLoop conf disp = do
 
 spawnMobs :: DungeonConfig -> Game ()
 spawnMobs conf = do
-    -- TODO rested since player last visited?
     env <- gets envState
     lvl <- gets (level . envState)
     return ()
@@ -133,7 +134,7 @@ main = do
 
 defaultGameState :: Env -> GameState
 defaultGameState e = GameState (broadcast e (GameUpdate NewGame)) is []
-    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Dagger") . itemDescription) (inventory (player (level e)))) }
+    where is = defaultInputState { readied = listToMaybe (L.filter ((== "Arrow") . itemDescription) (inventory (player (level e)))) }
 
 defaultUIConfig = UIConfig { columns = 80
                            , rows = 24
@@ -161,25 +162,19 @@ mkDefaultConf = do
             itemAppearances = itemApps
         },
         -- TODO add safe walking mode (like cataclysm). Turn on by default, can add config file for defaults.
-        -- TODO start player with ~3 throwing daggers, then we can nerf dagger range?
-        -- TODO add chance of daggers to break
-        -- TODO don't end turn after cancelling menu
         -- TODO add dip command, which wastes/dilutes potion if not acid/poison?
         -- TODO allow throwing of potions at monsters to observe effects safely
-        -- TODO add quiver/fire command
         -- TODO torches?
-        -- TODO bundle of arrows/other items
-        -- TODO gold & level up via gold
         -- TODO monster AI on other levels (can simplify to only those near **stairs**)
         -- TODO monster stashes/hordes
         -- TODO monster drops/items
         -- TODO ranged monsters
         playerConfig = PlayerConfig {
             playerHp = 8,
-            playerLevel = 3,
+            playerLevel = 1,
             playerFov = 5,
-            -- playerItems = dagger:(replicate 3 (Item "Magic Draught" Draught)) -- TODO make fountains give magic draught
-            playerItems = dagger:(replicate 40 arrow)
+            -- TODO oil flask?
+            playerItems = replicate 3 dagger ++ replicate 60 arrow
         },
         featureConfig = FeatureConfig {
             maxFeatures = 5,
@@ -202,5 +197,6 @@ nextLevel conf = do
         }
 
 spriteEnv :: GameState -> SpriteEnv
-spriteEnv (GameState env is _) = let ps = seenAtDepth (depth (level env)) is
-                                 in  SpriteEnv env is ps
+spriteEnv (GameState env is _) = let seen = seenAtDepth (depth (level env)) is
+                                     heard = heardAtDepth (depth (level env)) is
+                                 in  SpriteEnv env is seen heard

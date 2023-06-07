@@ -38,9 +38,9 @@ generateChestItems d = do
     generateItems =<< goldValue d
 
 goldValue :: MonadRandom m => Difficulty -> m Int
-goldValue d | d < 5     = return . fromMaybe 100 =<< pick [250,  500,  1000]
-goldValue d | d < 10    = return . fromMaybe 100 =<< pick [1000, 2000, 3000]
-goldValue d | otherwise = return . fromMaybe 100 =<< pick [2000, 3000, 5000]
+goldValue diff | diff < 5     = (* 100 ) <$> roll (1 `d` 10)
+goldValue diff | diff < 10    = (* 1000) <$> roll (1 `d` 6)
+goldValue diff | otherwise    = (* 1000) <$> roll (1 `d` 12)
 
 -- generate an item using specified rarity functions
 generateItems :: Int -> Generator ItemConfig a [Item]

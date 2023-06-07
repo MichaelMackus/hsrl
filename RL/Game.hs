@@ -1,4 +1,4 @@
-module RL.Game (Env(..), Client(..), lastVisitedDay, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, retreatedFrom, module RL.Dungeon, module RL.Event) where
+module RL.Game (Env(..), Client(..), canHear, lastVisitedDay, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, retreatedFrom, module RL.Dungeon, module RL.Event) where
 
 import RL.Event
 import RL.Dungeon
@@ -228,3 +228,22 @@ retreatedFrom env m = let lvl                         = level env
                           g (GameUpdate (Moved m' p)) = findMob (mobId m') enemies
                           g otherwise                 = Nothing
                       in  if occurredThisTurn tookStairs (events env) then [] else catMaybes . map g . filterEventsThisTurn f $ events env
+
+-- there's only a chance the mob can hear the player, depending on if
+-- player is sneaky or if mob is sleeping
+canHear :: MonadRandom m => [Event] -> Mob -> Mob -> m Bool
+canHear es m1 m2 =
+    -- wake up 5 in 6 times if combat is heard
+    let chance = if hearsCombat es m1 then (5 % 6)
+                 else if isSneaky m2 || isSleeping m1 then (1 % 6) else (2 % 6)
+    in  if distance (at m1) (at m2) <= hearing m1 then randomChance chance
+        else return False
+
+hearsCombat :: [Event] -> Mob -> Bool
+hearsCombat es m =
+    let f (GameUpdate (Damaged atk tgt _)) = g atk tgt
+        f (GameUpdate (Missed  atk tgt))   = g atk tgt
+        f otherwise           = False
+        -- check if mob can hear attacker or target... uses sight distance so further away mobs stay sleeping
+        g atk tgt             = distance (at atk) (at m) <= fov m || distance (at tgt) (at m) <= hearing m
+    in  not . null $ L.filter f es

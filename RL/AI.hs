@@ -131,25 +131,6 @@ getMob = do
     let m = findMob i ms
     maybe (error "Unable to find mob for AI action!") return m
 
--- there's only a chance the mob can hear the player, depending on if
--- player is sneaky or if mob is sleeping
-canHear :: MonadRandom m => [Event] -> Mob -> Mob -> m Bool
-canHear es m1 m2 =
-    -- wake up 5 in 6 times if combat is heard
-    let chance = if hearsCombat es m1 then (5 % 6)
-                 else (if isSneaky m2 then (1 % 6) else (2 % 6)) * (if isSleeping m1 then (1 % 5) else 1)
-    in  if distance (at m1) (at m2) <= hearing m1 then randomChance chance
-        else return False
-
-hearsCombat :: [Event] -> Mob -> Bool
-hearsCombat es m =
-    let f (GameUpdate (Damaged atk tgt _)) = g atk tgt
-        f (GameUpdate (Missed  atk tgt))   = g atk tgt
-        f otherwise           = False
-        -- check if mob can hear attacker or target... uses sight distance so further away mobs stay sleeping
-        g atk tgt             = distance (at atk) (at m) <= fov m || distance (at tgt) (at m) <= hearing m
-    in  not . null $ L.filter f es
-
 curMobPath :: AIAction [Point]
 curMobPath = getMob >>= \m -> do
     lvl  <- asks level

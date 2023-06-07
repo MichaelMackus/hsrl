@@ -73,6 +73,16 @@ weaponProperties :: Item -> Maybe WeaponProperties
 weaponProperties (Item _ (Weapon prop)) = Just prop
 weaponProperties otherwise              = Nothing
 
+-- in squares
+itemRange :: Item -> Maybe Double
+itemRange i = projectileRange <$> (projectileType =<< weaponProperties i)
+
+-- in squares
+projectileRange :: ProjectileType -> Double
+projectileRange Thrown = 2.5
+projectileRange Arrow  = 10
+projectileRange Bullet = 5
+
 data ArmorProperties = ArmorProperties {
     defense :: Int, -- this is opposite of traditional AD&D - this number is subtracted by 10 for the *true* AC of a mob
     slot    :: ArmorSlot
@@ -186,9 +196,9 @@ weapons = [ weapon "Mace" (WeaponProperties (1 `d` 6) 0 False 20 Nothing Nothing
             -- TODO generate on last level
             weapon "Ornate Sword" (WeaponProperties (1 `d` 10) 3 False 19 Nothing Nothing) ]
 
-armors = [ armor "Leather Armor" (ArmorProperties 2 Body),
-           armor "Chain Mail" (ArmorProperties 6 Body),
-           armor "Plate Mail" (ArmorProperties 8 Body),
+armors = [ armor "Leather Armor" (ArmorProperties 3 Body),
+           armor "Chain Mail" (ArmorProperties 5 Body),
+           armor "Plate Mail" (ArmorProperties 7 Body),
            armor "Full Plate" (ArmorProperties 10 Body),
            armor "Small Shield" (ArmorProperties 1 Hand),
            armor "Tower Shield" (ArmorProperties 2 Hand) ]

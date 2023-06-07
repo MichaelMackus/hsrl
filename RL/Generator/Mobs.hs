@@ -55,9 +55,11 @@ playerGenerator = do
 updatePlayerLevel :: Player -> Generator PlayerConfig [Cell] Player
 updatePlayerLevel p = do
     (PlayerConfig hp plvl fov inv) <- ask
-    let neededLevels = max 0 (plvl - 1)
-        hp' = floor (fromIntegral hp / 2.0  *  fromIntegral neededLevels) + hp
-    return $ p { mlvl = plvl, hp = hp', mhp = hp', xp = expForLevel plvl }
+    if plvl > 1 then
+        let neededLevels = max 0 (plvl - 1)
+            hp' = floor (fromIntegral hp / 2.0  *  fromIntegral neededLevels) + hp
+        in  return $ p { mlvl = plvl, hp = hp', mhp = hp', xp = expForLevel plvl, fov = fov, inventory = inv }
+    else return $ p { hp = hp, mhp = hp, fov = fov, inventory = inv }
 
 -- configure default player
 mkPlayer :: Point -> Radius -> Player

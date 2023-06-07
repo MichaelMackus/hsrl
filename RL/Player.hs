@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleContexts #-}
 
-module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, startTurn, isTicking, readyForInput, handleInput, seenAtDepth) where
+module RL.Player (PlayerAction, runPlayerAction, execPlayerAction, evalPlayerAction, InputState(..), defaultInputState, Menu(..), updateSeen, updateHeard, startTurn, isTicking, readyForInput, handleInput, seenAtDepth, heardAtDepth) where
 
 -- TODO when automating, there's a delay waiting for movement points
 -- TODO should have an impementation of retreat (monsters may attack the fleeing player at a bonus... note in OSE this depends on initiative roll, so 50/50 chance monster doesn't get AoO)
@@ -19,7 +19,7 @@ import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
-import Data.Maybe (listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMaybe)
+import Data.Maybe (catMaybes, listToMaybe, maybeToList, fromJust, isJust, isNothing, fromMaybe)
 import Data.Tuple (swap)
 import qualified Data.List as L
 import qualified Data.Map  as M
@@ -37,11 +37,12 @@ data InputState = InputState { menu :: Maybe Menu,
                                destination :: Maybe Point,
                                readied :: Maybe Item,
                                target :: Maybe Point,
-                               seen :: [(Depth, [Point])],
+                               seen :: [(Depth, [Point])],  -- seen map tile
+                               heard :: [(Depth, [Point])], -- heard mob
                                inCombat :: Bool,
                                combatStartHp :: Int }
 
-defaultInputState = InputState Nothing Nothing Nothing Nothing [] False 0
+defaultInputState = InputState Nothing Nothing Nothing Nothing [] [] False 0
 
 runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> (a, ([Event], InputState))
 runPlayerAction k env s g = let k'             = runStateT (playerAction k) s
@@ -56,9 +57,9 @@ evalPlayerAction k env s g = fst $ runPlayerAction k env s g
 
 startTurn :: PlayerAction ()
 startTurn = do
+    -- attempt to automate player turn if running
     s   <- get
     env <- ask
-    -- attempt to automate player turn if running
     if isJust (destination s) && canAutomate env then continueRunning
     else clearDestination
 
@@ -106,8 +107,7 @@ handleInput k km = do
             KeyDown           -> bump South
             (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
-            (KeyChar 'r')     -> changeMenu Inventory
-            (KeyChar 'R')     -> tryRest
+            (KeyChar 'r')     -> changeMenu ProjectileMenu
             (KeyChar '>')     -> goStairs Down
             (KeyChar '<')     -> goStairs Up
             (KeyChar 'i')     -> changeMenu Inventory
@@ -144,11 +144,15 @@ handleMenu k km ProjectileMenu = do
     p <- getPlayer
     let ch   = charFromKey k
         i    = (`fromInventoryLetter` (inventory p)) =<< ch
-    targets <- getTargets
-    if maybe False isProjectile i && length targets > 0 then do
+    if maybe False isProjectile i then do
         readyProjectile (fromJust i)
-        changeMenu TargetMenu
-        changeTarget (head targets)
+        targets <- getTargets
+        if length targets > 0 then do
+            changeMenu TargetMenu
+            changeTarget (head targets)
+        else do
+            insertMessage NoTargetsInRange
+            closeMenu
     else
         closeMenu
 handleMenu k km TargetMenu = do
@@ -222,9 +226,14 @@ interactFeature p f = do
         -- Altar      ->
         --     if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
         --     else insertMessage Hostiles
-        Campfire   ->
+        Campfire   -> do
             if canRest env then gameEvents [Rested pl (depth (level env)) (currentDay (events env)), Healed pl (mhp pl - hp pl)]
             else insertMessage PlayerInDanger
+            -- check for levelup
+            when (needsLevelUp pl) $ do
+                gameEvent $ GainedLevel pl (mlvl pl + 1)
+                bonusHP <- roll $ 1 `d` 8
+                gameEvent $ GainedLife pl bonusHP
         f  -> return ()
 
 -- attempt to fire if readied weapon
@@ -232,11 +241,9 @@ tryFire :: DLevel -> Mob -> PlayerAction ()
 tryFire lvl m = do
     rdy     <- getReadied
     targets <- getTargets
-    if isJust rdy then
-        if length targets > 0 then do
-            changeMenu TargetMenu
-            changeTarget (head targets)
-        else return ()
+    if isJust rdy && length targets > 0 then do
+        changeMenu TargetMenu
+        changeTarget (head targets)
     else changeMenu ProjectileMenu
 
 tryInventory :: PlayerAction ()
@@ -338,18 +345,36 @@ changeTarget p = modify $ \s -> s { target = Just p }
 clearTarget :: PlayerAction ()
 clearTarget = modify $ \s -> s { target = Nothing }
 
--- -- update newly seen tiles at end of turn
+-- update newly seen tiles at end of turn
 updateSeen :: PlayerAction ()
 updateSeen = do
-    lvl <- asks level
+    env <- ask
+    let lvl = level env
+        pl  = player lvl
     -- update seen tiles
     updateSeenDepth (depth lvl) =<< seenTiles
     -- add messages for currently seen tile
     t   <- getPlayerTile
     when (isDownStair t) $ seenMessage (StairsSeen Down)
     when (isUpStair t)   $ seenMessage (StairsSeen Up)
-    let is = findItemsAt (at (player lvl)) lvl
+    let is = findItemsAt (at pl) lvl
     when (length is > 0) $ seenMessage (ItemsSeen is)
+
+-- update heard recently moved mobs
+updateHeard :: PlayerAction ()
+updateHeard = do
+    env <- ask
+    let lvl = level env
+        pl  = player lvl
+    let f (GameUpdate (Moved m p)) = do
+            heard <- canHear (events env) pl m
+            if mobId m /= mobId pl && heard then 
+                return (Just p)
+            else
+                return Nothing
+        f otherwise = return Nothing
+    heardMobs <- catMaybes <$> (mapM f . eventsSince 1 $ events env)
+    modify $ \s -> s { heard = [(depth lvl, heardMobs)] }
 
 updateSeenDepth :: Depth -> [Point] -> PlayerAction ()
 updateSeenDepth d ts = modify $ \s -> s { seen = (d, ts):filter f (seen s) }
@@ -370,6 +395,9 @@ getSeen = asks level >>= \lvl -> seenAtDepth (depth lvl) <$> get
 seenAtDepth :: Depth -> InputState -> [Point]
 seenAtDepth d is = fromMaybe [] (L.lookup d (seen is))
 
+heardAtDepth :: Depth -> InputState -> [Point]
+heardAtDepth d is = fromMaybe [] (L.lookup d (heard is))
+
 hasSeen :: Point -> PlayerAction Bool
 hasSeen p = do
     lvl <- asks level
@@ -380,8 +408,10 @@ hasSeen p = do
 getTargets :: PlayerAction [Point]
 getTargets = do
     env <- getEnv 
-    p   <- getPlayer
-    return (L.filter (not . touching (at p)) . L.filter (canSee (level env) p) . L.sortBy (comparing (distance (at p))) . map at $ mobs (level env))
+    pl  <- getPlayer
+    r   <- gets readied
+    let inRange p = distance (at pl) p <= fromMaybe 0 (itemRange =<< r)
+    return (L.filter (not . touching (at pl)) . L.filter inRange . L.filter (canSee (level env) pl) . L.sortBy (comparing (distance (at pl))) . map at $ mobs (level env))
 
 -- TODO not handling when monster attacks player *before* entering combat
 -- TODO need a "handleEvent" function for player/AI
