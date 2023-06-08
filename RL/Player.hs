@@ -38,11 +38,10 @@ data InputState = InputState { menu :: Maybe Menu,
                                readied :: Maybe Item,
                                target :: Maybe Point,
                                seen :: [(Depth, [Point])],  -- seen map tile
-                               heard :: [(Depth, [Point])], -- heard mob
-                               inCombat :: Bool,
-                               combatStartHp :: Int }
+                               heard :: [(Depth, [Point])] -- heard mob
+                             }
 
-defaultInputState = InputState Nothing Nothing Nothing Nothing [] [] False 0
+defaultInputState = InputState Nothing Nothing Nothing Nothing [] []
 
 runPlayerAction :: PlayerAction a -> Env -> InputState -> StdGen -> (a, ([Event], InputState))
 runPlayerAction k env s g = let k'             = runStateT (playerAction k) s
@@ -107,9 +106,10 @@ handleInput k km = do
             KeyDown           -> bump South
             (KeyChar 'f')     -> tryFire lvl p
             (KeyChar 't')     -> tryFire lvl p
-            (KeyChar 'r')     -> changeMenu ProjectileMenu
+            (KeyChar 'r')     -> changeMenu Inventory
             (KeyChar '>')     -> goStairs Down
             (KeyChar '<')     -> goStairs Up
+            (KeyChar '*')     -> goFeature Campfire
             (KeyChar 'i')     -> changeMenu Inventory
             (KeyChar 'Q')     -> gameEvent QuitGame
             (KeyChar 'g')     -> gameEvents (maybeToList (pickup (level env)))
@@ -162,7 +162,6 @@ handleMenu k km TargetMenu = do
     rdy <- getReadied
     let fireF to = do
             fire lvl p (fromJust rdy) (fromJust (findMobAt to lvl))
-            beginCombat
             clearTarget
             closeMenu
     if isJust (target s) && isJust rdy then do
@@ -205,7 +204,7 @@ bumpAt to = do
     let lvl      = level env
         p        = player lvl
     case (findMobAt to lvl, findTileAt to lvl, findFeatureAt to lvl) of
-        (Just m, _, _) -> attack p (wielding (equipment p)) m >> beginCombat
+        (Just m, _, _) -> attack p (wielding (equipment p)) m
         (_, _, Just f) -> interactFeature to f
         (_, Just t, _) -> let stairE   = maybe [] (maybeToList . stairF) $ findTileAt to lvl
                               stairF   = \t -> StairsTaken (fromJust (getStairDir t)) <$> getStairLvl t
@@ -227,13 +226,14 @@ interactFeature p f = do
         --     if canRest env then gameEvent $ Healed pl (mhp pl - hp pl)
         --     else insertMessage Hostiles
         Campfire   -> do
-            if canRest env then gameEvents [Rested pl (depth (level env)) (currentDay (events env)), Healed pl (mhp pl - hp pl)]
+            if canRest env then do
+                gameEvents [Rested pl (depth (level env)) (currentDay (events env)), Healed pl (mhp pl - hp pl)]
+                -- check for levelup
+                when (needsLevelUp pl) $ do
+                    gameEvent $ GainedLevel pl (mlvl pl + 1)
+                    bonusHP <- roll $ 1 `d` 8
+                    gameEvent $ GainedLife pl bonusHP
             else insertMessage PlayerInDanger
-            -- check for levelup
-            when (needsLevelUp pl) $ do
-                gameEvent $ GainedLevel pl (mlvl pl + 1)
-                bonusHP <- roll $ 1 `d` 8
-                gameEvent $ GainedLife pl bonusHP
         f  -> return ()
 
 -- attempt to fire if readied weapon
@@ -271,6 +271,18 @@ goStairs v = do
         ts <- getSeen
         let to = fst <$> findTile (\(_, t) -> v == Up && isUpStair t || v == Down && isDownStair t) lvl
         when (isJust to && fromJust to `elem` ts) $ startRunning (fromJust to)
+
+-- take stairs or goto up/down stair
+goFeature :: Feature -> PlayerAction ()
+goFeature f = do
+    lvl <- asks level
+    t   <- getPlayerTile
+    ts <- getSeen
+    let pl                    = player lvl
+        to                    = fst <$> (L.find findF . L.sortBy sortF $ features lvl)
+        sortF (p1, _) (p2, _) = comparing (distance (at pl)) p1 p2
+        findF (_, f')         = f == f'
+    when (isJust to && fromJust to `elem` ts) $ startRunning (fromJust to)
 
 takeStairs :: VerticalDirection -> PlayerAction ()
 takeStairs v = do
@@ -412,50 +424,3 @@ getTargets = do
     r   <- gets readied
     let inRange p = distance (at pl) p <= fromMaybe 0 (itemRange =<< r)
     return (L.filter (not . touching (at pl)) . L.filter inRange . L.filter (canSee (level env) pl) . L.sortBy (comparing (distance (at pl))) . map at $ mobs (level env))
-
--- TODO not handling when monster attacks player *before* entering combat
--- TODO need a "handleEvent" function for player/AI
-detectCombat :: PlayerAction ()
-detectCombat = do
-    lvl <- level <$> getEnv
-    p   <- getPlayer
-    when (inMelee lvl p) $ beginCombat
-
-beginCombat :: PlayerAction ()
-beginCombat = do
-    p <- getPlayer
-    s <- get
-    let startHp = if not (inCombat s) then hp p else combatStartHp s
-    modify $ \s -> s { inCombat = True, combatStartHp = startHp }
-
-recentlyOutOfCombat :: PlayerAction Bool
-recentlyOutOfCombat = do
-        evs <- getEvents
-        lvl <- level <$> getEnv
-        let seenMobs = L.filter (canSeeMob lvl (player lvl)) (mobs lvl)
-        return (occurredLastTurn f evs && null seenMobs)
-    where f (GameUpdate (Died m)) | not (isPlayer m) = True
-          f otherwise                                = False
-
-healCombatDamage :: PlayerAction ()
-healCombatDamage = do
-    modify $ \s -> s { inCombat = False }
-    p <- getPlayer
-    s <- get
-    when (hp p < combatStartHp s) $ do
-        let maxDmg = combatStartHp s - hp p
-        r <- roll $ 1 `d` 6
-        let dmg = min r maxDmg
-        gameEvent (Healed p dmg)
-
-tryRest :: PlayerAction ()
-tryRest = do
-    p  <- getPlayer
-    ms <- aliveMobs . mobs . level <$> getEnv
-    if null ms then do
-        -- TODO level up player when resting
-        insertMessage PlayerRested
-        let dmg = mhp p - hp p
-        when (dmg > 0) $ gameEvent (Healed p dmg)
-    else
-        insertMessage PlayerInDanger

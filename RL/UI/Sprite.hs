@@ -164,9 +164,12 @@ getStatusSprites env =
                   else if hpPercent >= 0.4 then yellow
                   else red
     in [ mkMessage (60, 15) "HP: ", hpSprite, mkMessage (64 + length (show (hp p)), 15) (" / " ++ show (mhp p)),
-         mkMessage (60, 16) ("XP: " ++ show (xp (player lvl)) ++ " / " ++ show (expForLevel (mlvl (player lvl) + 1))),
-         mkMessage (60, 17) ("GP: " ++ show (goldAmount (inventory (player lvl)))),
-         mkMessage (60, 18) ("Depth: " ++ show (depth lvl)) ]
+         mkMessage (60, 16) ("AC: " ++ show (mobAC (player lvl))),
+         mkMessage (60, 17) ("XP: " ++ show (xp (player lvl)) ++ " / " ++ show (expForLevel (mlvl (player lvl) + 1))),
+         mkMessage (60, 18) ("GP: " ++ show (goldAmount (inventory (player lvl)))),
+         mkMessage (60, 19) ("Level: " ++ show (mlvl (player lvl))),
+         mkMessage (60, 20) ("Depth: " ++ show (depth lvl)),
+         mkMessage (60, 21) ("Readied: " ++ maybe "- none -" show (readied (spriteIS env))) ]
 
 getMsgSprites :: Env -> [Sprite]
 getMsgSprites env = let evs        = events env
@@ -320,6 +323,9 @@ toMessage e (EventMessage InMelee) = Just $ "You are unable to concentrate on fi
 toMessage e (EventMessage PlayerRested)   = Just $ "You find a safe place to rest and heal your wounds."
 toMessage e (EventMessage PlayerInDanger) = Just $ "You are unable to find a safe place to rest here!"
 toMessage e (EventMessage (AttackOfOpportunity m t))    | isPlayer t = Just $ "The " ++ show m ++ " notices an opening and attacks!"
+toMessage e (EventMessage (AttackRoll m roll 0))   | isPlayer m = Just $ "You rolled a " ++ show roll ++ " to hit"
+toMessage e (EventMessage (AttackRoll m roll mod)) | isPlayer m = Just $ "You rolled a " ++ show roll ++ " to hit, with a modifier of " ++ show mod
+toMessage e (EventMessage (AttackRoll m roll mod)) = Just $ "The " ++ mobName m ++ " rolled a " ++ show roll ++ " to hit"
 -- toMessage e (EventMessage (PlayerRetreated m))                       = Just $ "You have successfully broke off the melee with the " ++ show m
 toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (ItemDropped  m item))          | isPlayer m = Just $ "You have dropped the " ++ showIdentified (identified (player (level e))) item ++ "."
@@ -347,10 +353,9 @@ toMessage e (GameUpdate (Read            m s))          | isPlayer m = Just $ "Y
 toMessage e (GameUpdate (CastFire        m n))          | isPlayer m = Just $ "Roaring flames erupt all around you!"
 toMessage e (GameUpdate (CastLightning   m n))          | isPlayer m = Just $ "KABOOM! Lightning strikes everything around you."
 toMessage e (GameUpdate (Teleported      m p))          | isPlayer m = Just $ "You feel disoriented."
-toMessage e (GameUpdate (ThrownProjectile m i _))       | isPlayer m = Just $ "You throw the " ++ show i ++ "."
-toMessage e (GameUpdate (FiredProjectile  m l p _))     | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
+toMessage e (GameUpdate (ThrownProjectile m i _ _))     | isPlayer m = Just $ "You throw the " ++ show i ++ "."
+toMessage e (GameUpdate (FiredProjectile  m l p _ _))   | isPlayer m = Just $ "You fire the " ++ show p ++ " out of your " ++ show l ++ "."
 toMessage e (EventMessage (NoTargetsInRange))                        = Just $ "No targets in range."
-toMessage e (GameUpdate (BandageApplied   m))           | isPlayer m = Just $ "You apply the bandage."
 toMessage e (GameUpdate (FeatureInteracted p (Fountain 0))) = Just $ "The fountain has run dry!"
 toMessage e (GameUpdate (FeatureInteracted p (Fountain n))) = Just $ "You drink from the fountain."
 toMessage e (GameUpdate (FeatureInteracted p (Chest is))) = Just $ "You open the chest! There are " ++ show (length is) ++ " items."

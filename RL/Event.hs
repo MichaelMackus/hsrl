@@ -12,19 +12,20 @@ data Event = EventMessage Message | GameUpdate GameEvent deriving (Eq, Show)
 data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuChange Menu | Readied Item 
     | PlayerRested | PlayerInDanger
     | AttackOfOpportunity Mob Mob | PlayerRetreated Mob 
-    | NoTargetsInRange deriving (Eq, Show)
+    | NoTargetsInRange
+    | AttackRoll Mob Int Int deriving (Eq, Show)
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu | DropMenu deriving (Eq, Show)
 type Day = Int
 
 -- Represents events that change the game state
 data GameEvent = Damaged Mob Mob Int | Missed Mob Mob | Crit Mob Mob | Died Mob | Moved Mob Point
-    | ThrownProjectile Mob Item Point | FiredProjectile Mob Item Item Point
+    | ThrownProjectile Mob Item Point Bool | FiredProjectile Mob Item Item Point Bool
     | Drank Mob Item | Healed Mob Int | GainedLife Mob Int | DrankAcid Mob | GainedStrength Mob Int | SpedUp Mob Int | Slowed Mob Int
     | GainedMobFlag Mob MobFlag | RemovedMobFlag Mob MobFlag
     | Read Mob Item | CastFire Mob Int | CastLightning Mob Int | Teleported Mob Point
     | StairsTaken VerticalDirection DLevel
     | Waken Mob | Slept Mob | MobSpawned Mob
-    | FeatureInteracted Point Feature | BandageApplied Mob
+    | FeatureInteracted Point Feature
     | Rested Player Depth Day
     | ItemSpawned Point Item | ItemPickedUp Mob Item | ItemDropped Mob Item | Equipped Mob Item | EquipmentRemoved Mob Item
     | GainedLevel Mob Int

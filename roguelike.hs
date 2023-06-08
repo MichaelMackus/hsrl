@@ -89,8 +89,9 @@ spawnMobs conf = do
     when (restedThisTurn env || (stairsTakenThisTurn env && daysSinceLastVisit env >= 1)) $ do
         when (length (mobs lvl) < maxMobs (mobConfig conf)) $ do
             g   <- newStdGen
-            let ms = fst (runGenerator mobGenerator (mobConfig conf) (mkGenState lvl g))
-            modify $ \s -> s { envState = (envState s) { level = (level (envState s)) { mobs = ms } } }
+            let ms     = fst (runGenerator mobGenerator (mobConfig conf) (mkGenState lvl g))
+                heal m = m { hp = mhp m }
+            modify $ \s -> s { envState = (envState s) { level = (level (envState s)) { mobs = map heal ms } } }
 
 main = do
     -- allow user to customize display if supported, or tileset

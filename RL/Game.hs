@@ -88,15 +88,15 @@ broadcastEvents c []    = c
 broadcastEvents c (e:t) = broadcastEvents (broadcast c e) t
 
 instance Client Env where
-    broadcast env e@(GameUpdate (StairsTaken v lvl)     )  = broadcast' (changeLevel env v lvl) e
-    broadcast env e@(GameUpdate (MobSpawned m)          )  = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
-    broadcast env e@(GameUpdate (ItemPickedUp m i)      )  = broadcast' (env { level = removePickedItem m i (level env) }) e
-    broadcast env e@(GameUpdate (ItemDropped  m i)      )  = broadcast' (env { level = (level env) { items = (at m, i):items (level env) } }) e
-    broadcast env e@(GameUpdate (ItemSpawned p i)       )  = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
-    broadcast env e@(GameUpdate (ThrownProjectile m i p))  = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
-                                                             in  broadcast' (env { level = (level env) { items = is } }) e
-    broadcast env e@(GameUpdate (FiredProjectile m _ i p)) = let is = if not (isFragile i) then (p,i):items (level env) else items (level env)
-                                                             in  broadcast' (env { level = (level env) { items = is } }) e
+    broadcast env e@(GameUpdate (StairsTaken v lvl)     )    = broadcast' (changeLevel env v lvl) e
+    broadcast env e@(GameUpdate (MobSpawned m)          )    = broadcast' (env { level = (level env) { mobs = m:(mobs (level env)) } }) e
+    broadcast env e@(GameUpdate (ItemPickedUp m i)      )    = broadcast' (env { level = removePickedItem m i (level env) }) e
+    broadcast env e@(GameUpdate (ItemDropped  m i)      )    = broadcast' (env { level = (level env) { items = (at m, i):items (level env) } }) e
+    broadcast env e@(GameUpdate (ItemSpawned p i)       )    = broadcast' (env { level = (level env) { items = (p, i):(items (level env)) } }) e
+    broadcast env e@(GameUpdate (ThrownProjectile m i p b))  = let is = if not b then (p,i):items (level env) else items (level env)
+                                                               in  broadcast' (env { level = (level env) { items = is } }) e
+    broadcast env e@(GameUpdate (FiredProjectile m _ i p b)) = let is = if not b then (p,i):items (level env) else items (level env)
+                                                               in  broadcast' (env { level = (level env) { items = is } }) e
     broadcast env e@(GameUpdate (FeatureInteracted p f@(Chest _))) = broadcast' (env { level = (level env) { features = L.delete (p, f) (features (level env)) } }) e
     broadcast env e@(GameUpdate (FeatureInteracted p f@(Fountain n))) = broadcast' (env { level = (level env) { features = addOrReplace p (Fountain (max 0 (n - 1))) (features (level env)) } }) e
 
@@ -111,28 +111,27 @@ broadcast' env e =
                   events   = e:events env }
 
 instance Client Mob where
-    broadcast m (GameUpdate (Moved m' to)     )         | m == m' && canMove m = moveMob to m
-    broadcast m (GameUpdate (Damaged _ m' dmg))         | m == m' = m { hp = max 0 (hp m - dmg) }
-    broadcast m (GameUpdate (Waken m')        )         | m == m' = let fs = filter (/= Sleeping) (flags m)
-                                                                    in  m { flags = fs }
-    broadcast m (GameUpdate (Slept m')                ) | m == m' = m { flags = L.nub (Sleeping:flags m) }
-    broadcast m (GameUpdate (ItemPickedUp m' i)       ) | m == m' = pickup i m
-    broadcast m (GameUpdate (ItemDropped  m' i)       ) | m == m' = poofItem m i
-    broadcast m (GameUpdate (Equipped m' i)           ) | m == m' = equip m i
-    broadcast m (GameUpdate (EquipmentRemoved m' i)   ) | m == m' = removeEquip m i
-    broadcast m (GameUpdate (Read     m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
-    broadcast m (GameUpdate (Teleported m' to)        ) | m == m' = m { at = to }
-    broadcast m (GameUpdate (Drank    m' i)           ) | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
-    broadcast m (GameUpdate (Healed m' amt)           ) | m == m' = m { hp = min (mhp m) (hp m + amt) }
-    broadcast m (GameUpdate (GainedLife m' amt)       ) | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
-    broadcast m (GameUpdate (GainedLevel m' lvl)      ) | m == m' = m { mlvl = lvl, savingThrow = savingThrow m' - 1, thac0 = thac0 m' - 1 }
-    broadcast m (GameUpdate (GainedStrength m' str)   ) | m == m' = m { strength = strength m + str }
-    broadcast m (GameUpdate (GainedMobFlag m' f)      ) | m == m' = m { flags = L.nub (f:flags m) }
-    broadcast m (GameUpdate (RemovedMobFlag m' f)     ) | m == m' = m { flags = L.delete f (flags m) }
-    broadcast m (GameUpdate (ThrownProjectile m' i _) ) | m == m' = m { inventory = L.delete i (inventory m) }
-    broadcast m (GameUpdate (FiredProjectile m' _ i _)) | m == m' = m { inventory = L.delete i (inventory m) }
-    broadcast m (GameUpdate (BandageApplied  m')      ) | m == m' = m { inventory = L.delete (Item "Bandage" Bandage) (inventory m) }
-    broadcast m (GameUpdate (Died m'))                  | isPlayer m && not (isPlayer m') = m { xp = xp m + xpAward m' }
+    broadcast m (GameUpdate (Moved m' to)     )           | m == m' && canMove m = moveMob to m
+    broadcast m (GameUpdate (Damaged _ m' dmg))           | m == m' = m { hp = max 0 (hp m - dmg) }
+    broadcast m (GameUpdate (Waken m')        )           | m == m' = let fs = filter (/= Sleeping) (flags m)
+                                                                      in  m { flags = fs }
+    broadcast m (GameUpdate (Slept m')                )   | m == m' = m { flags = L.nub (Sleeping:flags m) }
+    broadcast m (GameUpdate (ItemPickedUp m' i)       )   | m == m' = pickup i m
+    broadcast m (GameUpdate (ItemDropped  m' i)       )   | m == m' = poofItem m i
+    broadcast m (GameUpdate (Equipped m' i)           )   | m == m' = equip m i
+    broadcast m (GameUpdate (EquipmentRemoved m' i)   )   | m == m' = removeEquip m i
+    broadcast m (GameUpdate (Read     m' i)           )   | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
+    broadcast m (GameUpdate (Teleported m' to)        )   | m == m' = m { at = to }
+    broadcast m (GameUpdate (Drank    m' i)           )   | m == m' = (poofItem m i) { identified = L.nub (itemType i:identified m) }
+    broadcast m (GameUpdate (Healed m' amt)           )   | m == m' = m { hp = min (mhp m) (hp m + amt) }
+    broadcast m (GameUpdate (GainedLife m' amt)       )   | m == m' = m { mhp = mhp m + amt, hp = mhp m + amt }
+    broadcast m (GameUpdate (GainedLevel m' lvl)      )   | m == m' = m { mlvl = lvl, savingThrow = savingThrow m' - 1, thac0 = thac0 m' - 1 }
+    broadcast m (GameUpdate (GainedStrength m' str)   )   | m == m' = m { strength = strength m + str }
+    broadcast m (GameUpdate (GainedMobFlag m' f)      )   | m == m' = m { flags = L.nub (f:flags m) }
+    broadcast m (GameUpdate (RemovedMobFlag m' f)     )   | m == m' = m { flags = L.delete f (flags m) }
+    broadcast m (GameUpdate (ThrownProjectile m' i _ _))  | m == m' = m { inventory = L.delete i (inventory m) }
+    broadcast m (GameUpdate (FiredProjectile m' _ i _ _)) | m == m' = m { inventory = L.delete i (inventory m) }
+    broadcast m (GameUpdate (Died m'))                    | isPlayer m && not (isPlayer m') = m { xp = xp m + xpAward m' }
 
     broadcast m otherwise = m
 

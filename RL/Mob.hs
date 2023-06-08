@@ -61,7 +61,7 @@ mobSpeed m =
         else speed m
 
 xpAward :: Mob -> Int
-xpAward m = round (hd m * 100) -- TODO need xp table
+xpAward m = round (hd m * 10) -- TODO need xp table or modifiers/ +1
     -- fracitonal hit die
     where hd m     = fromIntegral (mhp m) / avgperhd
           avgperhd = 4.0 :: Float
@@ -104,7 +104,7 @@ isUndead m = Undead `elem` flags m
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
 mobAC :: Mob -> AC
-mobAC m = foldr (\i ac -> ac - defense i) (baseAC m) . catMaybes . map armorProperties $ catMaybes [wearing (equipment m), shield (equipment m)]
+mobAC m = foldr (\prop ac -> ac - armorDefense prop) (baseAC m) . catMaybes . map armorProperties $ catMaybes [wearing (equipment m), shield (equipment m)]
 
 isPlayer :: Mob -> Bool
 isPlayer m = mobId m == 0
@@ -119,7 +119,7 @@ mob = Mob {
     hp = 0,
     mhp = 0,
     baseDmg = 1 `d` 3,
-    baseAC = 10,
+    baseAC = 9,
     thac0 = 19,
     strength = 0,
     fov = 5,

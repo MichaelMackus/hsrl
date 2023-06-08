@@ -3,6 +3,12 @@
 module RL.Generator.Mobs (playerGenerator, mobGenerator, PlayerConfig(..), MobConfig(..)) where
 
 -- TODO make deeper dungeon much more difficult
+-- TODO need to generate either lairs with treasure in them, or squad...
+-- TODO each mob should have treasure according to minor TT
+--
+-- TODO should also have traps
+-- TODO see:  https://oldschoolessentials.necroticgnome.com/srd/index.php/Dungeon_Encounters
+-- TODO also: https://oldschoolessentials.necroticgnome.com/srd/index.php/Designing_a_Dungeon
 
 import RL.Game hiding (updateFlags)
 import RL.Generator

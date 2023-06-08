@@ -61,12 +61,13 @@ attack attacker weap target = do
     let weapProp         = weaponProperties =<< weap
         invisiblePenalty = if Invisible `elem` flags target then 4 else 0
         invisibleBonus   = if Invisible `elem` flags attacker || Sleeping `elem` flags target then 4 else 0
-        weapBonus        = fromMaybe 0 (bonus <$> weapProp) - invisiblePenalty + invisibleBonus
+        weapBonus        = fromMaybe 0 (weaponBonus <$> weapProp) - invisiblePenalty + invisibleBonus
     -- attack roll
     atk <- roll (1 `d` 20)
+    insertMessage (AttackRoll attacker atk weapBonus)
     if atk + weapBonus >= thac0 attacker - mobAC target || atk == 20 then do
         -- hit!
-        let dmgDie  = maybe (baseDmg attacker) dmgd weapProp
+        let dmgDie  = maybe (baseDmg attacker) weaponDamage weapProp
         dmg <- (+ strength attacker) <$> roll dmgDie
         damage dmg attacker target
     else
@@ -77,32 +78,22 @@ applyItem lvl m i =
     if isEquippable i then equip m i
     else if isDrinkable i then drinkPotion m i
     else if isReadable i then readScroll lvl m i
-    else if (itemType i == Bandage) then applyBandage m
-    else if (itemType i == Draught) then drinkDraught m i
     else return ()
 
-applyBandage :: (GameAction m, MonadRandom m) => Mob -> m ()
-applyBandage m = when (hp m < mhp m) $ do
-    healed <- roll (1 `d` 4)
-    gameEvents [BandageApplied m, Healed m healed]
-
-drinkDraught :: (GameAction m, MonadRandom m) => Mob -> Item -> m ()
-drinkDraught m i = do
-    healed <- roll (1 `d` 6)
-    gameEvents [Drank m i, Healed m healed]
-
 -- fire projectile toward the mob's target
--- TODO unable to fire in melee
 fire :: (GameAction m, MonadRandom m) => DLevel -> Mob -> Item -> Mob -> m ()
 fire lvl attacker proj m = when (isProjectile proj) $ do
     let eqp = equipment attacker
         isLaunching = maybe False (`launchesProjectile` proj) (launcher eqp)
+    -- 50% chance for fragile ammunition (e.g. arrows) to survive
+    r <- roll (1 `d` 2)
+    let broken = isFragile proj && r == 1
     -- fire projectile if proper launcher equipped
     if isLaunching then do
-        gameEvent (FiredProjectile attacker (fromJust (launcher eqp)) proj (at m))
+        gameEvent (FiredProjectile attacker (fromJust (launcher eqp)) proj (at m) broken)
         attack attacker (launcher eqp) m
     else do
-        gameEvent (ThrownProjectile attacker proj (at m))
+        gameEvent (ThrownProjectile attacker proj (at m) broken)
         attack attacker (Just proj) m
 
 equip :: GameAction m => Mob -> Item -> m ()
