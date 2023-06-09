@@ -54,6 +54,7 @@ executable hsrl
   build-depends: base >=4.6, transformers >=0.4, random >=1.1
                , mtl >=2.2, MonadRandom >=0.4, time >=1.5, containers >=0.5
                , pqueue >= 1.4.1.0, JuicyPixels >=3.3.0, array
+               , dijkstra-simple >= 0.1.0
 
   if flag(sdl)
     build-depends:

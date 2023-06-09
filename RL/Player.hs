@@ -34,7 +34,7 @@ instance GameAction PlayerAction where
     insertEvents = tell
 
 data InputState = InputState { menu :: Maybe Menu,
-                               destination :: Maybe Point,
+                               path :: Maybe [Point],
                                readied :: Maybe Item,
                                target :: Maybe Point,
                                seen :: [(Depth, [Point])],  -- seen map tile
@@ -59,7 +59,7 @@ startTurn = do
     -- attempt to automate player turn if running
     s   <- get
     env <- ask
-    if isJust (destination s) && canAutomate env then continueRunning
+    if isJust (path s) && canAutomate env then continueRunning
     else clearDestination
 
 -- detects if we're ticking (i.e. AI and other things should be active)
@@ -68,7 +68,7 @@ isTicking = isNothing . menu
 
 -- returns true if we're ready for input from the keyboard (i.e. we're not running to a destination)
 readyForInput :: InputState -> Bool
-readyForInput = isNothing . destination
+readyForInput = isNothing . path
 
 -- handle input from user
 handleInput :: Key -> [KeyMod] -> PlayerAction ()
@@ -241,9 +241,10 @@ tryFire :: DLevel -> Mob -> PlayerAction ()
 tryFire lvl m = do
     rdy     <- getReadied
     targets <- getTargets
-    if isJust rdy && length targets > 0 then do
-        changeMenu TargetMenu
-        changeTarget (head targets)
+    if inMelee lvl (player lvl) then insertMessage InMelee
+    else if isJust rdy && length targets > 0 then do
+            changeMenu TargetMenu
+            changeTarget (head targets)
     else changeMenu ProjectileMenu
 
 tryInventory :: PlayerAction ()
@@ -273,16 +274,17 @@ goStairs v = do
         when (isJust to && fromJust to `elem` ts) $ startRunning (fromJust to)
 
 -- take stairs or goto up/down stair
+-- TODO sometimes not working to get to campfire after finding downstair
 goFeature :: Feature -> PlayerAction ()
 goFeature f = do
-    lvl <- asks level
-    t   <- getPlayerTile
-    ts <- getSeen
+    lvl  <- asks level
     let pl                    = player lvl
         to                    = fst <$> (L.find findF . L.sortBy sortF $ features lvl)
         sortF (p1, _) (p2, _) = comparing (distance (at pl)) p1 p2
         findF (_, f')         = f == f'
-    when (isJust to && fromJust to `elem` ts) $ startRunning (fromJust to)
+    case to of
+        Just to -> whenM (hasSeen to) $ startRunning to
+        Nothing -> return ()
 
 takeStairs :: VerticalDirection -> PlayerAction ()
 takeStairs v = do
@@ -295,39 +297,37 @@ takeStairs v = do
     else
         return ()
 
-setDestination :: Point -> PlayerAction ()
-setDestination to = do
-    s <- get
-    modify $ \s -> s { destination = Just to }
-
 clearDestination :: PlayerAction ()
 clearDestination = do
     s <- get
-    modify $ \s -> s { destination = Nothing }
+    modify $ \s -> s { path = Nothing }
 
 startRunning :: Point -> PlayerAction ()
 startRunning to = do
     env  <- ask
-    dest <- gets destination
+    seen <- getSeen
     let p     = player (level env)
-        path  = findPath (dfinder (level env) to) distance to (at p)
+        path  = findPath (playerFinder (level env) seen to) (at p) to
     when (isJust path && length (fromJust path) > 1) $ do
-        setDestination to
+        modify $ \s -> s { path = path }
         continueRunning
 
 continueRunning :: PlayerAction ()
 continueRunning = do
     env  <- ask
-    dest <- gets destination
-    when (isJust dest) $
-        let to    = fromJust dest
-            p     = player (level env)
-            path  = findPath (dfinder (level env) to) distance to (at p)
-        in  if isJust path && length (fromJust path) > 1 then do
-                bumpAt (fromJust path !! 1)
-                when (fromJust path !! 1 == to) clearDestination
-                when (not (canAutomate env))    clearDestination
-            else clearDestination
+    seen <- getSeen
+    path <- gets path
+    when (isJust path) $
+        if length (fromJust path) > 1 then do
+            bumpAt (fromJust path !! 1)
+            modify $ \s -> s { path = Just (tail (fromJust path)) }
+            when (not (canAutomate env)) clearDestination
+        else clearDestination
+
+playerFinder :: DLevel
+             -> [Point]
+             -> (Point -> Point -> [Point])
+playerFinder lvl seen = \p p' -> L.filter (`elem` seen) (dfinder lvl (at (player lvl)) p p')
 
 readyProjectile :: Item -> PlayerAction ()
 readyProjectile i = do

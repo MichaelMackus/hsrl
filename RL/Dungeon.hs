@@ -191,16 +191,9 @@ touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
 
 -- returns passable neighbors around point
 -- considers stairs (mobs?) as impassable, unless end
-dfinder :: DLevel -> Point -> Point -> Set Point
-dfinder d end p = Set.fromList (filter f (dneighbors d p))
-    where f p' = end == p' || isRunnable d p'
-
--- this passes through non passables
-dfinder' :: DLevel -> Point -> Set Point
-dfinder' d p = Set.fromList (neighbors d p f)
-    where
-        f (_ , Nothing) = False
-        f (p', Just t)  = if p' `touching` p then True else False
+dfinder :: DLevel -> Point -> Point -> Point -> [Point]
+dfinder d start end p = filter f (dneighbors d p)
+    where f p' = start == p' || end == p' || isRunnable d p'
 
 mapDLevel :: (Point -> Tile -> Maybe r) -> DLevel -> [r]
 mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)
@@ -258,5 +251,6 @@ mapHeight lvl = length (toTiles lvl)
 
 -- is a mob in melee?
 inMelee :: DLevel -> Mob -> Bool
-inMelee lvl m | isPlayer m = not . null $ L.filter (touching (at m) . at) (mobs lvl)
-inMelee lvl m | otherwise  = touching (at m) (at (player lvl))
+-- inMelee lvl m | isPlayer m = not . null $ L.filter (touching (at m) . at) (mobs lvl)
+-- inMelee lvl m | otherwise  = touching (at m) (at (player lvl))
+inMelee lvl m = not . null . L.filter (\m' -> at m `touching` at m' && m `hostile` m') $ mobs lvl

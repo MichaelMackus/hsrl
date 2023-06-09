@@ -40,7 +40,7 @@ instance GameAction AIAction where
     getEnv = ask
     insertEvents = tell
 
-data AIState = AIState { destination :: Maybe Point, movementPoints :: Int, curMobId :: Id }
+data AIState = AIState { path :: Maybe [Point], movementPoints :: Int, curMobId :: Id }
 
 defaultAIState = AIState Nothing 0
 
@@ -54,7 +54,7 @@ automate = getMob >>= \m -> do
     lvl   <- asks level
     heard <- canHear (events env) m (player lvl)
     let seen  = canSeeMob lvl m (player lvl)
-        path  = findOptimalPath lvl distance (at (player lvl)) (at m)
+        path  = findOptimalPath lvl (at (player lvl)) (at m)
     when (heard && isSleeping m) $ gameEvent (Waken m)
 
     when heard $ updateDestination (at (player lvl))
@@ -71,7 +71,7 @@ automate = getMob >>= \m -> do
     else
         if (seen || heard) && isJust path then
            moveCloser (player lvl) (fromJust path)
-        else if not (null curPath) then
+        else if length curPath > 1 then
            moveCloser (player lvl) curPath
         else if not (isSleeping m) then
            wander
@@ -107,6 +107,7 @@ tryMove :: Point -> AIAction ()
 tryMove p = do
     pl <- getPlayer
     m  <- getMob
+    -- TODO skeleton as fast as player???
     mp <- (+ mobSpeed m) <$> gets movementPoints
     if mp >= mobSpeed pl then do
         gameEvent $ Moved m p
@@ -119,11 +120,13 @@ incMovePoints :: Int -> AIAction ()
 incMovePoints mp = modify $ \s -> s { movementPoints = mp }
 
 updateDestination :: Point -> AIAction ()
-updateDestination p = modify $ \s -> s { destination = Just p }
+updateDestination p = do
+    env <- ask
+    mob <- getMob
+    let path = findOptimalPath (level env) p (at mob)
+    modify $ \s -> s { path = path }
 clearDestination :: AIAction ()
-clearDestination = modify $ \s -> s { destination = Nothing }
-getDestination :: AIAction (Maybe Point)
-getDestination = gets destination
+clearDestination = modify $ \s -> s { path = Nothing }
 getMob :: AIAction Mob
 getMob = do
     ms <- asks (mobs . level)
@@ -134,17 +137,15 @@ getMob = do
 curMobPath :: AIAction [Point]
 curMobPath = getMob >>= \m -> do
     lvl  <- asks level
-    dest <- getDestination
-    if (isJust dest) then return $ fromMaybe [] (findOptimalPath lvl distance (fromJust dest) (at m))
-    else return []
+    fromMaybe [] <$> gets path
 
 -- find AI path, first trying to find optimal path around mobs
 -- fallback is naive dfinder to allow mobs to bunch up
-findOptimalPath lvl h end s = let optimal = findPath (aiFinder lvl end) h end s
-                              in  if isNothing optimal then findPath (dfinder lvl end) h end s else optimal
+findOptimalPath lvl end s = let optimal = findPath (aiFinder lvl end) s end
+                              in  if isNothing optimal then findPath (dfinder lvl s end) s end else optimal
 
-aiFinder :: DLevel -> Point -> Point -> Set Point
-aiFinder d end p = Set.fromList (aiNeighbors d end p)
+aiFinder :: DLevel -> Point -> Point -> [Point]
+aiFinder d end p = aiNeighbors d end p
 
 aiNeighbors :: DLevel -> Point -> Point -> [Point]
 aiNeighbors d end p = L.filter f (dneighbors d p)

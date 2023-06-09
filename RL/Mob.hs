@@ -16,6 +16,7 @@ type Id     = Int
 data Mob = Mob {
     mobId          :: Id,
     mobName        :: String,
+    mobSpecies     :: MobSpecies,
     symbol         :: Char,
     at             :: Point,
     hp             :: HP,
@@ -35,7 +36,8 @@ data Mob = Mob {
     mlvl           :: Int,  -- TODO move to player type
     savingThrow    :: Int
 }
-data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | Undead | MappedF Depth deriving (Eq, Show)
+data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | MappedF Depth deriving (Eq, Show)
+data MobSpecies = Human | Kobold | Insect | Vermin | Goblin | Gnome | Dwarf | Orc | Bugbear | Ogre | Dragon | Undead deriving (Eq, Show)
 
 data MobEquipment = MobEquipment {
     wielding :: Maybe Item,
@@ -99,7 +101,7 @@ isVisible :: Mob -> Bool
 isVisible m = not (Invisible `elem` flags m)
 
 isUndead :: Mob -> Bool
-isUndead m = Undead `elem` flags m
+isUndead m = Undead == mobSpecies m
 
 -- does a simple foldr over the equipped armor, subtracting each of its defense
 -- from the default AC of the Mob (default to 10 in AD&D)
@@ -114,6 +116,7 @@ mob :: Mob
 mob = Mob {
     mobId = -1,
     mobName = "",
+    mobSpecies = Human,
     symbol = 'z',
     at = (-1,-1),
     hp = 0,
@@ -135,6 +138,30 @@ mob = Mob {
 }
 
 -- helper functions for mob management
+
+hostile :: Mob -> Mob -> Bool
+hostile m m' = hostile' (mobSpecies m) (mobSpecies m')
+    where hostile' Human Human = False -- TODO what about bandits? Need a faction datatype
+          hostile' Human m     = True
+          hostile' m     Human = True
+          hostile' m     m'    = hates m m' || hates m' m
+
+-- checks whether a mob hates another mob type 
+-- i.e. will this mob attack the mob on sight?
+hates :: MobSpecies -> MobSpecies -> Bool
+hates Gnome  Goblin = True
+hates Goblin Gnome  = True
+hates Gnome  Kobold = True
+hates Kobold Gnome  = True
+hates Dwarf  Goblin = True
+hates Goblin Dwarf  = True
+hates Orc    Human  = True
+hates Orc    Gnome  = True
+hates Orc    Dwarf  = True
+hates Human  Orc    = True
+hates Gnome  Orc    = True
+hates Dwarf  Orc    = True
+hates a      b      = False
 
 isDead :: Mob -> Bool
 isDead m = hp m <= 0

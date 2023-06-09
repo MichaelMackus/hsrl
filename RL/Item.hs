@@ -68,10 +68,12 @@ gold = Item "Gold" . Gold
 
 -- reduces multiple gold in list to single item
 reduceGold :: [Item] -> [Item]
-reduceGold is = let gp = foldr f 0 is
+reduceGold is = let gp  = foldr f 0 is
+                    is' = L.filter (not . isGold) is
                     f (Item _ (Gold n)) accum = n + accum
                     f otherwise         accum = accum
-                in  (gold gp):(L.filter (not . isGold) is)
+                in  if gp > 0 then (gold gp):is'
+                    else is'
 
 isGold :: Item -> Bool
 isGold (Item _ (Gold _)) = True
@@ -101,7 +103,7 @@ itemRange i = projectileRange <$> (projectileType =<< weaponProperties i)
 
 -- in squares
 projectileRange :: ProjectileType -> Double
-projectileRange Thrown = 2.5
+projectileRange Thrown = 3
 projectileRange Arrow  = 10
 projectileRange Bullet = 5
 

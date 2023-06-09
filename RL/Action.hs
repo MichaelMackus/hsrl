@@ -46,6 +46,12 @@ seenMessage m  = getEnv >>= \env ->
     in  when (fresh && newMsg) $ insertMessage m
 
 -- activated AoO for mobs that are retreating
+-- TODO -2 fleeer's ac ?
+-- TODO no attack retreating *unless* player movement > mob... simulataneous
+-- TODO initiative, meaning both mob & player get to attack each other
+-- TODO player can simply attack mob he last attacked (i.e. the "target")
+--
+-- TODO alternatively, we can implement individual initiative for melees, and do attackRetreating as we are, but only if player movement >= mob
 attackRetreating :: (GameAction m, MonadRandom m) => Mob -> m Bool
 attackRetreating m = do
     env <- getEnv
@@ -81,6 +87,7 @@ applyItem lvl m i =
     else return ()
 
 -- fire projectile toward the mob's target
+-- TODO randomly hit anybody in melee
 fire :: (GameAction m, MonadRandom m) => DLevel -> Mob -> Item -> Mob -> m ()
 fire lvl attacker proj m = when (isProjectile proj) $ do
     let eqp = equipment attacker

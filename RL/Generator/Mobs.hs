@@ -30,19 +30,18 @@ data PlayerConfig = PlayerConfig {
 instance GenConfig PlayerConfig s where
     generating conf = return True
 
--- TODO need item config for generating treasure
 data MobConfig = MobConfig {
-    maxMobs :: Int,
-    minMobs :: Int,
+    numMobs :: Int,
     mobGenChance :: Rational,
     mobSleepingChance :: Rational,
     difficultyRange :: (Int, Int) -- min - fst, max + snd
 }
 
+maxTries = 1
 instance GenConfig MobConfig DLevel where
     generating conf = do
         ms <- gets mobs
-        return (length ms < maxMobs conf)
+        return (length ms < numMobs conf)
 
 playerGenerator :: Generator PlayerConfig [Cell] (Maybe Player)
 playerGenerator = do
@@ -95,8 +94,7 @@ generateMob diff = do
     lvl   <- getGData
     conf  <- ask
     diff' <- max 1 <$> getRandomR (diff - fst (difficultyRange conf), diff + snd (difficultyRange conf))
-    r     <- randomChance (mobGenChance conf)
-    if length (mobs lvl) < minMobs conf || r then do
+    if length (mobs lvl) < numMobs conf then do
         let tileF p t = not (isStair t) && isNothing (L.lookup p (features lvl)) && isPassable t && isNothing (findMobAt p lvl) && not (canSee lvl (player lvl) p)
         p <- randomTile tileF lvl
         -- TODO give mob (identified) items
@@ -117,6 +115,7 @@ updateFlags m = do
 
 dngMobs = [ mob {
                 mobName = "Kobold",
+                mobSpecies = Kobold,
                 symbol = 'k',
                 hp = 2,
                 mhp = 2,
@@ -126,6 +125,7 @@ dngMobs = [ mob {
             },
             mob {
                 mobName = "Goblin",
+                mobSpecies = Goblin,
                 symbol = 'g',
                 hp = 3,
                 mhp = 3,
@@ -135,6 +135,7 @@ dngMobs = [ mob {
             },
             mob {
                 mobName = "Grid Bug",
+                mobSpecies = Insect,
                 symbol = 'x',
                 hp = 2,
                 mhp = 2,
@@ -145,6 +146,7 @@ dngMobs = [ mob {
             },
             mob {
                 mobName = "Rat",
+                mobSpecies = Vermin,
                 symbol = 'r',
                 hp = 2,
                 mhp = 2,
@@ -155,6 +157,7 @@ dngMobs = [ mob {
             },
             mob {
                mobName = "Orc",
+               mobSpecies = Orc,
                symbol = 'o',
                hp = 4,
                mhp = 4,
@@ -164,23 +167,23 @@ dngMobs = [ mob {
             },
             mob {
                mobName = "Skeleton",
+               mobSpecies = Undead,
                symbol = 'S',
                hp = 4,
                mhp = 4,
                baseDmg = 1 `d` 6,
                baseAC  = 7,
-               flags = [Undead],
                speed = 20
             },
             mob {
                mobName = "Zombie",
+               mobSpecies = Undead,
                symbol = 'Z',
                hp = 9,
                mhp = 9,
                baseDmg = 1 `d` 8,
                thac0   = 18,
                baseAC  = 8,
-               flags = [Undead],
                speed = 20
             },
             -- mob {
@@ -195,6 +198,7 @@ dngMobs = [ mob {
             -- },
             mob {
                mobName = "Ogre",
+               mobSpecies = Ogre,
                symbol = 'O',
                hp = 19,
                mhp = 19,
@@ -205,6 +209,7 @@ dngMobs = [ mob {
             },
             mob {
                mobName = "Bugbear",
+               mobSpecies = Bugbear,
                symbol = 'B',
                hp = 14,
                mhp = 14,
@@ -215,6 +220,7 @@ dngMobs = [ mob {
             },
             mob {
                mobName = "Black Dragon",
+               mobSpecies = Dragon,
                symbol = 'D',
                hp = 31,
                mhp = 31,

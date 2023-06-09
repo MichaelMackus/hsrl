@@ -85,11 +85,11 @@ spawnMobs :: DungeonConfig -> Game ()
 spawnMobs conf = do
     env <- gets envState
     lvl <- gets (level . envState)
-    return ()
     when (restedThisTurn env || (stairsTakenThisTurn env && daysSinceLastVisit env >= 1)) $ do
-        when (length (mobs lvl) < maxMobs (mobConfig conf)) $ do
+        when (length (mobs lvl) < maxMobs) $ do
+            num <- return . fst . randomR (1, min 4 (maxMobs - length (mobs lvl))) =<< newStdGen
             g   <- newStdGen
-            let ms     = fst (runGenerator mobGenerator (mobConfig conf) (mkGenState lvl g))
+            let ms     = fst (runGenerator mobGenerator ((mobConfig conf) { numMobs = num }) (mkGenState lvl g))
                 heal m = m { hp = mhp m }
             modify $ \s -> s { envState = (envState s) { level = (level (envState s)) { mobs = map heal ms } } }
 
@@ -144,8 +144,11 @@ defaultUIConfig = UIConfig { columns = 80
                            , tileSize = (16, 16)
                            , fullscreen = False }
 
+minMobs = 4
+maxMobs = 10
 mkDefaultConf = do
     itemApps <- randomItemAppearances
+    numMobs  <- return . fst . randomR (minMobs, maxMobs) =<< newStdGen
     return $ DungeonConfig {
         dwidth = 80,
         dheight = 15,
@@ -153,8 +156,7 @@ mkDefaultConf = do
         prevLevel = Nothing,
         maxDepth  = 20,
         mobConfig = MobConfig {
-            maxMobs = 10,
-            minMobs = 4,
+            numMobs = numMobs,
             mobGenChance = (1 % 3),
             mobSleepingChance = (1 % 2),
             difficultyRange = (2, 0)
@@ -173,7 +175,7 @@ mkDefaultConf = do
         playerConfig = PlayerConfig {
             playerHp = 8,
             playerLevel = 1,
-            playerFov = 5,
+            playerFov = 4,
             -- TODO oil flask?
             playerItems = replicate 3 dagger ++ replicate 60 arrow
         },

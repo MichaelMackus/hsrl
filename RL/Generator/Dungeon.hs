@@ -65,13 +65,13 @@ levelGenerator = do
                      else lvl''
 
         -- ensure we can reach the end
-        if isJust lastP && isJust (findPath (dfinder lvl''' (fromJust lastP)) distance (fromJust lastP) (at player)) then do
+        if isJust lastP && isJust (findPath (dfinder lvl''' (at player) (fromJust lastP)) (at player) (fromJust lastP)) then do
             mobs  <- runGenerator' mobGenerator (mobConfig conf) (mkGenState lvl''')
             markGDone
             return (lvl''' { mobs = mobs })
         else
             -- force up/down stair in case we reach iteration limit
-            return lvl''
+            return lvl'' -- TODO should be lvl'''
     where
         runGenerator' :: GenConfig c s => Generator c s a -> c -> (StdGen -> GenState s) -> Generator DungeonConfig t a
         runGenerator' gen conf f = do

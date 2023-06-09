@@ -39,7 +39,9 @@ packages:
 - '.'
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps: []
+extra-deps:
+  - dijkstra-simple-0.1.0@sha256:c8ef4401c26369aaea1531eafb59a253cfe9b88f5608c4874e7a9e4d64d0133a,1676
+  - fingertree-0.1.4.2@sha256:b368fda61b14073bd798f45c8fa91e1c5331628193a8b88d93fb5a4341849c64,2063
 
 # Override default flag values for local packages and extra-deps
 flags: {}
