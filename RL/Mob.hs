@@ -64,7 +64,7 @@ mobSpeed m =
         else speed m
 
 xpAward :: Mob -> Int
-xpAward m = round (hd m * 10) -- TODO need xp table or modifiers/ +1
+xpAward m = round (hd m * 100) -- TODO need xp table or modifiers/ +1
     -- fracitonal hit die
     where hd m     = fromIntegral (mhp m) / avgperhd
           avgperhd = 4.0 :: Float
