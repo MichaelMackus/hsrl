@@ -121,7 +121,8 @@ dngMobs = [ mob {
                 mhp = 2,
                 baseDmg = 1 `d` 4,
                 baseAC  = 6,
-                speed = 20
+                speed = 20,
+                morale = 6
             },
             mob {
                 mobName = "Goblin",
@@ -131,7 +132,8 @@ dngMobs = [ mob {
                 mhp = 3,
                 baseDmg = 1 `d` 6,
                 baseAC  = 6,
-                speed = 20
+                speed = 20,
+                morale = 7
             },
             mob {
                 mobName = "Grid Bug",
@@ -142,10 +144,11 @@ dngMobs = [ mob {
                 baseDmg = 1 `d` 2,
                 thac0   = 22,
                 baseAC  = 9,
-                speed = 20
+                speed = 20,
+                morale = 6
             },
             mob {
-                mobName = "Rat",
+                mobName = "Giant Rat",
                 mobSpecies = Vermin,
                 symbol = 'r',
                 hp = 2,
@@ -153,7 +156,8 @@ dngMobs = [ mob {
                 baseDmg = 1 `d` 2,
                 thac0   = 22,
                 baseAC  = 9,
-                speed = 20
+                speed = 20,
+                morale = 8
             },
             mob {
                mobName = "Orc",
@@ -163,7 +167,8 @@ dngMobs = [ mob {
                mhp = 4,
                baseDmg = 1 `d` 6,
                baseAC  = 6,
-               speed = 40
+               speed = 40,
+               morale = 6
             },
             mob {
                mobName = "Skeleton",
@@ -173,7 +178,8 @@ dngMobs = [ mob {
                mhp = 4,
                baseDmg = 1 `d` 6,
                baseAC  = 7,
-               speed = 20
+               speed = 20,
+               morale = 12
             },
             mob {
                mobName = "Zombie",
@@ -184,7 +190,8 @@ dngMobs = [ mob {
                baseDmg = 1 `d` 8,
                thac0   = 18,
                baseAC  = 8,
-               speed = 20
+               speed = 20,
+               morale = 12
             },
             -- mob {
             --    mobName = "Troglodyte",
@@ -205,7 +212,8 @@ dngMobs = [ mob {
                baseDmg = 1 `d` 10,
                thac0   = 15,
                baseAC  = 5,
-               speed = 30
+               speed = 30,
+               morale = 10
             },
             mob {
                mobName = "Bugbear",
@@ -216,7 +224,8 @@ dngMobs = [ mob {
                baseDmg = 2 `d` 4,
                thac0   = 16,
                baseAC  = 5,
-               speed = 30
+               speed = 30,
+               morale = 9
             },
             mob {
                mobName = "Black Dragon",
@@ -227,7 +236,8 @@ dngMobs = [ mob {
                baseDmg = 2 `d` 10,
                thac0   = 13,
                baseAC  = 2,
-               speed = 80
+               speed = 80,
+               morale = 8
             }
           ]
 

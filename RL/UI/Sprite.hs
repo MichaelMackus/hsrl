@@ -327,6 +327,7 @@ toMessage e (EventMessage (AttackRoll m roll 0))   | isPlayer m = Just $ "You ro
 toMessage e (EventMessage (AttackRoll m roll mod)) | isPlayer m = Just $ "You rolled a " ++ show roll ++ " to hit, with a modifier of " ++ show mod
 toMessage e (EventMessage (AttackRoll m roll mod)) = Just $ "The " ++ mobName m ++ " rolled a " ++ show roll ++ " to hit"
 -- toMessage e (EventMessage (PlayerRetreated m))                       = Just $ "You have successfully broke off the melee with the " ++ show m
+toMessage e (EventMessage (MobFlees m))                              = Just $ "The " ++ show m ++ " flees from combat"
 toMessage e (GameUpdate (ItemPickedUp m item))          | isPlayer m = Just $ "You have picked up the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (ItemDropped  m item))          | isPlayer m = Just $ "You have dropped the " ++ showIdentified (identified (player (level e))) item ++ "."
 toMessage e (GameUpdate (Equipped m item))              | isPlayer m = Just $ "You have equipped up the " ++ showIdentified (identified (player (level e))) item ++ "."

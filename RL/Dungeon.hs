@@ -190,19 +190,25 @@ touching (p1x, p1y) (p2x, p2y) = (p1x == p2x && p1y + 1 == p2y) ||
                                  (p1x + 1 == p2x && p1y + 1 == p2y)
 
 -- returns passable neighbors around point
--- considers stairs (mobs?) as impassable, unless end
+-- considers stairs & mobs as impassable, unless end
 dfinder :: DLevel -> Point -> Point -> Point -> [Point]
 dfinder d start end p = filter f (dneighbors d p)
     where f p' = start == p' || end == p' || isRunnable d p'
+
+-- returns list of passable points in level for finder
+passablePoints :: DLevel -> [Point]
+passablePoints lvl = L.filter (isRunnable lvl) . toPoints $ lvl
 
 mapDLevel :: (Point -> Tile -> Maybe r) -> DLevel -> [r]
 mapDLevel f lvl = catMaybes . map snd . M.toList $ M.mapWithKey f (tiles lvl)
 
 -- can mob run through point as part of automation?
 isRunnable :: DLevel -> Point -> Bool
-isRunnable lvl p = let t = findTileAt p lvl
-                       f = findFeatureAt p lvl
-                   in  maybe False (not . isStair) t && isNothing f
+isRunnable lvl p = let t  = findTileAt p lvl
+                       f  = findFeatureAt p lvl
+                       m  = findMobAt p lvl
+                       pl = player lvl
+                   in  maybe False (not . isStair) t && isNothing f && isNothing m && p /= at pl
 
 isPassable :: Tile -> Bool
 isPassable Rock = False
@@ -211,6 +217,10 @@ isPassable otherwise = True
 -- helper function for map construction
 enumerateMap :: DLevel -> [(Point, Tile)]
 enumerateMap = enumerate2d . toTiles
+
+-- convert dlevel to points
+toPoints :: DLevel -> [Point]
+toPoints = map fst . enumerateMap
 
 -- helper function for map deconstruction
 toTiles :: DLevel -> [[Tile]]

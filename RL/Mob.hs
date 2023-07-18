@@ -34,7 +34,8 @@ data Mob = Mob {
     speed          :: Int,
     xp             :: Int,  -- TODO move to player type
     mlvl           :: Int,  -- TODO move to player type
-    savingThrow    :: Int
+    savingThrow    :: Int,
+    morale         :: Int
 }
 data MobFlag = Sleeping | Invisible | BlindedF | ConfusedF | TelepathicF | MappedF Depth deriving (Eq, Show)
 data MobSpecies = Human | Kobold | Insect | Vermin | Goblin | Gnome | Dwarf | Orc | Bugbear | Ogre | Dragon | Undead deriving (Eq, Show)
@@ -134,7 +135,8 @@ mob = Mob {
     speed = 40,
     xp = 0,
     mlvl = 1,
-    savingThrow = 19
+    savingThrow = 19,
+    morale = 8
 }
 
 -- helper functions for mob management

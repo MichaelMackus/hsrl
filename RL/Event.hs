@@ -13,7 +13,8 @@ data Message = ItemsSeen [Item] | StairsSeen VerticalDirection | InMelee | MenuC
     | PlayerRested | PlayerInDanger
     | AttackOfOpportunity Mob Mob | PlayerRetreated Mob 
     | NoTargetsInRange
-    | AttackRoll Mob Int Int deriving (Eq, Show)
+    | AttackRoll Mob Int Int
+    | MobFlees Mob deriving (Eq, Show)
 data Menu = Inventory | NoMenu | ProjectileMenu | TargetMenu | DropMenu deriving (Eq, Show)
 type Day = Int
 

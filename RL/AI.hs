@@ -7,11 +7,12 @@ import RL.Event
 import RL.Game
 import RL.Pathfinder
 import RL.Random
+import RL.Util
 
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Writer
-import Data.Maybe (isJust, isNothing, fromJust, fromMaybe)
+import Data.Maybe (isJust, isNothing, fromJust, fromMaybe, listToMaybe)
 import Data.Set (Set)
 import Data.Tuple (swap)
 import qualified Data.List as L
@@ -40,80 +41,95 @@ instance GameAction AIAction where
     getEnv = ask
     insertEvents = tell
 
-data AIState = AIState { path :: Maybe [Point], movementPoints :: Int, curMobId :: Id }
+data AIState = AIState { path :: Maybe [Point], movementPoints :: Int, curMobId :: Id, fleeing :: Bool }
 
-defaultAIState = AIState Nothing 0
+defaultAIState mid = AIState Nothing 0 mid False
 
 runAI :: AIAction a -> Env -> AIState -> StdGen -> ([Event], AIState)
 runAI k env s g = let k' = execStateT (aiAction k) s
                   in  swap $ evalRand (runReaderT (runWriterT k') env) g
 
 automate :: AIAction ()
-automate = getMob >>= \m -> do
-    env   <- ask
-    lvl   <- asks level
-    heard <- canHear (events env) m (player lvl)
+automate = do
+    m       <- getMob
+    env     <- ask
+    lvl     <- asks level
+    heard   <- canHear (events env) m (player lvl)
+    s       <- get
     let seen  = canSeeMob lvl m (player lvl)
         path  = findOptimalPath lvl (at (player lvl)) (at m)
-    when (heard && isSleeping m) $ gameEvent (Waken m)
 
-    when heard $ updateDestination (at (player lvl))
-    when seen  $ updateDestination (at (player lvl))
+    -- check for morale
+    when (seenMonsterDiedThisTurn env m) $ do
+        r <- roll $ 2 `d` 6
+        let isFleeing = True
+        when isFleeing $ do
+            modify $ \s -> s { fleeing = isFleeing, path = flee lvl m (player lvl) }
+            insertMessage $ MobFlees m
+    s       <- get
     curPath <- curMobPath
-
-    atk <- attackRetreating m
+    atk     <- attackRetreating m
     if atk then do
         r <- roll $ 1 `d` 2
         if r == 1 then
-            moveCloser (player lvl) (fromJust path)
+            walkPathOrWander
         else
             seenMessage $ PlayerRetreated m
-    else
-        if (seen || heard) && isJust path then
-           moveCloser (player lvl) (fromJust path)
-        else if length curPath > 1 then
-           moveCloser (player lvl) curPath
-        else if not (isSleeping m) then
-           wander
-        else return ()
+    else if isSleeping m then
+        when heard $ gameEvent (Waken m)
+    else do
+        when (not (fleeing s)) $ do
+            when heard $ updateDestination (at (player lvl))
+            when seen  $ updateDestination (at (player lvl))
+
+        walkPathOrWander
 
 --- wander randomly
 wander :: AIAction ()
-wander = getMob >>= \m -> do
+wander = do
+    clearDestination
+    m   <- getMob
     lvl <- asks level
-    p   <- pick (aiNeighbors lvl (at m) (at m))
-    when (isJust p) $ tryMove (fromJust p)
+    p   <- pick (L.filter (isRunnable lvl) $ dneighbors lvl (at m))
+    when (isJust p) $ tryMove (fromJust p) >> return ()
 
-moveCloser :: Mob -> [Point] -> AIAction ()
-moveCloser p path = getMob >>= \m -> do
-    lvl <- asks level
-    let next        = path !! 1
-        t           = findTileAt next lvl
-        isValidPath = length path > 1 && isJust t && isPassable (fromJust t)
-        -- m'          = fromJust (findMob (mobId m) (mobs lvl)) -- TODO is this necessary?
-    if isValidPath then
-        if next == at p && not (isDead p) then do
-            attack m (wielding (equipment m)) p
-            clearDestination
-        else if isNothing (findMobAt next lvl) then
-            tryMove next
-        else
-            clearDestination
-    else
-        clearDestination
+
+walkPathOrWander :: AIAction ()
+walkPathOrWander = do
+    m    <- getMob
+    lvl  <- asks level
+    path <- gets path
+    case path of
+        Just path -> do
+           let next        = path !! 1
+               t           = findTileAt next lvl
+               p           = player lvl -- TODO don't tie to player
+               isValidPath = length path > 1 && isJust t && isPassable (fromJust t)
+
+           if isValidPath then do
+               if next == at p && not (isDead p) then do
+                   attack m (wielding (equipment m)) p
+                   clearDestination
+               else if isNothing (findMobAt next lvl) then do
+                   whenM (tryMove next) $
+                       modify $ \s -> s { path = Just (tail path) }
+               else wander
+            else wander
+        Nothing -> wander
 
 -- TODO allow multiple movements if able
-tryMove :: Point -> AIAction ()
+tryMove :: Point -> AIAction Bool
 tryMove p = do
     pl <- getPlayer
     m  <- getMob
-    -- TODO skeleton as fast as player???
     mp <- (+ mobSpeed m) <$> gets movementPoints
     if mp >= mobSpeed pl then do
         gameEvent $ Moved m p
         modify $ \s -> s { movementPoints = max 0 (mp - mobSpeed pl) }
-    else
+        return True
+    else do
         incMovePoints mp
+        return False
 
 -- increment mob movement points
 incMovePoints :: Int -> AIAction ()
@@ -126,7 +142,7 @@ updateDestination p = do
     let path = findOptimalPath (level env) p (at mob)
     modify $ \s -> s { path = path }
 clearDestination :: AIAction ()
-clearDestination = modify $ \s -> s { path = Nothing }
+clearDestination = modify $ \s -> s { path = Nothing, fleeing = False }
 getMob :: AIAction Mob
 getMob = do
     ms <- asks (mobs . level)
@@ -141,14 +157,29 @@ curMobPath = getMob >>= \m -> do
 
 -- find AI path, first trying to find optimal path around mobs
 -- fallback is naive dfinder to allow mobs to bunch up
-findOptimalPath lvl end s = let optimal = findPath (aiFinder lvl end) s end
-                              in  if isNothing optimal then findPath (dfinder lvl s end) s end else optimal
+-- TODO fallback path should allow mobs to bunch up
+findOptimalPath lvl end s = let optimal = findPath (dfinder lvl end s) s end
+                            in  if isNothing optimal then findPath (\p -> dneighbors lvl p) s end else optimal -- TODO need fallback
 
-aiFinder :: DLevel -> Point -> Point -> [Point]
-aiFinder d end p = aiNeighbors d end p
+-- TODO prevent mobs from fleeing into player square, probably need new
+-- TODO finder for this
+-- TODO if it gets enclosed by another mob, must fight
+-- TODO still getting issues with this sometimes when mob blocking
+--
+-- TODO swap spots with mobs when fleeing?
+flee :: DLevel -> Mob -> Mob -> Maybe [Point]
+flee lvl m m' = let mpoints   = L.nub . concat . map snd . findPathsFrom (dfinder lvl (at m) (at m)) $ at m -- passable points from mob
+                    f p       = dfinder lvl (at m) from p
+                    fleePaths = findPathsFrom f from
+                    from      = at m'
+                    dest      = pickGreatestPoint mpoints fleePaths
+                in  case dest of
+                        Just dest -> let path = findPath (dfinder lvl dest (at m)) (at m) dest
+                                     in  path
+                        Nothing   -> Nothing
 
-aiNeighbors :: DLevel -> Point -> Point -> [Point]
-aiNeighbors d end p = L.filter f (dneighbors d p)
-    where f p = let m' = findMobAt p d
-                    isntM m' = isNothing m' || isPlayer (fromJust m')
-                in  isntM m' && (isRunnable d p || p == end)
+pickGreatestPoint :: [Point] -> [(Int, [Point])] -> Maybe Point
+pickGreatestPoint mpoints ps = listToMaybe =<< (listToMaybe . L.filter g . map (reverse . snd) . L.sortBy f $ ps)
+    where f (w, _) (w', _) = compare w' w
+          g (p:ps)         = p `elem` mpoints
+          g []             = False

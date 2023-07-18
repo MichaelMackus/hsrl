@@ -1,4 +1,4 @@
-module RL.Game (Env(..), Client(..), canHear, lastVisitedDay, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, retreatedFrom, module RL.Dungeon, module RL.Event) where
+module RL.Game (Env(..), Client(..), canHear, lastVisitedDay, seenMonsterDiedThisTurn, restedThisTurn, stairsTakenThisTurn, daysSinceLastVisit, currentDay, broadcastEvents, isPlaying, canAutomate, canRest, isWon, isQuit, updateFlags, retreatedFrom, module RL.Dungeon, module RL.Event) where
 
 import RL.Event
 import RL.Dungeon
@@ -57,6 +57,11 @@ restedThisTurn :: Env -> Bool
 restedThisTurn = occurredThisTurn f . events
     where f (GameUpdate (Rested _ _ d)) = True
           f otherwise                   = False
+
+seenMonsterDiedThisTurn :: Env -> Mob -> Bool
+seenMonsterDiedThisTurn env m = occurredThisTurn f . events $ env
+    where f (GameUpdate (Died m')) | canSeeMob (level env) m m' = True
+          f otherwise                                           = False
 
 -- get day we last visited this level
 lastVisitedDay :: Env -> [Event] -> Day
