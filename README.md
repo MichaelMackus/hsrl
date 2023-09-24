@@ -1,5 +1,7 @@
 # hsrl
 
+![hsrl](/res/screenshot.png?raw=true)
+
 Simple roguelike implemented in Haskell (pending more creative name). Inspired
 by roguelikes like [rogue](https://archive.org/details/msdos_Rogue_1983) and
 [nethack](http://www.nethack.org/).
