@@ -26,7 +26,7 @@ build_script:
 - stack exec --no-terminal -- pacman -Syu --noconfirm > nul
 - stack exec --no-terminal -- pacman -S   --noconfirm mingw-w64-x86_64-pkgconf
 - stack exec -- curl -O https://repo.msys2.org/mingw/x86_64/mingw-w64-x86_64-SDL2-2.0.22-2-any.pkg.tar.zst
-- stack exec -- pacman -U mingw-w64-x86_64-SDL2-2.0.22-2-any.pkg.tar.zst
+- stack exec -- pacman -U --noconfirm mingw-w64-x86_64-SDL2-2.0.22-2-any.pkg.tar.zst
 - stack exec -- pkg-config --libs sdl2
 
 # The ugly echo "" hack is to avoid complaints about 0 being an invalid file
