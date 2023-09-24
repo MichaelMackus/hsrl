@@ -38,8 +38,10 @@ curl -sSL https://get.haskellstack.org/ | sh
 stack build
 ```
 
-If you would like the ability to run within a TTY enable the vty build flag:
-`stack build --flag hsrl:vty`.
+If you would like the ability to run within a TTY (terminal) enable the vty
+build flag: `stack build --flag hsrl:vty`. Unfortunately, I don't think the vty
+library supports windows so if you want to run in a terminal you will have to
+build on Mac or Linux.
 
 # Run
 
